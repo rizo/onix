@@ -1,0 +1,11 @@
+(library
+ (name nix_parser)
+ (libraries pprint))
+
+(menhir
+ (modules Parser)
+ (flags "--explain" "--dump" "--strict" "--external-tokens" "Tokens")
+ (infer true))
+
+(ocamllex
+ (modules Lexer))

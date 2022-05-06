@@ -1,0 +1,10 @@
+(library
+ (name onix)
+ (modules :standard \ Main)
+ (libraries fmt opam-0install opam-format opam-state opam-core))
+
+(executable
+ (name Main)
+ (public_name onix)
+ (modules Main)
+ (libraries cmdliner nix_parser onix))
