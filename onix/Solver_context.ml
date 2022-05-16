@@ -8,8 +8,9 @@ type 'a result = ('a, error) Stdlib.result
 
 type universe = {
   env : string -> OpamVariable.variable_contents option;
-  packages_dir : string;
-  pins : (OpamPackage.Version.t * OpamFile.OPAM.t) OpamPackage.Name.Map.t;
+  repo_packages_dir : string;
+  fixed_packages :
+    (OpamPackage.Version.t * OpamFile.OPAM.t) OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;
   test : OpamPackage.Name.Set.t;
   prefer_oldest : bool;
@@ -36,25 +37,13 @@ let std_env ?(ocaml_native = true) ?sys_ocaml_version ?opam_version ~arch ~os
     OpamConsole.warning "Unknown variable %S" v;
     None
 
-let with_dir path fn =
-  let ch = Unix.opendir path in
-  Fun.protect ~finally:(fun () -> Unix.closedir ch) (fun () -> fn ch)
-
-let list_dir path =
-  let rec aux acc ch =
-    match Unix.readdir ch with
-    | name -> aux (name :: acc) ch
-    | exception End_of_file -> acc
-  in
-  with_dir path (aux [])
-
-let load t pkg =
+let load_opam ~fixed_packages ~repo_packages_dir pkg =
   let { OpamPackage.name; version = _ } = pkg in
-  match OpamPackage.Name.Map.find_opt name t.pins with
+  match OpamPackage.Name.Map.find_opt name fixed_packages with
   | Some (_, opam) -> opam
   | None ->
     let opam_path =
-      t.packages_dir
+      repo_packages_dir
       </> OpamPackage.Name.to_string name
       </> OpamPackage.to_string pkg
       </> "opam"
@@ -71,8 +60,9 @@ let env t pkg v =
     | x -> t.env x
 
 let make ?(prefer_oldest = false) ?(test = OpamPackage.Name.Set.empty)
-    ?(pins = OpamPackage.Name.Map.empty) ~constraints ~env packages_dir =
-  { env; packages_dir; pins; constraints; test; prefer_oldest }
+    ?(fixed_packages = OpamPackage.Name.Map.empty) ~constraints ~env
+    repo_packages_dir =
+  { env; repo_packages_dir; fixed_packages; constraints; test; prefer_oldest }
 
 let version_compare t v1 v2 =
   if t.prefer_oldest then OpamPackage.Version.compare v1 v2
@@ -95,11 +85,13 @@ module Required = struct
     OpamPackage.Name.Map.find_opt name t.constraints
 
   let candidates t name =
-    match OpamPackage.Name.Map.find_opt name t.pins with
+    match OpamPackage.Name.Map.find_opt name t.fixed_packages with
     | Some (version, opam) -> [(version, Ok opam)]
     | None -> (
-      let versions_dir = t.packages_dir </> OpamPackage.Name.to_string name in
-      match list_dir versions_dir with
+      let versions_dir =
+        t.repo_packages_dir </> OpamPackage.Name.to_string name
+      in
+      match Os_utils.list_dir versions_dir with
       | versions ->
         let user_constraints = user_restrictions t name in
         versions
@@ -118,7 +110,10 @@ module Required = struct
                  (v, Error (UserConstraint (name, Some test)))
                | _ -> (
                  let pkg = OpamPackage.create name v in
-                 let opam = load t pkg in
+                 let opam =
+                   load_opam ~fixed_packages:t.fixed_packages
+                     ~repo_packages_dir:t.repo_packages_dir pkg
+                 in
                  let available = OpamFile.OPAM.available opam in
                  match
                    OpamFilter.eval ~default:(B false) (env t pkg) available
@@ -142,3 +137,20 @@ module Required = struct
     |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev
          ~default:false
 end
+
+let get_opam_file t pkg =
+  let name = OpamPackage.name pkg in
+  let candidates = Required.candidates t name in
+  let version = OpamPackage.version pkg in
+  let res =
+    List.find_map
+      (fun (v, opam_file) ->
+        if OpamPackage.Version.equal v version then Some opam_file else None)
+      candidates
+  in
+  match res with
+  | None -> Fmt.failwith "No such package %a" Opam_utils.pp_package pkg
+  | Some (Ok opam_file) -> opam_file
+  | Some (Error rejection) ->
+    Fmt.failwith "Package %a rejected: %a" Opam_utils.pp_package pkg
+      Required.pp_rejection rejection

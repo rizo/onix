@@ -1,0 +1,3 @@
+(library
+ (name nix)
+ (libraries fpath fmt bos))
