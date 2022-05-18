@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }, stdenv, makeSetupHook, breakpointHook }:
+{ pkgs ? import <nixpkgs> { }, lib, stdenv, makeSetupHook, breakpointHook }:
 
 let
   onix = import ./default.nix { inherit pkgs; };
@@ -20,73 +20,68 @@ let
 
   ocamlVersion = onix-lock.ocaml.version;
 
-  getLibDir = lockPkg:
-    if isNull lockPkg then
-      [ ]
-    else
-      let pkg = builtins.getAttr lockPkg.name scope';
-          dir = "${pkg}/lib/ocaml/${ocamlVersion}/site-lib";
-      in
-        (if builtins.pathExists dir then [ dir ] else [ ])
-        ++ builtins.concatMap getLibDir lockPkg.depends;
+  collectDeps = lockDeps:
+    lib.lists.foldr (lockDep: acc:
+      if isNull lockDep then
+        acc
+      else
+        let pkg = builtins.getAttr lockDep.name scope';
+        in acc // { ${lockDep.name} = pkg; } // collectDeps lockDep.depends) { }
+    lockDeps;
 
-  getStubLibsDir = lockPkg:
-    if isNull lockPkg then
-      [ ]
-    else
-      let pkg = builtins.getAttr lockPkg.name scope';
-      dir = "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/stublibs";
-      in (if builtins.pathExists dir then [ dir ] else [ ])
-        ++ builtins.concatMap getStubLibsDir lockPkg.depends;
+  collectPaths = deps:
+    let
+      path = dir: if builtins.pathExists dir then [ dir ] else [ ];
+      empty = {
+        libdir = [ ];
+        stublibs = [ ];
+        toplevel = [ ];
+      };
+      updatePath = acc: pkg:
+        let
+          libdir = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib";
+          stublibs = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/stublibs";
+          toplevel = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/toplevel";
+        in {
+          libdir = acc.libdir ++ libdir;
+          stublibs = acc.stublibs ++ stublibs;
+          toplevel = acc.toplevel ++ toplevel;
+        };
+    in lib.lists.foldl updatePath empty (builtins.attrValues deps);
 
-  getTopIncludeDir = lockPkg:
-    if isNull lockPkg then
-      [ ]
-    else
-      let pkg = builtins.getAttr lockPkg.name scope';
-      dir = "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/toplevel";
-      in (if builtins.pathExists dir then [ dir ] else [ ])
-        ++ builtins.concatMap getTopIncludeDir lockPkg.depends;
+  makeBuildCtx = lockPkg: {
+    inherit (lockPkg) name version opam;
+    depends = builtins.concatMap (lockPkgDep:
+      if isNull lockPkgDep then
+        [ ]
+      else [{
+        inherit (lockPkgDep) name version opam;
+        path = builtins.getAttr lockPkgDep.name scope';
+      }]) lockPkg.depends;
+  };
 
   buildPkg = _name: lockPkg:
     let
-
-      # The build context for the current lock package with depends from the built scope.
-      buildCtx = {
-        inherit (lockPkg) name version opam;
-        depends = builtins.concatMap (lockPkgDep:
-          if isNull lockPkgDep then
-            [ ]
-          else [{
-            inherit (lockPkgDep) name version opam;
-            path = builtins.getAttr lockPkgDep.name scope';
-          }]) lockPkg.depends;
-      };
-
+      buildCtx = makeBuildCtx lockPkg;
       buildCtxFile =
         pkgs.writeText (lockPkg.name + ".json") (builtins.toJSON buildCtx);
+      depPaths = collectPaths (collectDeps lockPkg.depends);
 
     in stdenv.mkDerivation {
-      passthru = { inherit (lockPkg) name version opam; };
-
       pname = lockPkg.name;
       version = lockPkg.version;
       src = lockPkg.src;
       dontUnpack = isNull lockPkg.src;
-      # setupHooks = [onixSetupOcamlEnv];
 
       buildInputs = [ pkgs.pkgconfig pkgs.opam-installer ];
-      propagatedBuildInputs =
-        builtins.map (ctxPkg: ctxPkg.path) buildCtx.depends;
+      propagatedBuildInputs = builtins.map (dep: dep.path) buildCtx.depends;
 
       nativeBuildInputs = [ ];
 
-      OCAMLPATH = pkgs.lib.strings.concatStringsSep ":"
-        (builtins.concatMap (getLibDir) lockPkg.depends);
-      CAML_LD_LIBRARY_PATH = pkgs.lib.strings.concatStringsSep ":"
-        (builtins.concatMap (getStubLibsDir) lockPkg.depends);
-      OCAMLTOP_INCLUDE_PATH = pkgs.lib.strings.concatStringsSep ":"
-        (builtins.concatMap (getTopIncludeDir) lockPkg.depends);
+      OCAMLPATH = lib.strings.concatStringsSep ":" depPaths.libdir;
+      CAML_LD_LIBRARY_PATH = lib.strings.concatStringsSep ":" depPaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH =
+        lib.strings.concatStringsSep ":" depPaths.toplevel;
 
       # strictDeps = false;
 
@@ -106,13 +101,8 @@ let
 
       installPhase = ''
         echo + installPhase ${lockPkg.name} $out
-        ${onix}/bin/onix opam-install --path=$out ${buildCtxFile} | tee /dev/stderr | bash
-
-        mkdir -p $out/bin
-        echo date > $out/bin/my_date
-        chmod +x $out/bin/my_date
-        mkdir -p $out/etc
-        cp ${buildCtxFile} $out/etc/${lockPkg.name}.json
+        ${onix}/bin/onix opam-install --path=$out ${buildCtxFile} | bash
+        mkdir -p $out # In case nothing was installed.
       '';
     };
 
