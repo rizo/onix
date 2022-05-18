@@ -1,20 +1,45 @@
 open Cmdliner
 
-module Opam_build = struct
-  let pkg_file_arg =
-    let doc = "Path to the package file to be built." in
-    let docv = "PKG" in
-    Arg.(info [] ~docv ~doc |> pos 0 (some file) None |> required)
+let build_ctx_file_arg =
+  let doc = "Path to the build context of the package to be built." in
+  let docv = "FILE" in
+  Arg.(info [] ~docv ~doc |> pos 0 (some file) None |> required)
 
-  let run pkg_closure =
-    print_endline
-      ("opam-build: building package from closure file: " ^ pkg_closure);
-    Onix.Opam_build.run pkg_closure
+let path_arg =
+  let doc = "Path to the built package." in
+  let docv = "PATH" in
+  Arg.(info ["path"] ~docv ~doc |> opt (some string) None |> required)
+
+module Opam_build = struct
+  let run path build_ctx =
+    Fmt.epr "onix: Building path=%S@." path;
+    Onix.Opam_actions.build ~path build_ctx
 
   let info =
     Cmd.info "opam-build" ~doc:"Build a package from a package closure file."
 
-  let cmd = Cmd.v info Term.(const run $ pkg_file_arg)
+  let cmd = Cmd.v info Term.(const run $ path_arg $ build_ctx_file_arg)
+end
+
+module Opam_install = struct
+  let run path build_ctx =
+    Fmt.epr "onix: Installing path=%S@." path;
+    Onix.Opam_actions.install ~path build_ctx
+
+  let info =
+    Cmd.info "opam-install"
+      ~doc:"Install a package from a package closure file."
+
+  let cmd = Cmd.v info Term.(const run $ path_arg $ build_ctx_file_arg)
+end
+
+module Opam_patch = struct
+  let run path build_ctx =
+    Fmt.epr "onix: Patching path=%S ctx=%S@." path build_ctx;
+    Onix.Opam_actions.patch ~path build_ctx
+
+  let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
+  let cmd = Cmd.v info Term.(const run $ path_arg $ build_ctx_file_arg)
 end
 
 let onix_lock_file_name = "onix-lock.nix"
@@ -43,6 +68,7 @@ module Solve = struct
 end
 
 let () =
+  Printexc.record_backtrace true;
   let doc = "Manage OCaml projects with Nix" in
   let sdocs = Manpage.s_common_options in
 
@@ -52,7 +78,7 @@ let () =
     let run () = `Help (`Pager, None) in
     Term.(ret (const run $ const ()))
   in
-  [Solve.cmd; Opam_build.cmd]
+  [Solve.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
   |> Cmdliner.Cmd.group info ~default
   |> Cmdliner.Cmd.eval
   |> Stdlib.exit

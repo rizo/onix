@@ -4,7 +4,7 @@ type package = {
   name : OpamPackage.Name.t;
   version : OpamPackage.Version.t;
   opam : Fpath.t;
-  src : OpamFilename.Dir.t option;
+  path : OpamFilename.Dir.t;
 }
 
 type t = {
@@ -14,7 +14,6 @@ type t = {
   vars : OpamTypes.variable_contents OpamVariable.Full.Map.t;
 }
 
-(* Vars *)
 module Vars = struct
   let add_native_system_vars vars =
     let system_variables = OpamSysPoll.variables in
@@ -29,26 +28,36 @@ module Vars = struct
 
   let add_global_vars vars =
     let string = OpamVariable.string in
+    let bool = OpamVariable.bool in
     let add var =
       OpamVariable.Full.Map.add
         (OpamVariable.Full.global (OpamVariable.of_string var))
     in
+    let add_pkg name var =
+      OpamVariable.Full.Map.add
+        ((OpamVariable.Full.create (OpamPackage.Name.of_string name))
+           (OpamVariable.of_string var))
+    in
+
     vars
     |> add "opam-version" (string (OpamVersion.to_string OpamVersion.current))
     |> add "jobs" (string (Nix_utils.get_nix_build_jobs ()))
     |> add "make" (string "make")
     |> add "os-version" (string "unknown")
+    |> add_pkg "ocaml" "preinstalled" (bool true)
+    |> add_pkg "ocaml" "native" (bool true)
+    |> add_pkg "ocaml" "native-tools" (bool true)
+    |> add_pkg "ocaml" "native-dynlink" (bool true)
 
   let default =
     OpamVariable.Full.Map.empty |> add_native_system_vars |> add_global_vars
 
-  let mk_pkg_path_lib ?suffix ~ocaml pkg =
-    let string x = Some (OpamVariable.string x) in
-    match (pkg, ocaml, suffix) with
-    | { src = Some prefix; _ }, Some { version = ocaml_version; _ }, Some suffix
-      ->
-      let prefix = OpamFilename.Dir.to_string prefix in
-      string
+  let make_path_lib ?suffix ~ocaml pkg =
+    let prefix = OpamFilename.Dir.to_string pkg.path in
+    let pkg_name = OpamPackage.Name.to_string pkg.name in
+    match (ocaml, suffix) with
+    | Some { version = ocaml_version; _ }, Some suffix ->
+      Some
         (String.concat "/"
            [
              prefix;
@@ -56,26 +65,23 @@ module Vars = struct
              OpamPackage.Version.to_string ocaml_version;
              "site-lib";
              suffix;
+             pkg_name;
            ])
-    | { src = Some prefix; _ }, Some { version = ocaml_version; _ }, None ->
-      let prefix = OpamFilename.Dir.to_string prefix in
-      string
+    | Some { version = ocaml_version; _ }, None ->
+      Some
         (String.concat "/"
            [
              prefix;
              "lib/ocaml";
              OpamPackage.Version.to_string ocaml_version;
              "site-lib";
+             pkg_name;
            ])
     | _ -> None
 
-  let mk_pkg_path pkg path =
-    let string x = Some (OpamVariable.string x) in
-    match pkg with
-    | { src = Some prefix; _ } ->
-      let prefix = OpamFilename.Dir.to_string prefix in
-      string (String.concat "/" [prefix; path])
-    | _ -> None
+  let make_path pkg path =
+    let prefix = OpamFilename.Dir.to_string pkg.path in
+    String.concat "/" [prefix; path]
 
   let resolve_from_package_scope t package_name v =
     let bool x = Some (OpamVariable.bool x) in
@@ -89,18 +95,20 @@ module Vars = struct
       | "pinned", Some pkg -> bool (Opam_utils.is_pinned_version pkg.version)
       | "pinned", None -> bool false
       | "name", _ -> string (OpamPackage.Name.to_string package_name)
-      | "bin", _ | "sbin", _ -> string "ONIX_NOT_IMPLEMENTED"
-      | "lib", Some pkg -> mk_pkg_path_lib ~ocaml:t.ocaml pkg
+      | "lib", Some pkg -> Option.bind (make_path_lib ~ocaml:t.ocaml pkg) string
       | "stublibs", Some pkg | "toplevel", Some pkg ->
-        mk_pkg_path_lib ~suffix:var_str ~ocaml:t.ocaml pkg
-      | "man", Some pkg | "doc", Some pkg | "share", Some pkg | "etc", Some pkg
-        -> mk_pkg_path pkg var_str
-      | "build", _ -> string "ONIX_NOT_IMPLEMENTED"
+        Option.bind (make_path_lib ~suffix:var_str ~ocaml:t.ocaml pkg) string
+      | "bin", Some pkg
+      | "sbin", Some pkg
+      | "man", Some pkg
+      | "doc", Some pkg
+      | "share", Some pkg
+      | "etc", Some pkg -> string (make_path pkg var_str)
+      | "build", _ -> string "ONIX_NOT_IMPLEMENTED_build"
       | "dev", _ -> bool false
       | "version", Some pkg ->
         string (OpamPackage.Version.to_string pkg.version)
-      | "build-id", Some { src = Some path; _ } ->
-        string (OpamFilename.Dir.to_string path)
+      | "build-id", Some { path; _ } -> string (OpamFilename.Dir.to_string path)
       | "build-id", _ -> None
       | "opamfile", Some pkg -> string (Fpath.to_string pkg.opam)
       | "depends", _ | "hash", _ -> string ("ONIX_NOT_IMPLEMENTED_" ^ var_str)
@@ -139,10 +147,9 @@ module Vars = struct
     let string x = Some (OpamVariable.string x) in
     let var_str = OpamVariable.Full.to_string full_var in
     match (var_str, OpamPackage.Name.Map.find_opt t.self.name t.scope) with
-    | "prefix", Some { src = Some path; _ }
-    | "switch", Some { src = Some path; _ }
-    | "root", Some { src = Some path; _ } ->
-      string (OpamFilename.Dir.to_string path)
+    | "prefix", Some { path; _ }
+    | "switch", Some { path; _ }
+    | "root", Some { path; _ } -> string (OpamFilename.Dir.to_string path)
     | "user", _ -> Some (OpamVariable.string (Unix.getlogin ()))
     | "group", _ -> (
       try
@@ -196,7 +203,7 @@ let decode_depend json =
   | `Assoc bindings ->
     let name = ref None in
     let version = ref None in
-    let src = ref None in
+    let path = ref None in
     let opam = ref None in
     let decode_binding (key, json) =
       match (key, json) with
@@ -205,8 +212,8 @@ let decode_depend json =
       | "version", `String x -> version := Some x
       | "version", _ ->
         invalid_arg "could not decode JSON: version must be a string"
-      | "src", `String x -> src := Some x
-      | "src", _ -> invalid_arg "could not decode JSON: src must be a string"
+      | "path", `String x -> path := Some x
+      | "path", _ -> invalid_arg "could not decode JSON: path must be a string"
       | "opam", `String x -> opam := Some x
       | "opam", _ -> invalid_arg "could not decode JSON: opam must be a string"
       | _, _ -> invalid_arg ("could not decode JSON: unknown key: " ^ key)
@@ -222,22 +229,25 @@ let decode_depend json =
       |> Option.or_fail "could not decode JSON: missing version key"
       |> OpamPackage.Version.of_string
     in
-    let src = !src |> Option.map OpamFilename.Dir.of_string in
+    let path =
+      !path
+      |> Option.or_fail "could not decode JSON: missing path key"
+      |> OpamFilename.Dir.of_string
+    in
     let opam =
       !opam
       |> Option.or_fail "could not decode JSON: missing opam key"
       |> Fpath.v
     in
-    { name; version; opam; src }
+    { name; version; opam; path }
   | _ -> invalid_arg "depends entry must be an object"
 
-let read_json json =
+let read_json ~path json =
   match json with
   | `Assoc bindings ->
     let name = ref None in
     let version = ref None in
     let opam = ref None in
-    let src = ref None in
     let depends = ref [] in
     let decode_binding (key, json) =
       match (key, json) with
@@ -248,9 +258,6 @@ let read_json json =
         invalid_arg "could not decode JSON: version must be a string"
       | "opam", `String x -> opam := Some x
       | "opam", _ -> invalid_arg "could not decode JSON: opam must be a string"
-      | "src", `String x -> src := Some x
-      | "src", `Null -> src := None
-      | "src", _ -> invalid_arg "could not decode JSON: src must be a string"
       | "depends", `List xs -> depends := List.map decode_depend xs
       | "depends", _ ->
         invalid_arg "could not decode JSON: depends must be an array"
@@ -272,8 +279,8 @@ let read_json json =
       |> Option.or_fail "could not decode JSON: missing opam key"
       |> Fpath.v
     in
-    let src = !src |> Option.map OpamFilename.Dir.of_string in
-    let self = { name; version; opam; src } in
+    let path = path |> OpamFilename.Dir.of_string in
+    let self = { name; version; opam; path } in
     let depends =
       List.fold_left
         (fun acc pkg -> OpamPackage.Name.Map.add pkg.name pkg acc)
@@ -284,6 +291,6 @@ let read_json json =
     make ~self ?ocaml scope
   | _ -> invalid_arg "build context must be an object"
 
-let read_file file =
+let read_file ~path file =
   let json = Yojson.Basic.from_file file in
-  read_json json
+  read_json ~path json

@@ -5,6 +5,11 @@ module Option = struct
     match t with
     | Some x -> x
     | None -> failwith msg
+
+  let if_some f t =
+    match t with
+    | Some x -> f x
+    | None -> ()
 end
 
 module List = struct
