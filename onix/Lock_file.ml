@@ -8,7 +8,7 @@ let pp fmt t =
   in
   let pp_list = Fmt.iter ~sep:(Fmt.any ";@,") List.iter pp_nix_attr in
   Fmt.pf fmt
-    {|{ pkgs, scope, opam-repo ? builtins.fetchGit {
+    {|{ pkgs, self, opam-repo ? builtins.fetchGit {
   url = "https://github.com/ocaml/opam-repository.git";
   rev = "16ff1304f8ccdd5a8c9fa3ebe906c32ecdd576ee";
 } }:@.@[<v2>{@,%a;@]@,}@.|}

@@ -67,17 +67,17 @@ let pp f t =
     OpamPackage.Name.Set.iter
       (fun dep ->
         if Utils.String.starts_with_number (OpamPackage.Name.to_string dep) then
-          Fmt.pf f "@ scope.%a" pp_name dep
+          Fmt.pf f "@ self.%a" pp_name dep
         else Fmt.pf f "@ %a" pp_name dep)
       depopts
   in
   let pp_depopts f depopts =
     OpamPackage.Name.Set.iter
-      (fun dep -> Fmt.pf f "@ (scope.%a or null)" pp_name dep)
+      (fun dep -> Fmt.pf f "@ (self.%a or null)" pp_name dep)
       depopts
   in
   Format.fprintf f
-    "@ name = %S;@ version = %S;@ src = %a;@ opam = %S;@ depends = with scope; \
+    "@ name = %S;@ version = %S;@ src = %a;@ opam = %S;@ depends = with self; \
      @[<hov2>[%a%a@ @]];"
     name version pp_fetch t.src
     (opam_path_for_locked_package t)
