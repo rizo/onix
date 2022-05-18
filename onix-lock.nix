@@ -411,11 +411,11 @@
     version = "dev";
     src = builtins.fetchGit {
       url = "git+https://github.com/odis-labs/options.git";
-      rev = "223e6438ffb00ac0b28a8eba45dcb10e4063e7b7";
+      rev = "5b1165d99aba112d550ddc3133a8eb1d174441ec";
       allRefs = true;
     };
     opam = "${src}/options.opam";
-    depends = with self; [ dune ];
+    depends = with self; [ dune ocaml ];
   };
   re = {
     name = "re";
