@@ -19,8 +19,8 @@ let pp fmt t =
       Lock_pkg.pp t
   in
   let pp_list = Fmt.iter ~sep:(Fmt.any ";@,") List.iter pp_nix_attr in
-  Fmt.pf fmt {|{ pkgs, self, %a }:@.@[<v2>{@,%a;@]@,}@.|} pp_repo_uri t.repo_uri
-    (Fmt.hvbox pp_list) t.packages
+  Fmt.pf fmt {|@[<v2>{ pkgs, self, %a@] }:@.@[<v2>{@,%a;@]@,}@.|} pp_repo_uri
+    t.repo_uri (Fmt.hvbox pp_list) t.packages
 
 let make ~repo_uri packages =
   if Option.is_none (Uri.fragment repo_uri) then
