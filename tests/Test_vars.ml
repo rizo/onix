@@ -82,7 +82,7 @@ let input =
 |}
 
 let build_context =
-  Onix.Build_context.read_json
+  Onix.Build_context.read_json ~ocaml_version:"4.14.0"
     ~path:"/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix"
     (Yojson.Basic.from_string input)
 
@@ -130,15 +130,6 @@ let check_scope () =
       "uri";
       "yojson";
     ]
-
-let check_ocaml () =
-  match build_context.ocaml with
-  | Some ocaml ->
-    assert (eq_pkg_name (mk_pkg_name "ocaml") ocaml.name);
-    assert (eq_pkg_v (mk_pkg_v "4.14.0") ocaml.version)
-  | None ->
-    Fmt.epr "Missing ocaml package.@.";
-    raise Exit
 
 let check_self () =
   let self = build_context.self in
@@ -269,6 +260,5 @@ let check_vars () =
 
 let () =
   check_scope ();
-  check_ocaml ();
   check_self ();
   check_vars ()

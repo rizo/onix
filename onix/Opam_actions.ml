@@ -136,8 +136,10 @@ module Patch = struct
 
   (* TODO: implement extra file fetching via lock-file:
      - https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L455 *)
-  let run ~path build_ctx_file =
-    let ctx : Build_context.t = Build_context.read_file ~path build_ctx_file in
+  let run ~ocaml_version ~path build_ctx_file =
+    let ctx : Build_context.t =
+      Build_context.read_file ~ocaml_version ~path build_ctx_file
+    in
     let opam = Opam_utils.read_opam ctx.self.opam in
     let opamfile = OpamFilename.of_string (Fpath.to_string ctx.self.opam) in
     Fmt.epr "Decoded build context for: %S@."
@@ -158,8 +160,10 @@ end
 
 let patch = Patch.run
 
-let build ?(test = false) ?(doc = false) ~path build_ctx_file =
-  let ctx : Build_context.t = Build_context.read_file ~path build_ctx_file in
+let build ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
+  let ctx : Build_context.t =
+    Build_context.read_file ~ocaml_version ~path build_ctx_file
+  in
   let opam = Opam_utils.read_opam ctx.self.opam in
   Fmt.epr "Decoded build context for: %S@."
     (OpamPackage.Name.to_string ctx.self.name);
@@ -183,36 +187,29 @@ let build ?(test = false) ?(doc = false) ~path build_ctx_file =
   List.iter (fun cmd -> Fmt.epr ">>> %s@." (String.concat " " cmd)) commands;
   List.iter (fun cmd -> Fmt.pr "%s@." (String.concat " " cmd)) commands
 
-let make_path_lib ~ocaml (pkg : Build_context.package) =
+let make_path_lib ~ocaml_version (pkg : Build_context.package) =
   let prefix = OpamFilename.Dir.to_string pkg.path in
-  match ocaml with
-  | Some { Build_context.version = ocaml_version; _ } ->
-    Some
-      (String.concat "/"
-         [
-           prefix;
-           "lib/ocaml";
-           OpamPackage.Version.to_string ocaml_version;
-           "site-lib";
-         ])
-  | _ -> None
+  String.concat "/"
+    [
+      prefix;
+      "lib/ocaml";
+      OpamPackage.Version.to_string ocaml_version;
+      "site-lib";
+    ]
 
 let make_opam_install_commands ~path (ctx : Build_context.t) =
   let install_file = OpamPackage.Name.to_string ctx.self.name ^ ".install" in
-  let libdir = make_path_lib ~ocaml:ctx.ocaml ctx.self in
-  match (Sys.file_exists install_file, libdir) with
-  | false, _ ->
-    Fmt.epr "Warning: no %S file: cwd=%S@." install_file (Sys.getcwd ());
-    []
-  | _, None ->
-    Fmt.epr "Warning: could not get libdir for %a@." Opam_utils.pp_package_name
-      ctx.self.name;
-    ["opam-installer"; "--prefix=" ^ path; install_file]
-  | true, Some libdir ->
+  let libdir = make_path_lib ~ocaml_version:ctx.ocaml_version ctx.self in
+  if Sys.file_exists install_file then
     ["opam-installer"; "--prefix=" ^ path; "--libdir=" ^ libdir; install_file]
+  else (
+    Fmt.epr "Warning: no %S file: cwd=%S@." install_file (Sys.getcwd ());
+    [])
 
-let install ?(test = true) ?(doc = true) ~path build_ctx_file =
-  let ctx : Build_context.t = Build_context.read_file ~path build_ctx_file in
+let install ?(test = true) ?(doc = true) ~ocaml_version ~path build_ctx_file =
+  let ctx : Build_context.t =
+    Build_context.read_file ~ocaml_version ~path build_ctx_file
+  in
   let opam = Opam_utils.read_opam ctx.self.opam in
   Fmt.epr "Decoded build context for: %S@."
     (OpamPackage.Name.to_string ctx.self.name);

@@ -5,41 +5,54 @@ let build_ctx_file_arg =
   let docv = "FILE" in
   Arg.(info [] ~docv ~doc |> pos 0 (some file) None |> required)
 
+let ocaml_version_arg =
+  let doc = "The version of OCaml to be used." in
+  let docv = "VERSION" in
+  Arg.(info ["ocaml-version"] ~docv ~doc |> opt (some string) None |> required)
+
 let path_arg =
   let doc = "Path to the built package." in
   let docv = "PATH" in
   Arg.(info ["path"] ~docv ~doc |> opt (some string) None |> required)
 
 module Opam_build = struct
-  let run path build_ctx =
-    Fmt.epr "onix: Building path=%S@." path;
-    Onix.Opam_actions.build ~path build_ctx
+  let run ocaml_version path build_ctx =
+    Fmt.epr "onix: Building ocaml_version=%S path=%S@." ocaml_version path;
+    Onix.Opam_actions.build ~ocaml_version ~path build_ctx
 
   let info =
     Cmd.info "opam-build" ~doc:"Build a package from a package closure file."
 
-  let cmd = Cmd.v info Term.(const run $ path_arg $ build_ctx_file_arg)
+  let cmd =
+    Cmd.v info
+      Term.(const run $ ocaml_version_arg $ path_arg $ build_ctx_file_arg)
 end
 
 module Opam_install = struct
-  let run path build_ctx =
-    Fmt.epr "onix: Installing path=%S@." path;
-    Onix.Opam_actions.install ~path build_ctx
+  let run ocaml_version path build_ctx =
+    Fmt.epr "onix: Installing ocaml_version=%S path=%S@." ocaml_version path;
+    Onix.Opam_actions.install ~ocaml_version ~path build_ctx
 
   let info =
     Cmd.info "opam-install"
       ~doc:"Install a package from a package closure file."
 
-  let cmd = Cmd.v info Term.(const run $ path_arg $ build_ctx_file_arg)
+  let cmd =
+    Cmd.v info
+      Term.(const run $ ocaml_version_arg $ path_arg $ build_ctx_file_arg)
 end
 
 module Opam_patch = struct
-  let run path build_ctx =
-    Fmt.epr "onix: Patching path=%S ctx=%S@." path build_ctx;
-    Onix.Opam_actions.patch ~path build_ctx
+  let run ocaml_version path build_ctx =
+    Fmt.epr "onix: Patching ocaml_version=%S path=%S ctx=%S@." ocaml_version
+      path build_ctx;
+    Onix.Opam_actions.patch ~ocaml_version ~path build_ctx
 
   let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
-  let cmd = Cmd.v info Term.(const run $ path_arg $ build_ctx_file_arg)
+
+  let cmd =
+    Cmd.v info
+      Term.(const run $ ocaml_version_arg $ path_arg $ build_ctx_file_arg)
 end
 
 let onix_lock_file_name = "onix-lock.nix"

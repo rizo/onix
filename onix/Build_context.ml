@@ -9,7 +9,7 @@ type package = {
 
 type t = {
   self : package;
-  ocaml : package option;
+  ocaml_version : OpamPackage.Version.t;
   scope : package OpamPackage.Name.Map.t;
   vars : OpamTypes.variable_contents OpamVariable.Full.Map.t;
 }
@@ -52,11 +52,11 @@ module Vars = struct
   let default =
     OpamVariable.Full.Map.empty |> add_native_system_vars |> add_global_vars
 
-  let make_path_lib ?suffix ~ocaml pkg =
+  let make_path_lib ?suffix ~ocaml_version pkg =
     let prefix = OpamFilename.Dir.to_string pkg.path in
     let pkg_name = OpamPackage.Name.to_string pkg.name in
-    match (ocaml, suffix) with
-    | Some { version = ocaml_version; _ }, Some suffix ->
+    match suffix with
+    | Some suffix ->
       Some
         (String.concat "/"
            [
@@ -67,7 +67,7 @@ module Vars = struct
              suffix;
              pkg_name;
            ])
-    | Some { version = ocaml_version; _ }, None ->
+    | None ->
       Some
         (String.concat "/"
            [
@@ -77,7 +77,6 @@ module Vars = struct
              "site-lib";
              pkg_name;
            ])
-    | _ -> None
 
   let make_path pkg path =
     let prefix = OpamFilename.Dir.to_string pkg.path in
@@ -95,9 +94,12 @@ module Vars = struct
       | "pinned", Some pkg -> bool (Opam_utils.is_pinned_version pkg.version)
       | "pinned", None -> bool false
       | "name", _ -> string (OpamPackage.Name.to_string package_name)
-      | "lib", Some pkg -> Option.bind (make_path_lib ~ocaml:t.ocaml pkg) string
+      | "lib", Some pkg ->
+        Option.bind (make_path_lib ~ocaml_version:t.ocaml_version pkg) string
       | "stublibs", Some pkg | "toplevel", Some pkg ->
-        Option.bind (make_path_lib ~suffix:var_str ~ocaml:t.ocaml pkg) string
+        Option.bind
+          (make_path_lib ~suffix:var_str ~ocaml_version:t.ocaml_version pkg)
+          string
       | "bin", Some pkg
       | "sbin", Some pkg
       | "man", Some pkg
@@ -157,10 +159,8 @@ module Vars = struct
         let gname = (Unix.getgrgid gid).gr_name in
         Some (OpamVariable.string gname)
       with Not_found -> None)
-    | "sys-ocaml-version", _ -> (
-      match t.ocaml with
-      | Some { version; _ } -> string (OpamPackage.Version.to_string version)
-      | None -> None)
+    | "sys-ocaml-version", _ ->
+      string (OpamPackage.Version.to_string t.ocaml_version)
     | _ -> None
 
   let try_resolvers resolvers full_var =
@@ -195,8 +195,10 @@ let resolve t ?(local = OpamVariable.Map.empty) full_var =
   in
   contents
 
-let make ~self ?ocaml ?(vars = Vars.default) scope =
-  { self; ocaml; vars; scope }
+let make ~self ~ocaml_version ?(vars = Vars.default) scope =
+  (* TODO: check ocaml versions. *)
+  let ocaml_version = OpamPackage.Version.of_string ocaml_version in
+  { self; ocaml_version; vars; scope }
 
 let decode_depend json =
   match json with
@@ -242,7 +244,7 @@ let decode_depend json =
     { name; version; opam; path }
   | _ -> invalid_arg "depends entry must be an object"
 
-let read_json ~path json =
+let read_json ~ocaml_version ~path json =
   match json with
   | `Assoc bindings ->
     let name = ref None in
@@ -287,10 +289,9 @@ let read_json ~path json =
         OpamPackage.Name.Map.empty !depends
     in
     let scope = OpamPackage.Name.Map.add self.name self depends in
-    let ocaml = OpamPackage.Name.Map.find_opt Opam_utils.ocaml_name depends in
-    make ~self ?ocaml scope
+    make ~self ~ocaml_version scope
   | _ -> invalid_arg "build context must be an object"
 
-let read_file ~path file =
+let read_file ~ocaml_version ~path file =
   let json = Yojson.Basic.from_file file in
-  read_json ~path json
+  read_json ~ocaml_version ~path json
