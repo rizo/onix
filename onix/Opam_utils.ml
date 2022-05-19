@@ -35,7 +35,7 @@ let find_root_packages input_opams =
   let opams =
     match input_opams with
     | [] ->
-      let contents = Os_utils.list_dir "." in
+      let contents = Utils.Filesystem.list_dir "." in
       contents |> List.to_seq |> Seq.filter is_opam_filename
     | _ -> input_opams |> List.to_seq
   in
@@ -51,13 +51,18 @@ let find_root_packages input_opams =
 let get_root_package_names root_opams =
   root_opams |> OpamPackage.Name.Map.keys |> List.map OpamPackage.Name.to_string
 
-let fetch opam_url =
-  let uri = Uri.of_string (OpamUrl.to_string opam_url) in
+let fetch uri =
+  let uri = Uri.with_scheme uri (Some "https") in
+  let rev = Uri.fragment uri |> Option.get in
+  let nix_url = Uri.with_fragment uri None |> Uri.to_string in
+  Fmt.epr "Fetching opam url: nix_url=%S rev=%S@." nix_url rev;
+  Nix_utils.fetch_git ~rev nix_url
+
+let fetch_resolve uri =
   let uri = Uri.with_scheme uri (Some "https") in
   let nix_url = Uri.with_fragment uri None |> Uri.to_string in
-  let rev = Uri.fragment uri |> Option.get in
-  Fmt.epr "Fetching opam url: nix_url=%S rev=%S@." nix_url rev;
-  Nix.fetch_git ~rev nix_url
+  Fmt.epr "Fetching opam url: nix_url=%S@." nix_url;
+  Nix_utils.fetch_git_resolve nix_url
 
 module Pins = struct
   type t = OpamPackage.t * OpamUrl.t
@@ -91,7 +96,7 @@ module Pins = struct
 
   let read_opam package opam_url =
     let name = OpamPackage.name_to_string package in
-    let src = fetch opam_url in
+    let src = fetch (Uri.of_string (OpamUrl.to_string opam_url)) in
     Fmt.epr "Reading opam file for pin: name=%S url=%a src=%a@." name pp_url
       opam_url Fpath.pp src;
     let opam_path = Fpath.(src / name |> add_ext "opam") in
