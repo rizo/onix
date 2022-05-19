@@ -174,9 +174,12 @@ let check_vars () =
   check_var "toplevel"
     "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib/toplevel/onix-example";
   check_var "man" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/man";
-  check_var "doc" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/doc";
-  check_var "share" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/share";
-  check_var "etc" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/etc";
+  check_var "doc"
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/doc/onix-example";
+  check_var "share"
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/share/onix-example";
+  check_var "etc"
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/etc/onix-example";
 
   check_var "_:installed" "true";
   check_var "_:pinned" "false";
@@ -190,9 +193,12 @@ let check_vars () =
   check_var "_:toplevel"
     "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib/toplevel/onix-example";
   check_var "_:man" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/man";
-  check_var "_:doc" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/doc";
-  check_var "_:share" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/share";
-  check_var "_:etc" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/etc";
+  check_var "_:doc"
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/doc/onix-example";
+  check_var "_:share"
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/share/onix-example";
+  check_var "_:etc"
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/etc/onix-example";
 
   (* Pinned package *)
   check_var "options:name" "options";
@@ -211,11 +217,11 @@ let check_vars () =
   check_var "options:man"
     "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/man";
   check_var "options:doc"
-    "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/doc";
+    "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/doc/options";
   check_var "options:share"
-    "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/share";
+    "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/share/options";
   check_var "options:etc"
-    "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/etc";
+    "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/etc/options";
 
   (* Not installed package *)
   check_var "_not_a_package:name" "_not_a_package";
@@ -252,11 +258,14 @@ let check_vars () =
   check_var "bos:man"
     "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/man";
   check_var "bos:doc"
-    "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/doc";
+    "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/doc/bos";
   check_var "bos:share"
-    "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/share";
+    "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/share/bos";
   check_var "bos:etc"
-    "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/etc"
+    "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/etc/bos";
+
+  check_var "ocaml-config:share"
+    "/nix/store/j49d3wydfm41n5mb4hlhkx3iv2fy92zd-ocaml-config-2/share/ocaml-config"
 
 let () =
   check_scope ();

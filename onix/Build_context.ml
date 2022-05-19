@@ -57,30 +57,30 @@ module Vars = struct
     let pkg_name = OpamPackage.Name.to_string pkg.name in
     match suffix with
     | Some suffix ->
-      Some
-        (String.concat "/"
-           [
-             prefix;
-             "lib/ocaml";
-             OpamPackage.Version.to_string ocaml_version;
-             "site-lib";
-             suffix;
-             pkg_name;
-           ])
+      String.concat "/"
+        [
+          prefix;
+          "lib/ocaml";
+          OpamPackage.Version.to_string ocaml_version;
+          "site-lib";
+          suffix;
+          pkg_name;
+        ]
     | None ->
-      Some
-        (String.concat "/"
-           [
-             prefix;
-             "lib/ocaml";
-             OpamPackage.Version.to_string ocaml_version;
-             "site-lib";
-             pkg_name;
-           ])
+      String.concat "/"
+        [
+          prefix;
+          "lib/ocaml";
+          OpamPackage.Version.to_string ocaml_version;
+          "site-lib";
+          pkg_name;
+        ]
 
-  let make_path pkg path =
+  let make_path ~scoped pkg path =
     let prefix = OpamFilename.Dir.to_string pkg.path in
-    String.concat "/" [prefix; path]
+    let pkg_name = OpamPackage.Name.to_string pkg.name in
+    if scoped then String.concat "/" [prefix; path; pkg_name]
+    else String.concat "/" [prefix; path]
 
   let resolve_from_package_scope t package_name v =
     let bool x = Some (OpamVariable.bool x) in
@@ -95,17 +95,14 @@ module Vars = struct
       | "pinned", None -> bool false
       | "name", _ -> string (OpamPackage.Name.to_string package_name)
       | "lib", Some pkg ->
-        Option.bind (make_path_lib ~ocaml_version:t.ocaml_version pkg) string
+        string (make_path_lib ~ocaml_version:t.ocaml_version pkg)
       | "stublibs", Some pkg | "toplevel", Some pkg ->
-        Option.bind
+        string
           (make_path_lib ~suffix:var_str ~ocaml_version:t.ocaml_version pkg)
-          string
-      | "bin", Some pkg
-      | "sbin", Some pkg
-      | "man", Some pkg
-      | "doc", Some pkg
-      | "share", Some pkg
-      | "etc", Some pkg -> string (make_path pkg var_str)
+      | "bin", Some pkg | "sbin", Some pkg | "man", Some pkg ->
+        string (make_path ~scoped:false pkg var_str)
+      | "doc", Some pkg | "share", Some pkg | "etc", Some pkg ->
+        string (make_path ~scoped:true pkg var_str)
       | "build", _ -> string "ONIX_NOT_IMPLEMENTED_build"
       | "dev", _ -> bool false
       | "version", Some pkg ->

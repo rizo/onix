@@ -3,8 +3,8 @@
 # TODO: handle empty lock file
 # TODO: handle lock file without ocaml
 let
-  ocaml = null;
-  # ocaml = pkgs.ocaml-ng.ocamlPackages_4_14.ocaml;
+  # ocaml = null;
+  ocaml = pkgs.ocaml-ng.ocamlPackages_4_14.ocaml;
   onix = import ./default.nix { inherit pkgs; };
 
   onix-lock = import ./onix-lock.nix {
@@ -31,7 +31,9 @@ let
       else
         ocaml;
 
+    # When a custom ocaml pkg is provided, these are not needed.
     ocaml-base-compiler = pkg: if isNull ocaml then pkg else emptyPkg;
+    ocaml-config = pkg: if isNull ocaml then pkg else emptyPkg;
 
     ocamlfind = pkg:
       pkg.overrideAttrs
