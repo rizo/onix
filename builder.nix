@@ -136,5 +136,5 @@ let
         mkdir -p $out # In case nothing was installed.
       '';
     };
-in scope'.onix-example
+in scope'.onix
 

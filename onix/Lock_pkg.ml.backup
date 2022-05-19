@@ -24,8 +24,9 @@ let opam_path_for_locked_package t =
   let pkg = t.package in
   let ( </> ) = Filename.concat in
   let name = OpamPackage.name_to_string pkg in
-  (* FIXME: might be just "./opam" for pinned? *)
-  if is_pinned t || is_root t then "${src}" </> name ^ ".opam"
+  (* FIXME: might be just "./opam", lookup during build? *)
+  if is_pinned t then "${src}/" </> name ^ ".opam"
+  else if is_root t then "." </> name ^ ".opam"
   else
     let name_with_version = OpamPackage.to_string pkg in
     "${opam-repo}/packages/" </> name </> name_with_version </> "opam"
@@ -42,24 +43,22 @@ let pp_hash f hash =
   | `SHA512 -> Fmt.pf f "sha512 = %S" (OpamHash.contents hash)
   | `MD5 -> Fmt.pf f "md5 = %S" (OpamHash.contents hash)
 
-let pp_src f t =
-  if is_root t then Fmt.pf f "./."
-  else
-    match t.src with
-    | None -> Fmt.pf f "null"
-    | Some (Git { url; rev }) ->
-      Fmt.pf f
-        "@[<v-4>builtins.fetchGit {@ url = %S;@ rev = %S;@ allRefs = true;@]@ }"
-        url rev
-    (* MD5 hashes are not supported by Nix fetchers. Fetch without hash. *)
-    | Some (Http { url; hash }) when OpamHash.kind hash = `MD5 ->
-      Fmt.pf f "@[<v-4>builtins.fetchurl {@ url = %a;@]@ }"
-        (Fmt.quote Opam_utils.pp_url)
-        url
-    | Some (Http { url; hash }) ->
-      Fmt.pf f "@[<v-4>pkgs.fetchurl {@ url = %a;@ %a;@]@ }"
-        (Fmt.quote Opam_utils.pp_url)
-        url pp_hash hash
+let pp_fetch f url =
+  match url with
+  | None -> Fmt.pf f "null"
+  | Some (Git { url; rev }) ->
+    Fmt.pf f
+      "@[<v-4>builtins.fetchGit {@ url = %S;@ rev = %S;@ allRefs = true;@]@ }"
+      url rev
+  (* MD5 hashes are not supported by Nix fetchers. Fetch without hash. *)
+  | Some (Http { url; hash }) when OpamHash.kind hash = `MD5 ->
+    Fmt.pf f "@[<v-4>builtins.fetchurl {@ url = %a;@]@ }"
+      (Fmt.quote Opam_utils.pp_url)
+      url
+  | Some (Http { url; hash }) ->
+    Fmt.pf f "@[<v-4>pkgs.fetchurl {@ url = %a;@ %a;@]@ }"
+      (Fmt.quote Opam_utils.pp_url)
+      url pp_hash hash
 
 let pp f t =
   let name = OpamPackage.name_to_string t.package in
@@ -68,19 +67,19 @@ let pp f t =
     OpamPackage.Name.Set.iter
       (fun dep ->
         if Utils.String.starts_with_number (OpamPackage.Name.to_string dep) then
-          Fmt.pf f "@ self.%a" pp_name dep
-        else Fmt.pf f "@ %a" pp_name dep)
+          Fmt.pf f "@ %a = scope.%a;" pp_name dep pp_name dep
+        else Fmt.pf f "@ %a = scope.%a;" pp_name dep pp_name dep)
       depopts
   in
   let pp_depopts f depopts =
     OpamPackage.Name.Set.iter
-      (fun dep -> Fmt.pf f "@ (self.%a or null)" pp_name dep)
+      (fun dep -> Fmt.pf f "@ %a = scope.%a or null;" pp_name dep pp_name dep)
       depopts
   in
   Format.fprintf f
-    "@ name = %S;@ version = %S;@ src = %a;@ opam = %S;@ depends = with self; \
-     @[<hov2>[%a%a@ @]];"
-    name version pp_src t
+    "@ name = %S;@ version = %S;@ src = %a;@ opam = %S;@ depends = \
+     @[<hov2>{%a%a@ @]};"
+    name version pp_fetch t.src
     (opam_path_for_locked_package t)
     pp_depends t.depends pp_depopts t.depopts
 

@@ -67,8 +67,7 @@ module Solve = struct
     in
     let pins = Onix.Opam_utils.Pins.collect_from_opam_files project_packages in
     let locked_packages =
-      Onix.Solver.solve ~project_packages ~pins
-        ["onix-example"; "ocaml-base-compiler"]
+      Onix.Solver.solve ~project_packages ~pins ["onix"; "ocaml-base-compiler"]
     in
     let lock_file = Onix.Lock_file.make locked_packages in
     Onix.Utils.Out_channel.with_open_text onix_lock_file_name (fun chan ->
