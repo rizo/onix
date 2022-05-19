@@ -8,8 +8,8 @@ let make_context fixed_packages =
 
 module Solver = Opam_0install.Solver.Make (Solver_context.Required)
 
-let solve ~project_packages ~pins package_names =
-  let fixed_packages = Opam_utils.make_fixed_packages ~project_packages ~pins in
+let solve ~root_packages ~pins package_names =
+  let fixed_packages = Opam_utils.make_fixed_packages ~root_packages ~pins in
   let context = make_context fixed_packages in
   match
     Solver.solve context (List.map OpamPackage.Name.of_string package_names)

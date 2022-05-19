@@ -31,7 +31,7 @@ let is_root_version version = OpamPackage.Version.equal version root_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)
 let is_root package = is_root_version (OpamPackage.version package)
 
-let read_project_opams input_opams =
+let find_root_packages input_opams =
   let opams =
     match input_opams with
     | [] ->
@@ -42,10 +42,14 @@ let read_project_opams input_opams =
   opams
   |> Seq.map (fun filename ->
          let opam_name = opam_name_of_filename filename in
+         Fmt.epr "Reading packages from %S...@." filename;
          let opam = read_opam (Fpath.v filename) in
          let version = root_version in
          (opam_name, (version, opam)))
   |> OpamPackage.Name.Map.of_seq
+
+let get_root_package_names root_opams =
+  root_opams |> OpamPackage.Name.Map.keys |> List.map OpamPackage.Name.to_string
 
 let fetch opam_url =
   let uri = Uri.of_string (OpamUrl.to_string opam_url) in
@@ -105,8 +109,8 @@ module Pins = struct
       pin_urls
 end
 
-let make_fixed_packages ~project_packages ~pins =
+let make_fixed_packages ~root_packages ~pins =
   OpamPackage.Name.Map.union
     (fun _local _pin ->
       failwith "Locally defined packages are not allowed in pin-depends")
-    project_packages pins
+    root_packages pins
