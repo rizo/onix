@@ -28,3 +28,5 @@ let make ~repo_uri packages =
     Fmt.failwith "Repo URI without rev when creating a lock file: %a" Uri.pp
       repo_uri;
   { repo_uri; packages }
+
+

@@ -71,7 +71,7 @@ end
 
 let onix_lock_file_name = "./onix-lock.nix"
 
-module Solve = struct
+module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
@@ -90,7 +90,7 @@ module Solve = struct
         Fmt.pf out "%a" Onix.Lock_file.pp lock_file);
     Fmt.epr "Created a lock file at %S.@." onix_lock_file_name
 
-  let info = Cmd.info "solve" ~doc:"Solve dependencies and create a lock file."
+  let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
   let cmd = Cmd.v info Term.(const run $ repo_arg $ input_opam_files_arg)
 end
 
@@ -105,7 +105,7 @@ let () =
     let run () = `Help (`Pager, None) in
     Term.(ret (const run $ const ()))
   in
-  [Solve.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
+  [Lock.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
   |> Cmdliner.Cmd.group info ~default
   |> Cmdliner.Cmd.eval
   |> Stdlib.exit

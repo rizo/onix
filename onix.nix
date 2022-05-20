@@ -1,14 +1,140 @@
-{
-  opam-version = "2.0";
-  synopsis = "OCaml project manager based on Nix";
-  maintainer = [ "Rizo I. <rizo@odis.io>" ];
-  license = "ISC";
-  homepage = "https://github.com/odis-labs/onix";
-  bug-reports = "https://github.com/odis-labs/onix/issues";
-  depends = {
-    "ocaml" = ">= 4.08";
-    "dune" = ">= 2.0";
-    "cmdliner" = "*";
+{ pkgs ? import <nixpkgs> { } }:
+
+let
+  inherit (pkgs) lib stdenv;
+
+  # onix = import ./default.nix { inherit pkgs; };
+  onix = ./result/bin/onix;
+  defaultOCaml = pkgs.ocaml-ng.ocamlPackages_4_14.ocaml;
+
+  emptyPkg = stdenv.mkDerivation {
+    name = "empty";
+    phases = [ ];
+    dontUnpack = true;
+    configurePhase = "true";
+    buildPhase = "true";
+    installPhase = "${pkgs.coreutils}/bin/touch $out";
   };
-  doc-depends = { "odoc" = "*"; };
+
+  collectDeps = scope: lockDeps:
+    lib.lists.foldr (lockDep: acc:
+      if isNull lockDep then
+        acc
+      else
+        let pkg = builtins.getAttr lockDep.name scope;
+        in acc // {
+          ${lockDep.name} = pkg;
+        } // collectDeps scope lockDep.depends) { } lockDeps;
+
+  collectPaths = ocamlVersion: pkgDeps:
+    let
+      path = dir: if builtins.pathExists dir then [ dir ] else [ ];
+      empty = {
+        libdir = [ ];
+        stublibs = [ ];
+        toplevel = [ ];
+      };
+      updatePath = acc: pkg:
+        let
+          libdir = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib";
+          stublibs = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/stublibs";
+          toplevel = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/toplevel";
+        in {
+          libdir = acc.libdir ++ libdir;
+          stublibs = acc.stublibs ++ stublibs;
+          toplevel = acc.toplevel ++ toplevel;
+        };
+    in lib.lists.foldl updatePath empty (builtins.attrValues pkgDeps);
+
+  makeBuildCtx = scope: lockPkg: {
+    inherit (lockPkg) name version opam;
+    depends = builtins.concatMap (lockPkgDep:
+      if isNull lockPkgDep then
+        [ ]
+      else [{
+        inherit (lockPkgDep) name version opam;
+        path = builtins.getAttr lockPkgDep.name scope;
+      }]) lockPkg.depends;
+  };
+
+  buildPkg = ocamlVersion: scope: name: lockPkg:
+    let
+      buildCtx = makeBuildCtx scope lockPkg;
+      buildCtxFile = pkgs.writeText (name + ".json") (builtins.toJSON buildCtx);
+      depPaths = collectPaths ocamlVersion (collectDeps scope lockPkg.depends);
+
+    in stdenv.mkDerivation {
+      pname = name;
+      version = lockPkg.version;
+      src = lockPkg.src;
+      dontUnpack = isNull lockPkg.src;
+
+      buildInputs = [ pkgs.opam-installer ] ++ lockPkg.depexts;
+      propagatedBuildInputs = builtins.map (dep: dep.path) buildCtx.depends;
+
+      nativeBuildInputs = [ ];
+
+      OCAMLPATH = lib.strings.concatStringsSep ":" depPaths.libdir;
+      CAML_LD_LIBRARY_PATH = lib.strings.concatStringsSep ":" depPaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH =
+        lib.strings.concatStringsSep ":" depPaths.toplevel;
+
+      # strictDeps = false;
+
+      prePatch = ''
+        echo + prePatch ${name} $out
+        ${onix} opam-patch --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+      '';
+
+      configurePhase = ''
+        echo + configurePhase
+      '';
+
+      buildPhase = ''
+        echo + buildPhase ${name} $out
+        ${onix} opam-build  --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+      '';
+
+      installPhase = ''
+        echo + installPhase ${name} $out
+        ${onix} opam-install --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+        mkdir -p $out # In case nothing was installed.
+      '';
+    };
+
+in {
+  build = { ocaml ? defaultOCaml, lock, overrides ? { } }:
+
+    let
+      onix-lock = import lock {
+        inherit pkgs;
+        self = onix-lock;
+      };
+
+      allOverrides = import ./overrides { inherit pkgs ocaml; } // {
+        ocaml = pkg:
+          if isNull ocaml then
+            pkg
+          else if onix-lock.ocaml.version != ocaml.version then
+            throw
+            "Lock file uses ocaml ${onix-lock.ocaml.version} but ${ocaml.version} was provided."
+          else
+            ocaml;
+
+        # When a custom ocaml pkg is provided, these are not needed.
+        ocaml-base-compiler = pkg: if isNull ocaml then pkg else emptyPkg;
+        ocaml-config = pkg: if isNull ocaml then pkg else emptyPkg;
+      } // overrides;
+
+      # The scope without overrides.
+      baseScope =
+        builtins.mapAttrs (buildPkg onix-lock.ocaml.version scope) onix-lock;
+
+      # The final scope with all packages and applied overrides.
+      scope = builtins.mapAttrs (name: pkg:
+        if builtins.hasAttr name allOverrides then
+          (builtins.getAttr name allOverrides) pkg
+        else
+          pkg) baseScope;
+    in scope;
 }
