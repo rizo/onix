@@ -53,6 +53,9 @@ let pp_src f t =
         url rev
     (* MD5 hashes are not supported by Nix fetchers. Fetch without hash. *)
     | Some (Http { url; hash }) when OpamHash.kind hash = `MD5 ->
+      Fmt.epr
+        "[WARNING] Ignoring hash for %a. MD5 hashes are not supported by nix.@."
+        Opam_utils.pp_package t.package;
       Fmt.pf f "@[<v-4>builtins.fetchurl {@ url = %a;@]@ }"
         (Fmt.quote Opam_utils.pp_url)
         url

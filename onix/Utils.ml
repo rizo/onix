@@ -1,6 +1,10 @@
 module Option = struct
   include Option
 
+  let map_default ~f ~default = function
+    | None -> default
+    | Some x -> f x
+
   let or_fail msg t =
     match t with
     | Some x -> x
@@ -54,4 +58,13 @@ module Filesystem = struct
       | exception End_of_file -> acc
     in
     with_dir path (aux [])
+end
+
+module Result = struct
+  include Result
+
+  let force_with_msg t =
+    match t with
+    | Ok x -> x
+    | Error (`Msg err) -> failwith err
 end

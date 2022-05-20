@@ -13,7 +13,7 @@ let read_opam fpath =
   Bos.OS.File.with_ic fpath
     (fun ic () -> OpamFile.OPAM.read_from_channel ~filename ic)
     ()
-  |> Stdlib_utils.Result.force_with_msg
+  |> Utils.Result.force_with_msg
 
 let ocaml_name = OpamPackage.Name.of_string "ocaml"
 
@@ -55,13 +55,13 @@ let fetch uri =
   let uri = Uri.with_scheme uri (Some "https") in
   let rev = Uri.fragment uri |> Option.get in
   let nix_url = Uri.with_fragment uri None |> Uri.to_string in
-  Fmt.epr "Fetching opam url: nix_url=%S rev=%S@." nix_url rev;
+  Fmt.epr "[DEBUG] Fetching git repository: url=%S rev=%S@." nix_url rev;
   Nix_utils.fetch_git ~rev nix_url
 
 let fetch_resolve uri =
   let uri = Uri.with_scheme uri (Some "https") in
   let nix_url = Uri.with_fragment uri None |> Uri.to_string in
-  Fmt.epr "Fetching opam url: nix_url=%S@." nix_url;
+  Fmt.epr "[DEBUG] Fetching git repository: url=%S rev=None@." nix_url;
   Nix_utils.fetch_git_resolve nix_url
 
 module Pins = struct

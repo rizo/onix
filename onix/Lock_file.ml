@@ -9,7 +9,8 @@ let pp_repo_uri f repo_uri =
     Fmt.pf f
       "opam-repo ? builtins.fetchGit {@ url = %S;@ rev = %S;@ allRefs = \
        true;@]@ }"
-      (Uri.to_string repo_uri) rev
+      (Uri.to_string (Uri.with_fragment repo_uri None))
+      rev
   | None -> Fmt.invalid_arg "Repo URI without fragment: %a" Uri.pp repo_uri
 
 let pp fmt t =
