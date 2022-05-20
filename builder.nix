@@ -18,7 +18,7 @@ let
     dontUnpack = true;
     configurePhase = "true";
     buildPhase = "true";
-    installPhase = "mkdir -p $out";
+    installPhase = "touch $out";
   };
 
   overrides = {
@@ -104,7 +104,7 @@ let
       src = lockPkg.src;
       dontUnpack = isNull lockPkg.src;
 
-      buildInputs = [ pkgs.pkgconfig pkgs.opam-installer ];
+      buildInputs = [ pkgs.opam-installer ] ++ lockPkg.depexts;
       propagatedBuildInputs = builtins.map (dep: dep.path) buildCtx.depends;
 
       nativeBuildInputs = [ ];
