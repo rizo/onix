@@ -38,7 +38,6 @@ module Vars = struct
         ((OpamVariable.Full.create (OpamPackage.Name.of_string name))
            (OpamVariable.of_string var))
     in
-
     vars
     |> add "opam-version" (string (OpamVersion.to_string OpamVersion.current))
     |> add "jobs" (string (Nix_utils.get_nix_build_jobs ()))
@@ -49,8 +48,21 @@ module Vars = struct
     |> add_pkg "ocaml" "native-tools" (bool true)
     |> add_pkg "ocaml" "native-dynlink" (bool true)
 
+  let add_nixos_vars vars =
+    let string = OpamVariable.string in
+    let add var =
+      OpamVariable.Full.Map.add
+        (OpamVariable.Full.global (OpamVariable.of_string var))
+    in
+    vars
+    |> add "os-distribution" (string "nixos")
+    |> add "os-family" (string "nixos")
+    |> add "os-version" (string "unknown")
+
   let default =
     OpamVariable.Full.Map.empty |> add_native_system_vars |> add_global_vars
+
+  let nixos = default |> add_nixos_vars
 
   let make_path_lib ?suffix ~ocaml_version pkg =
     let prefix = OpamFilename.Dir.to_string pkg.path in

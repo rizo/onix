@@ -13,7 +13,7 @@ type t = {
   src : src option;
   depends : OpamPackage.Name.Set.t;
   depopts : OpamPackage.Name.Set.t;
-  depexts : (OpamSysPkg.Set.t * OpamTypes.filter) list;
+  depexts : [`Nix of OpamSysPkg.Set.t | `Other of OpamSysPkg.Set.t];
 }
 
 let name t = OpamPackage.name t.package
@@ -77,12 +77,27 @@ let pp f t =
       (fun dep -> Fmt.pf f "@ (self.%a or null)" pp_name dep)
       depopts
   in
+  let sys_pkg_to_name dep =
+    OpamPackage.Name.of_string (OpamSysPkg.to_string dep)
+  in
+  let pp_depexts f depexts =
+    match depexts with
+    | `Nix deps ->
+      OpamSysPkg.Set.iter
+        (fun dep -> Fmt.pf f "@ pkgs.%a" pp_name (sys_pkg_to_name dep))
+        deps
+    | `Other deps ->
+      OpamSysPkg.Set.iter
+        (fun dep ->
+          Fmt.pf f "@ (pkgs.%a or null)" pp_name (sys_pkg_to_name dep))
+        deps
+  in
   Format.fprintf f
     "@ name = %S;@ version = %S;@ src = %a;@ opam = %S;@ depends = with self; \
-     @[<hov2>[%a%a@ @]];"
+     @[<hov2>[%a%a@ @]];@ depexts = @[<hov2>[%a@ @]];"
     name version pp_src t
     (opam_path_for_locked_package t)
-    pp_depends t.depends pp_depopts t.depopts
+    pp_depends t.depends pp_depopts t.depopts pp_depexts t.depexts
 
 let select_opam_hash hashes =
   let md5, sha256, sha512 =
@@ -118,7 +133,7 @@ let get_src opam_url =
     | Error err -> Error err)
   | _ -> Error (`Msg ("Unsupported url: " ^ str_url))
 
-let get_deps ?(depopts = OpamPackage.Name.Set.empty) ~required ~vars ~test ~doc
+let get_deps ?(depopts = OpamPackage.Name.Set.empty) ~required ~test ~doc
     filtered_formula =
   let rec collect ~depends ~depopts ~required formula =
     let open OpamFormula in
@@ -135,6 +150,7 @@ let get_deps ?(depopts = OpamPackage.Name.Set.empty) ~required ~vars ~test ~doc
       let depends, depopts = collect ~depends ~depopts ~required:false x in
       collect ~depends ~depopts ~required:false y
   in
+  let vars = Build_context.Vars.default in
   let env =
     Build_context.Vars.try_resolvers
       [
@@ -146,6 +162,32 @@ let get_deps ?(depopts = OpamPackage.Name.Set.empty) ~required ~vars ~test ~doc
   |> OpamPackageVar.filter_depends_formula ~build:true ~post:false ~test ~doc
        ~default:false ~env
   |> collect ~depends:OpamPackage.Name.Set.empty ~depopts ~required
+
+module Bool_map = Map.Make (Bool)
+
+let get_depexts depexts =
+  if Utils.List.is_empty depexts then `Nix OpamSysPkg.Set.empty
+  else
+    let vars = Build_context.Vars.nixos in
+    let env =
+      Build_context.Vars.try_resolvers
+        [
+          Build_context.Vars.resolve_from_env;
+          Build_context.Vars.resolve_from_static vars;
+        ]
+    in
+    let is_nix = OpamFilter.eval_to_bool ~default:false env in
+    let rec loop other_deps depexts =
+      match depexts with
+      | (deps, sys) :: _ when is_nix sys -> `Nix deps
+      | (deps, _) :: depexts' ->
+        let other_deps' =
+          OpamSysPkg.Set.add_seq (OpamSysPkg.Set.to_seq deps) other_deps
+        in
+        loop other_deps' depexts'
+      | [] -> `Other other_deps
+    in
+    loop OpamSysPkg.Set.empty depexts
 
 let of_opam ?(test = false) ?(doc = false) package opam =
   let src =
@@ -159,15 +201,13 @@ let of_opam ?(test = false) ?(doc = false) package opam =
         None
       | Ok src -> Some src)
   in
-  let vars = Build_context.Vars.default in
   (* First collect all depopts, then collect depends with some depopts. *)
   let _depends, depopts =
-    get_deps ~required:false ~test ~doc ~vars (OpamFile.OPAM.depopts opam)
+    get_deps ~required:false ~test ~doc (OpamFile.OPAM.depopts opam)
   in
   assert (OpamPackage.Name.Set.is_empty _depends);
   let depends, depopts =
-    get_deps ~required:true ~depopts ~test ~doc ~vars
-      (OpamFile.OPAM.depends opam)
+    get_deps ~required:true ~depopts ~test ~doc (OpamFile.OPAM.depends opam)
   in
-  let depexts = OpamFile.OPAM.depexts opam in
+  let depexts = get_depexts (OpamFile.OPAM.depexts opam) in
   Some { package; src; depends; depexts; depopts }
