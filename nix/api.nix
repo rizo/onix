@@ -1,11 +1,10 @@
-{ pkgs ? import <nixpkgs> { } }:
+{ pkgs ? import <nixpkgs> { }, onix }:
 
 let
   inherit (pkgs) lib stdenv;
 
-  # onix = import ./default.nix { inherit pkgs; };
-  onix = ./result/bin/onix;
-  defaultOCaml = pkgs.ocaml-ng.ocamlPackages_4_14.ocaml;
+  # Build the compiler from lock file from source by default.
+  defaultOCaml = null;
 
   emptyPkg = stdenv.mkDerivation {
     name = "empty";
@@ -69,10 +68,10 @@ let
       src = lockPkg.src;
       dontUnpack = isNull lockPkg.src;
 
-      buildInputs = [ pkgs.opam-installer ] ++ lockPkg.depexts;
-      propagatedBuildInputs = builtins.map (dep: dep.path) buildCtx.depends;
+      propagatedBuildInputs = lockPkg.depexts
+        ++ builtins.map (dep: dep.path) buildCtx.depends;
 
-      nativeBuildInputs = [ ];
+      nativeBuildInputs = [ pkgs.opam-installer ];
 
       OCAMLPATH = lib.strings.concatStringsSep ":" depPaths.libdir;
       CAML_LD_LIBRARY_PATH = lib.strings.concatStringsSep ":" depPaths.stublibs;
@@ -83,7 +82,7 @@ let
 
       prePatch = ''
         echo + prePatch ${name} $out
-        ${onix} opam-patch --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+        ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
       '';
 
       configurePhase = ''
@@ -92,12 +91,12 @@ let
 
       buildPhase = ''
         echo + buildPhase ${name} $out
-        ${onix} opam-build  --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+        ${onix}/bin/onix opam-build  --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
       '';
 
       installPhase = ''
         echo + installPhase ${name} $out
-        ${onix} opam-install --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+        ${onix}/bin/onix opam-install --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
         mkdir -p $out # In case nothing was installed.
       '';
     };
@@ -137,4 +136,9 @@ in {
         else
           pkg) baseScope;
     in scope;
+
+  lock = { repo ? null }:
+    pkgs.runCommand "onix-lock" { } ''
+      ${onix}/bin/onix lock --repo=${repo}
+    '';
 }

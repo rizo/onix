@@ -94,6 +94,13 @@ module Lock = struct
   let cmd = Cmd.v info Term.(const run $ repo_arg $ input_opam_files_arg)
 end
 
+module Build = struct
+  let run () =
+    Fmt.epr "Building..."
+  let info = Cmd.info "build" ~doc:"Build the project from a lock file."
+  let cmd = Cmd.v info Term.(const run $ const ())
+end
+
 let () =
   Printexc.record_backtrace true;
   let doc = "Manage OCaml projects with Nix" in

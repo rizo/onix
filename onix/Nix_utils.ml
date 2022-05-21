@@ -12,7 +12,7 @@ let eval ?(raw = true) ?(pure = true) expr =
     % expr)
   |> OS.Cmd.run_out
   |> OS.Cmd.to_string
-  |> Result.get_ok
+  |> Utils.Result.force_with_msg
 
 let fetch_git_expr ~rev url =
   Fmt.str

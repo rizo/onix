@@ -1,9 +1,9 @@
 { pkgs ? import <nixpkgs> { } }:
 
 let
-  onix = import ./onix.nix { inherit pkgs; };
+  onix = import ./default.nix { };
+
   scope = onix.build {
-    ocaml = pkgs.ocaml-ng.ocamlPackages_4_14.ocaml;
     lock = ./onix-lock.nix;
     overrides = { };
   };
