@@ -1,6 +1,7 @@
 { pkgs, self, opam-repo ? builtins.fetchGit {
   url = "https://github.com/ocaml/opam-repository.git";
-  rev = "16ff1304f8ccdd5a8c9fa3ebe906c32ecdd576ee";
+  rev = "52c72e08d7782967837955f1c50c330a6131721f";
+  allRefs = true;
 } }:
 {
   "0install-solver" =  {
@@ -12,6 +13,7 @@
     };
     opam = "${opam-repo}/packages/0install-solver/0install-solver.2.17/opam";
     depends = with self; [ dune ocaml ];
+    depexts = [ ];
   };
   angstrom =  {
     name = "angstrom";
@@ -21,6 +23,7 @@
     };
     opam = "${opam-repo}/packages/angstrom/angstrom.0.15.0/opam";
     depends = with self; [ bigstringaf dune ocaml ocaml-syntax-shims result ];
+    depexts = [ ];
   };
   astring =  {
     name = "astring";
@@ -30,6 +33,7 @@
     };
     opam = "${opam-repo}/packages/astring/astring.0.8.5/opam";
     depends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
+    depexts = [ ];
   };
   base-bigarray =  {
     name = "base-bigarray";
@@ -37,6 +41,7 @@
     src = null;
     opam = "${opam-repo}/packages/base-bigarray/base-bigarray.base/opam";
     depends = with self; [ ];
+    depexts = [ ];
   };
   base-bytes =  {
     name = "base-bytes";
@@ -44,6 +49,7 @@
     src = null;
     opam = "${opam-repo}/packages/base-bytes/base-bytes.base/opam";
     depends = with self; [ ocaml ocamlfind ];
+    depexts = [ ];
   };
   base-threads =  {
     name = "base-threads";
@@ -51,6 +57,7 @@
     src = null;
     opam = "${opam-repo}/packages/base-threads/base-threads.base/opam";
     depends = with self; [ ];
+    depexts = [ ];
   };
   base-unix =  {
     name = "base-unix";
@@ -58,6 +65,7 @@
     src = null;
     opam = "${opam-repo}/packages/base-unix/base-unix.base/opam";
     depends = with self; [ ];
+    depexts = [ ];
   };
   bigstringaf =  {
     name = "bigstringaf";
@@ -68,6 +76,7 @@
     opam = "${opam-repo}/packages/bigstringaf/bigstringaf.0.9.0/opam";
     depends = with self; [ conf-pkg-config dune ocaml
                            (self.ocaml-freestanding or null) ];
+    depexts = [ ];
   };
   biniou =  {
     name = "biniou";
@@ -78,6 +87,7 @@
     };
     opam = "${opam-repo}/packages/biniou/biniou.1.2.1/opam";
     depends = with self; [ dune easy-format ocaml ];
+    depexts = [ ];
   };
   bos =  {
     name = "bos";
@@ -89,6 +99,7 @@
     opam = "${opam-repo}/packages/bos/bos.0.2.1/opam";
     depends = with self; [ astring base-unix fmt fpath logs ocaml ocamlbuild
                            ocamlfind rresult topkg ];
+    depexts = [ ];
   };
   cmdliner =  {
     name = "cmdliner";
@@ -99,6 +110,7 @@
     };
     opam = "${opam-repo}/packages/cmdliner/cmdliner.1.1.1/opam";
     depends = with self; [ ocaml ];
+    depexts = [ ];
   };
   conf-pkg-config =  {
     name = "conf-pkg-config";
@@ -106,27 +118,30 @@
     src = null;
     opam = "${opam-repo}/packages/conf-pkg-config/conf-pkg-config.2/opam";
     depends = with self; [ ];
+    depexts = [ pkgs.pkgconfig ];
   };
   cppo =  {
     name = "cppo";
-    version = "1.6.8";
+    version = "1.6.9";
     src = pkgs.fetchurl {
-      url = "https://github.com/ocaml-community/cppo/archive/v1.6.8.tar.gz";
-      sha512 = "069bbe0ef09c03b0dc4b5795f909c3ef872fe99c6f1e6704a0fa97594b1570b3579226ec67fe11d696ccc349a4585055bbaf07c65eff423aa45af28abf38c858";
+      url = "https://github.com/ocaml-community/cppo/archive/v1.6.9.tar.gz";
+      sha512 = "26ff5a7b7f38c460661974b23ca190f0feae3a99f1974e0fd12ccf08745bd7d91b7bc168c70a5385b837bfff9530e0e4e41cf269f23dd8cf16ca658008244b44";
     };
-    opam = "${opam-repo}/packages/cppo/cppo.1.6.8/opam";
+    opam = "${opam-repo}/packages/cppo/cppo.1.6.9/opam";
     depends = with self; [ base-unix dune ocaml ];
+    depexts = [ ];
   };
   dune =  {
     name = "dune";
-    version = "3.1.1";
+    version = "3.2.0";
     src = pkgs.fetchurl {
-      url = "https://github.com/ocaml/dune/releases/download/3.1.1/fiber-3.1.1.tbz";
-      sha256 = "02484454ab1b998840c7873509ec6b2301eb92662c132ef8f5f4f569b35a6b60";
+      url = "https://github.com/ocaml/dune/releases/download/3.2.0/chrome-trace-3.2.0.tbz";
+      sha256 = "bd1fbce6ae79ed1eb26fa89bb2e2e23978afceb3f53f5578cf1bdab08a1ad5bc";
     };
-    opam = "${opam-repo}/packages/dune/dune.3.1.1/opam";
+    opam = "${opam-repo}/packages/dune/dune.3.2.0/opam";
     depends = with self; [ base-threads base-unix (self.ocaml or null)
                            (self.ocamlfind-secondary or null) ];
+    depexts = [ ];
   };
   easy-format =  {
     name = "easy-format";
@@ -137,6 +152,7 @@
     };
     opam = "${opam-repo}/packages/easy-format/easy-format.1.3.2/opam";
     depends = with self; [ dune ocaml ];
+    depexts = [ ];
   };
   fmt =  {
     name = "fmt";
@@ -148,6 +164,7 @@
     opam = "${opam-repo}/packages/fmt/fmt.0.9.0/opam";
     depends = with self; [ ocaml ocamlbuild ocamlfind topkg
                            (self.base-unix or null) (self.cmdliner or null) ];
+    depexts = [ ];
   };
   fpath =  {
     name = "fpath";
@@ -157,6 +174,7 @@
     };
     opam = "${opam-repo}/packages/fpath/fpath.0.7.3/opam";
     depends = with self; [ astring ocaml ocamlbuild ocamlfind topkg ];
+    depexts = [ ];
   };
   logs =  {
     name = "logs";
@@ -169,6 +187,7 @@
                            (self.base-threads or null)
                            (self.cmdliner or null) (self.fmt or null)
                            (self.js_of_ocaml or null) (self.lwt or null) ];
+    depexts = [ ];
   };
   ocaml =  {
     name = "ocaml";
@@ -178,6 +197,7 @@
     depends = with self; [ ocaml-config (self.ocaml-base-compiler or null)
                            (self.ocaml-system or null)
                            (self.ocaml-variants or null) ];
+    depexts = [ ];
   };
   ocaml-base-compiler =  {
     name = "ocaml-base-compiler";
@@ -188,6 +208,7 @@
     };
     opam = "${opam-repo}/packages/ocaml-base-compiler/ocaml-base-compiler.4.14.0/opam";
     depends = with self; [ ];
+    depexts = [ ];
   };
   ocaml-config =  {
     name = "ocaml-config";
@@ -197,6 +218,7 @@
     depends = with self; [ (self.ocaml-base-compiler or null)
                            (self.ocaml-system or null)
                            (self.ocaml-variants or null) ];
+    depexts = [ ];
   };
   ocaml-options-vanilla =  {
     name = "ocaml-options-vanilla";
@@ -204,6 +226,7 @@
     src = null;
     opam = "${opam-repo}/packages/ocaml-options-vanilla/ocaml-options-vanilla.1/opam";
     depends = with self; [ ];
+    depexts = [ ];
   };
   ocaml-syntax-shims =  {
     name = "ocaml-syntax-shims";
@@ -214,6 +237,7 @@
     };
     opam = "${opam-repo}/packages/ocaml-syntax-shims/ocaml-syntax-shims.1.0.0/opam";
     depends = with self; [ dune ocaml ];
+    depexts = [ ];
   };
   ocamlbuild =  {
     name = "ocamlbuild";
@@ -224,6 +248,7 @@
     };
     opam = "${opam-repo}/packages/ocamlbuild/ocamlbuild.0.14.1/opam";
     depends = with self; [ ocaml ];
+    depexts = [ ];
   };
   ocamlfind =  {
     name = "ocamlfind";
@@ -234,6 +259,7 @@
     };
     opam = "${opam-repo}/packages/ocamlfind/ocamlfind.1.9.3/opam";
     depends = with self; [ ocaml (self.graphics or null) ];
+    depexts = [ ];
   };
   ocamlgraph =  {
     name = "ocamlgraph";
@@ -244,6 +270,7 @@
     };
     opam = "${opam-repo}/packages/ocamlgraph/ocamlgraph.2.0.0/opam";
     depends = with self; [ dune ocaml stdlib-shims ];
+    depexts = [ ];
   };
   onix = rec {
     name = "onix";
@@ -252,6 +279,7 @@
     opam = "${src}/onix.opam";
     depends = with self; [ bos cmdliner dune easy-format fpath ocaml
                            opam-0install uri yojson ];
+    depexts = [ ];
   };
   opam-0install =  {
     name = "opam-0install";
@@ -263,6 +291,7 @@
     opam = "${opam-repo}/packages/opam-0install/opam-0install.0.4.3/opam";
     depends = with self; [ self."0install-solver" cmdliner dune fmt ocaml
                            opam-file-format opam-state ];
+    depexts = [ ];
   };
   opam-core =  {
     name = "opam-core";
@@ -274,6 +303,7 @@
     opam = "${opam-repo}/packages/opam-core/opam-core.2.1.2/opam";
     depends = with self; [ base-bigarray base-unix cppo dune ocaml ocamlgraph
                            re ];
+    depexts = [ ];
   };
   opam-file-format =  {
     name = "opam-file-format";
@@ -284,6 +314,7 @@
     };
     opam = "${opam-repo}/packages/opam-file-format/opam-file-format.2.1.4/opam";
     depends = with self; [ ocaml (self.dune or null) ];
+    depexts = [ ];
   };
   opam-format =  {
     name = "opam-format";
@@ -294,6 +325,7 @@
     };
     opam = "${opam-repo}/packages/opam-format/opam-format.2.1.2/opam";
     depends = with self; [ dune ocaml opam-core opam-file-format re ];
+    depexts = [ ];
   };
   opam-repository =  {
     name = "opam-repository";
@@ -304,6 +336,7 @@
     };
     opam = "${opam-repo}/packages/opam-repository/opam-repository.2.1.2/opam";
     depends = with self; [ dune ocaml opam-format ];
+    depexts = [ ];
   };
   opam-state =  {
     name = "opam-state";
@@ -314,6 +347,7 @@
     };
     opam = "${opam-repo}/packages/opam-state/opam-state.2.1.2/opam";
     depends = with self; [ dune ocaml opam-repository ];
+    depexts = [ ];
   };
   re =  {
     name = "re";
@@ -324,6 +358,7 @@
     };
     opam = "${opam-repo}/packages/re/re.1.10.4/opam";
     depends = with self; [ dune ocaml seq ];
+    depexts = [ ];
   };
   result =  {
     name = "result";
@@ -333,6 +368,7 @@
     };
     opam = "${opam-repo}/packages/result/result.1.5/opam";
     depends = with self; [ dune ocaml ];
+    depexts = [ ];
   };
   rresult =  {
     name = "rresult";
@@ -343,6 +379,7 @@
     };
     opam = "${opam-repo}/packages/rresult/rresult.0.7.0/opam";
     depends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
+    depexts = [ ];
   };
   seq =  {
     name = "seq";
@@ -350,6 +387,7 @@
     src = null;
     opam = "${opam-repo}/packages/seq/seq.base/opam";
     depends = with self; [ ocaml ];
+    depexts = [ ];
   };
   stdlib-shims =  {
     name = "stdlib-shims";
@@ -360,6 +398,7 @@
     };
     opam = "${opam-repo}/packages/stdlib-shims/stdlib-shims.0.3.0/opam";
     depends = with self; [ dune ocaml ];
+    depexts = [ ];
   };
   stringext =  {
     name = "stringext";
@@ -370,6 +409,7 @@
     };
     opam = "${opam-repo}/packages/stringext/stringext.1.6.0/opam";
     depends = with self; [ base-bytes dune ocaml ];
+    depexts = [ ];
   };
   topkg =  {
     name = "topkg";
@@ -380,6 +420,7 @@
     };
     opam = "${opam-repo}/packages/topkg/topkg.1.0.5/opam";
     depends = with self; [ ocaml ocamlbuild ocamlfind ];
+    depexts = [ ];
   };
   uri =  {
     name = "uri";
@@ -390,6 +431,7 @@
     };
     opam = "${opam-repo}/packages/uri/uri.4.2.0/opam";
     depends = with self; [ angstrom dune ocaml stringext ];
+    depexts = [ ];
   };
   yojson =  {
     name = "yojson";
@@ -399,5 +441,6 @@
     };
     opam = "${opam-repo}/packages/yojson/yojson.1.7.0/opam";
     depends = with self; [ biniou cppo dune easy-format ocaml ];
+    depexts = [ ];
   };
 }
