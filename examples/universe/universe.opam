@@ -23,4 +23,7 @@ depends: [
   "ocaml" {>= "4.08" & < "5.0"}
   "dune" {>= "2.0"}
   "fmt"
+  "ptime"
+  "alcotest"
+  "ppxlib"
 ]

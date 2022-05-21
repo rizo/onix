@@ -62,9 +62,9 @@
   };
   ocaml =  {
     name = "ocaml";
-    version = "4.13.1";
+    version = "4.14.0";
     src = null;
-    opam = "${opam-repo}/packages/ocaml/ocaml.4.13.1/opam";
+    opam = "${opam-repo}/packages/ocaml/ocaml.4.14.0/opam";
     depends = with self; [ ocaml-config (self.ocaml-base-compiler or null)
                            (self.ocaml-system or null)
                            (self.ocaml-variants or null) ];
@@ -72,12 +72,12 @@
   };
   ocaml-base-compiler =  {
     name = "ocaml-base-compiler";
-    version = "4.13.1";
+    version = "4.14.0";
     src = pkgs.fetchurl {
-      url = "https://github.com/ocaml/ocaml/archive/4.13.1.tar.gz";
-      sha256 = "194c7988cc1fd1c64f53f32f2f7551e5309e44d914d6efc7e2e4d002296aeac4";
+      url = "https://github.com/ocaml/ocaml/archive/4.14.0.tar.gz";
+      sha256 = "39f44260382f28d1054c5f9d8bf4753cb7ad64027da792f7938344544da155e8";
     };
-    opam = "${opam-repo}/packages/ocaml-base-compiler/ocaml-base-compiler.4.13.1/opam";
+    opam = "${opam-repo}/packages/ocaml-base-compiler/ocaml-base-compiler.4.14.0/opam";
     depends = with self; [ ];
     depexts = [ ];
   };

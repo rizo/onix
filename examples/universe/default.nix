@@ -10,4 +10,4 @@ let
     lock = ./onix-lock.nix;
     overrides = { };
   };
-in scope.hello
+in scope.universe

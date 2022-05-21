@@ -162,24 +162,21 @@ let check_vars () =
   check_var "user" (Sys.getenv "USER");
 
   (* Self package *)
-  check_var "installed" "true";
+  check_var "installed" "false";
   check_var "pinned" "false";
   check_var "dev" "false";
   check_var "opamfile"
     "/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam";
   check_var "lib"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib/onix-example";
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib";
   check_var "stublibs"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib/stublibs/onix-example";
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib/stublibs";
   check_var "toplevel"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib/toplevel/onix-example";
+    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/lib/ocaml/4.14.0/site-lib/toplevel";
   check_var "man" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/man";
-  check_var "doc"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/doc/onix-example";
-  check_var "share"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/share/onix-example";
-  check_var "etc"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/etc/onix-example";
+  check_var "doc" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/doc";
+  check_var "share" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/share";
+  check_var "etc" "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix/etc";
 
   check_var "_:installed" "true";
   check_var "_:pinned" "false";
@@ -224,7 +221,8 @@ let check_vars () =
     "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/etc/options";
 
   (* Not installed package *)
-  check_var "_not_a_package:name" "_not_a_package";
+  (* check_var "_not_a_package:name" "_not_a_package"; *)
+  check_var "_not_a_package:name" "";
   check_var "_not_a_package:version" "";
   check_var "_not_a_package:installed" "false";
   check_var "_not_a_package:pinned" "false";

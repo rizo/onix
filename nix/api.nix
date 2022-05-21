@@ -82,21 +82,22 @@ let
 
       prePatch = ''
         echo + prePatch ${name} $out
-        ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+        ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
       '';
 
       configurePhase = ''
         echo + configurePhase
+        export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocamlVersion}/site-lib"
       '';
 
       buildPhase = ''
         echo + buildPhase ${name} $out
-        ${onix}/bin/onix opam-build  --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+        ${onix}/bin/onix opam-build  --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
       '';
 
       installPhase = ''
         echo + installPhase ${name} $out
-        ${onix}/bin/onix opam-install --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile} | bash
+        ${onix}/bin/onix opam-install --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
         mkdir -p $out # In case nothing was installed.
       '';
     };

@@ -160,6 +160,19 @@ end
 
 let patch = Patch.run
 
+let run_commands commands =
+  let open Bos in
+  List.iter
+    (fun cmd ->
+      let cmd = Cmd.of_list cmd in
+      match OS.Cmd.run_status cmd with
+      | Ok (`Exited 0) -> ()
+      | Ok (`Exited n) ->
+        Fmt.failwith "Command terminated with a non-zero code: %d@." n
+      | Ok (`Signaled n) -> Fmt.failwith "Command terminated by signal: %d@." n
+      | Error (`Msg err) -> Fmt.failwith "Could not run command: %s" err)
+    commands
+
 let build ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
   let ctx : Build_context.t =
     Build_context.read_file ~ocaml_version ~path build_ctx_file
@@ -185,7 +198,7 @@ let build ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
     |> List.filter List.is_not_empty
   in
   List.iter (fun cmd -> Fmt.epr ">>> %s@." (String.concat " " cmd)) commands;
-  List.iter (fun cmd -> Fmt.pr "%s@." (String.concat " " cmd)) commands
+  run_commands commands
 
 let make_path_lib ~ocaml_version (pkg : Build_context.package) =
   let prefix = OpamFilename.Dir.to_string pkg.path in
@@ -221,6 +234,4 @@ let install ?(test = true) ?(doc = true) ~ocaml_version ~path build_ctx_file =
     |> List.filter List.is_not_empty
   in
   List.iter (fun cmd -> Fmt.epr ">>> %s@." (String.concat " " cmd)) commands;
-  List.iter
-    (fun cmd -> Fmt.pr "%s@." (String.concat " " cmd))
-    (["pwd"] :: ["ls"] :: commands)
+  run_commands commands
