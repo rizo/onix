@@ -37,6 +37,8 @@ module String = struct
     | (exception Invalid_argument _) | _ -> false
 end
 
+module String_set = Set.Make (String)
+
 (* Since 4.14.0 *)
 module Out_channel = struct
   let with_open openfun s f =

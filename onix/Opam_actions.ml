@@ -38,6 +38,7 @@ module Patch = struct
     in
 
     let apply_patches () =
+      Fmt.epr "Applying patches total=%d...@." (List.length patches);
       let patch base =
         OpamFilename.patch (dir // OpamFilename.Base.to_string base) dir
       in
@@ -53,11 +54,13 @@ module Patch = struct
       in
       aux patches
     in
+    let substs = OpamFile.OPAM.substs opam in
     let subst_patches, subst_others =
-      List.partition
-        (fun f -> List.mem_assoc f patches)
-        (OpamFile.OPAM.substs opam)
+      List.partition (fun f -> List.mem_assoc f patches) substs
     in
+    Fmt.epr "Found %d substs; patches=%d others=%d...@." (List.length substs)
+      (List.length subst_patches)
+      (List.length subst_others);
     let subst_errs =
       OpamFilename.in_dir dir @@ fun () ->
       List.fold_left
@@ -116,13 +119,13 @@ module Patch = struct
       Done (Some (Failure msg))
     else Done None
 
-  let copy_extra_files ~opamfile ~prefix extra_files =
+  let copy_extra_files ~opamfile ~build_dir extra_files =
     let bad_hash =
       OpamStd.List.filter_map
         (fun (base, hash) ->
           let src = make_opam_path ~opamfile base in
           if OpamHash.check_file (OpamFilename.to_string src) hash then (
-            let dst = OpamFilename.create prefix base in
+            let dst = OpamFilename.create build_dir base in
             Fmt.epr ">>> Copying extra file: %a -> %a@." Opam_utils.pp_filename
               src Opam_utils.pp_filename dst;
             OpamFilename.copy ~src ~dst;
@@ -134,7 +137,19 @@ module Patch = struct
       Fmt.failwith "Bad hash for %s"
         (OpamStd.Format.itemize OpamFilename.to_string bad_hash)
 
-  (* TODO: implement extra file fetching via lock-file:
+  let copy_undeclared_files ~opamfile ~build_dir () =
+    let ( </> ) = OpamFilename.Op.( / ) in
+    let files_dir = OpamFilename.dirname opamfile </> "files" in
+    List.iter
+      (fun src ->
+        let base = OpamFilename.basename src in
+        let dst = OpamFilename.create build_dir base in
+        Fmt.epr ">>> Copying undeclared file: %a -> %a@." Opam_utils.pp_filename
+          src Opam_utils.pp_filename dst;
+        OpamFilename.copy ~src ~dst)
+      (OpamFilename.files files_dir)
+
+  (* TODO: implement extra file fetching via lock-file?:
      - https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L455 *)
   let run ~ocaml_version ~path build_ctx_file =
     let ctx : Build_context.t =
@@ -144,18 +159,21 @@ module Patch = struct
     let opamfile = OpamFilename.of_string (Fpath.to_string ctx.self.opam) in
     Fmt.epr "Decoded build context for: %S@."
       (OpamPackage.Name.to_string ctx.self.name);
-    match OpamFile.OPAM.extra_files opam with
-    | None -> Fmt.epr "No extra files.@."
-    | Some extra_files ->
-      let prefix = OpamFilename.Dir.of_string (Sys.getcwd ()) in
-      copy_extra_files ~opamfile ~prefix extra_files;
-
-      let lookup_env = Build_context.resolve ctx in
-      let cwd = OpamFilename.Dir.of_string (Sys.getcwd ()) in
-      let pkg = OpamPackage.create ctx.self.name ctx.self.version in
-      prepare_package_build lookup_env opam pkg cwd
-      |> OpamProcess.Job.run
-      |> Option.if_some raise
+    let () =
+      let build_dir = OpamFilename.Dir.of_string (Sys.getcwd ()) in
+      match OpamFile.OPAM.extra_files opam with
+      | None ->
+        Fmt.epr
+          "No extra files in opam file, checking for undeclared files...@.";
+        copy_undeclared_files ~opamfile ~build_dir ()
+      | Some extra_files -> copy_extra_files ~opamfile ~build_dir extra_files
+    in
+    let lookup_env = Build_context.resolve ctx in
+    let cwd = OpamFilename.Dir.of_string (Sys.getcwd ()) in
+    let pkg = OpamPackage.create ctx.self.name ctx.self.version in
+    prepare_package_build lookup_env opam pkg cwd
+    |> OpamProcess.Job.run
+    |> Option.if_some raise
 end
 
 let patch = Patch.run
