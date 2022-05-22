@@ -128,7 +128,7 @@ module Vars = struct
     | "pinned", `Missing -> bool false
     | "name", `Global -> string (OpamPackage.Name.to_string t.self.name)
     | "name", `Package pkg -> string (OpamPackage.Name.to_string pkg.name)
-(* Should this be allowed? *)
+    (* Should this be allowed? *)
     (* | "name", `Missing -> string (OpamPackage.Name.to_string OpamVariable.Full.scope) *)
     | "build", _ -> string "ONIX_NOT_IMPLEMENTED_build"
     | "dev", _ -> bool false

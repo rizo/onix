@@ -219,7 +219,7 @@ let make_opam_install_commands ~path (ctx : Build_context.t) =
     Fmt.epr "Warning: no %S file: cwd=%S@." install_file (Sys.getcwd ());
     [])
 
-let install ?(test = true) ?(doc = true) ~ocaml_version ~path build_ctx_file =
+let install ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
   let ctx : Build_context.t =
     Build_context.read_file ~ocaml_version ~path build_ctx_file
   in
