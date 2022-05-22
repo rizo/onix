@@ -85,9 +85,13 @@ let
         ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
       '';
 
+      # Not sure if OCAMLFIND_DESTDIR is needed.
+      # dune install is not flexible enough to provide libdir via env.
+      # some packages call dune install from build.
       configurePhase = ''
         echo + configurePhase
         export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocamlVersion}/site-lib"
+        export DUNE_INSTALL_PREFIX=$out
       '';
 
       buildPhase = ''
@@ -95,10 +99,16 @@ let
         ${onix}/bin/onix opam-build  --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
       '';
 
+      # ocamlfind install requires the liddir to exist.
       installPhase = ''
         echo + installPhase ${name} $out
+        mkdir -p $out/lib/ocaml/${ocamlVersion}/site-lib/${name}
         ${onix}/bin/onix opam-install --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
-        mkdir -p $out # In case nothing was installed.
+
+        if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
+          echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"
+          mv "$out/lib/${name}" "$OCAMLFIND_DESTDIR"
+        fi
       '';
     };
 
