@@ -2,15 +2,7 @@
  (name onix)
  (package onix)
  (modules :standard \ Main)
- (libraries
-  fmt
-  bos
-  fpath
-  yojson
-  opam-0install
-  opam-format
-  opam-state
-  opam-core))
+ (libraries fmt bos yojson opam-0install opam-format opam-state opam-core))
 
 (executable
  (name Main)

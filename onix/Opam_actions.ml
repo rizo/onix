@@ -156,7 +156,7 @@ module Patch = struct
       Build_context.read_file ~ocaml_version ~path build_ctx_file
     in
     let opam = Opam_utils.read_opam ctx.self.opam in
-    let opamfile = OpamFilename.of_string (Fpath.to_string ctx.self.opam) in
+    let opamfile = ctx.self.opam in
     Fmt.epr "Decoded build context for: %S@."
       (OpamPackage.Name.to_string ctx.self.name);
     let () =

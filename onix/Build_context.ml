@@ -3,7 +3,7 @@ open Utils
 type package = {
   name : OpamPackage.Name.t;
   version : OpamPackage.Version.t;
-  opam : Fpath.t;
+  opam : OpamFilename.t;
   path : OpamFilename.Dir.t;
 }
 
@@ -138,8 +138,8 @@ module Vars = struct
       string (OpamPackage.Version.to_string pkg.version)
     | "build-id", `Global -> string (OpamFilename.Dir.to_string t.self.path)
     | "build-id", `Package pkg -> string (OpamFilename.Dir.to_string pkg.path)
-    | "opamfile", `Global -> string (Fpath.to_string t.self.opam)
-    | "opamfile", `Package pkg -> string (Fpath.to_string pkg.opam)
+    | "opamfile", `Global -> string (OpamFilename.to_string t.self.opam)
+    | "opamfile", `Package pkg -> string (OpamFilename.to_string pkg.opam)
     | "depends", _ | "hash", _ -> string ("ONIX_NOT_IMPLEMENTED_" ^ v)
     (* site-lib paths *)
     | "lib", `Global -> lib None
@@ -273,7 +273,7 @@ let decode_depend json =
     let opam =
       !opam
       |> Option.or_fail "could not decode JSON: missing opam key"
-      |> Fpath.v
+      |> OpamFilename.of_string
     in
     { name; version; opam; path }
   | _ -> invalid_arg "depends entry must be an object"
@@ -313,7 +313,7 @@ let read_json ~ocaml_version ~path json =
     let opam =
       !opam
       |> Option.or_fail "could not decode JSON: missing opam key"
-      |> Fpath.v
+      |> OpamFilename.of_string
     in
     let path = path |> OpamFilename.Dir.of_string in
     let self = { name; version; opam; path } in

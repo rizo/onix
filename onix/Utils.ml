@@ -48,6 +48,15 @@ module Out_channel = struct
   let with_open_text s f = with_open Stdlib.open_out s f
 end
 
+module In_channel = struct
+  let with_open openfun s f =
+    let ic = openfun s in
+    Fun.protect ~finally:(fun () -> Stdlib.close_in_noerr ic) (fun () -> f ic)
+
+  let with_open_bin s f = with_open Stdlib.open_in_bin s f
+  let with_open_text s f = with_open Stdlib.open_in s f
+end
+
 module Filesystem = struct
   let with_dir path fn =
     let ch = Unix.opendir path in

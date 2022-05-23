@@ -62,7 +62,7 @@ let env t pkg v =
 let make ?(prefer_oldest = false) ?(test = OpamPackage.Name.Set.empty)
     ?(fixed_packages = OpamPackage.Name.Map.empty) ~constraints ~env
     repo_packages_dir =
-  let repo_packages_dir = Fpath.to_string repo_packages_dir in
+  let repo_packages_dir = OpamFilename.Dir.to_string repo_packages_dir in
   { env; repo_packages_dir; fixed_packages; constraints; test; prefer_oldest }
 
 let version_compare t v1 v2 =

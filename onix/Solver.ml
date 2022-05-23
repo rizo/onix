@@ -4,7 +4,7 @@ let env =
 
 let make_context ~repo_path fixed_packages =
   Solver_context.make
-    Fpath.(repo_path / "packages")
+    OpamFilename.Op.(repo_path / "packages")
     ~fixed_packages ~constraints:OpamPackage.Name.Map.empty ~env
 
 module Solver = Opam_0install.Solver.Make (Solver_context.Required)
@@ -14,7 +14,7 @@ let solve ~repo_url ~root_packages ~pins package_names =
     let url = OpamUrl.of_string repo_url in
     if Option.is_some url.hash then (Opam_utils.fetch url, url)
     else
-      let path, rev = Opam_utils.fetch_resolve url in
+      let rev, path = Opam_utils.fetch_resolve url in
       (path, { url with hash = Some rev })
   in
   Fmt.epr "Using OPAM repository: %a@." Opam_utils.pp_url repo_url;

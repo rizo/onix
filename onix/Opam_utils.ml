@@ -6,16 +6,13 @@ let pp_package_version = Fmt.using OpamPackage.Version.to_string Fmt.string
 let pp_package_name = Fmt.using OpamPackage.Name.to_string Fmt.string
 let pp_url = Fmt.using OpamUrl.to_string Fmt.string
 let pp_filename = Fmt.using OpamFilename.to_string Fmt.string
+let pp_filename_dir = Fmt.using OpamFilename.Dir.to_string Fmt.string
 let pp_hash = Fmt.using OpamHash.to_string Fmt.string
 
-let read_opam fpath =
-  let filename =
-    OpamFile.make (OpamFilename.of_string (Fpath.to_string fpath))
-  in
-  Bos.OS.File.with_ic fpath
-    (fun ic () -> OpamFile.OPAM.read_from_channel ~filename ic)
-    ()
-  |> Utils.Result.force_with_msg
+let read_opam path =
+  let filename = OpamFile.make path in
+  Utils.In_channel.with_open_text (OpamFilename.to_string path) (fun ic ->
+      OpamFile.OPAM.read_from_channel ~filename ic)
 
 let ocaml_name = OpamPackage.Name.of_string "ocaml"
 
@@ -45,7 +42,7 @@ let find_root_packages input_opams =
   |> Seq.map (fun filename ->
          let opam_name = opam_name_of_filename filename in
          Fmt.epr "Reading packages from %S...@." filename;
-         let opam = read_opam (Fpath.v filename) in
+         let opam = read_opam (OpamFilename.of_string filename) in
          let version = root_version in
          (opam_name, (version, opam)))
   |> OpamPackage.Name.Map.of_seq
@@ -98,8 +95,11 @@ module Pins = struct
     let name = OpamPackage.name_to_string package in
     let src = fetch url in
     Fmt.epr "Reading opam file for pin: name=%S url=%a src=%a@." name pp_url url
-      Fpath.pp src;
-    let opam_path = Fpath.(src / name |> add_ext "opam") in
+      pp_filename_dir src;
+    (* FIXME: Could be just ./opam *)
+    let opam_path =
+      OpamFilename.add_extension OpamFilename.Op.(src // name) "opam"
+    in
     (dev_version, read_opam opam_path)
 
   let collect_from_opam_files project_opam_files =

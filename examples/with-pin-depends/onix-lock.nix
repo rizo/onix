@@ -156,6 +156,18 @@
     depends = with self; [ dune ocaml ];
     depexts = [ ];
   };
+  options = rec {
+    name = "options";
+    version = "dev";
+    src = builtins.fetchGit {
+      url = "https://github.com/odis-labs/options.git";
+      rev = "5b1165d99aba112d550ddc3133a8eb1d174441ec";
+      allRefs = true;
+    };
+    opam = "${src}/options.opam";
+    depends = with self; [ dune ocaml ];
+    depexts = [ ];
+  };
   repr = rec {
     name = "repr";
     version = "dev";
@@ -206,7 +218,7 @@
     version = "root";
     src = ./.;
     opam = "${src}/with-pin-depends.opam";
-    depends = with self; [ dune fmt ocaml repr ];
+    depends = with self; [ dune fmt ocaml options repr ];
     depexts = [ ];
   };
 }

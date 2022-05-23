@@ -15,16 +15,6 @@
     depends = with self; [ dune ocaml ];
     depexts = [ ];
   };
-  angstrom =  {
-    name = "angstrom";
-    version = "0.15.0";
-    src = builtins.fetchurl {
-      url = "https://github.com/inhabitedtype/angstrom/archive/0.15.0.tar.gz";
-    };
-    opam = "${opam-repo}/packages/angstrom/angstrom.0.15.0/opam";
-    depends = with self; [ bigstringaf dune ocaml ocaml-syntax-shims result ];
-    depexts = [ ];
-  };
   astring =  {
     name = "astring";
     version = "0.8.5";
@@ -43,14 +33,6 @@
     depends = with self; [ ];
     depexts = [ ];
   };
-  base-bytes =  {
-    name = "base-bytes";
-    version = "base";
-    src = null;
-    opam = "${opam-repo}/packages/base-bytes/base-bytes.base/opam";
-    depends = with self; [ ocaml ocamlfind ];
-    depexts = [ ];
-  };
   base-threads =  {
     name = "base-threads";
     version = "base";
@@ -65,17 +47,6 @@
     src = null;
     opam = "${opam-repo}/packages/base-unix/base-unix.base/opam";
     depends = with self; [ ];
-    depexts = [ ];
-  };
-  bigstringaf =  {
-    name = "bigstringaf";
-    version = "0.9.0";
-    src = builtins.fetchurl {
-      url = "https://github.com/inhabitedtype/bigstringaf/archive/0.9.0.tar.gz";
-    };
-    opam = "${opam-repo}/packages/bigstringaf/bigstringaf.0.9.0/opam";
-    depends = with self; [ conf-pkg-config dune ocaml
-                           (self.ocaml-freestanding or null) ];
     depexts = [ ];
   };
   biniou =  {
@@ -111,14 +82,6 @@
     opam = "${opam-repo}/packages/cmdliner/cmdliner.1.1.1/opam";
     depends = with self; [ ocaml ];
     depexts = [ ];
-  };
-  conf-pkg-config =  {
-    name = "conf-pkg-config";
-    version = "2";
-    src = null;
-    opam = "${opam-repo}/packages/conf-pkg-config/conf-pkg-config.2/opam";
-    depends = with self; [ ];
-    depexts = [ pkgs.pkgconfig ];
   };
   cppo =  {
     name = "cppo";
@@ -228,17 +191,6 @@
     depends = with self; [ ];
     depexts = [ ];
   };
-  ocaml-syntax-shims =  {
-    name = "ocaml-syntax-shims";
-    version = "1.0.0";
-    src = pkgs.fetchurl {
-      url = "https://github.com/ocaml-ppx/ocaml-syntax-shims/releases/download/1.0.0/ocaml-syntax-shims-1.0.0.tbz";
-      sha256 = "89b2e193e90a0c168b6ec5ddf6fef09033681bdcb64e11913c97440a2722e8c8";
-    };
-    opam = "${opam-repo}/packages/ocaml-syntax-shims/ocaml-syntax-shims.1.0.0/opam";
-    depends = with self; [ dune ocaml ];
-    depexts = [ ];
-  };
   ocamlbuild =  {
     name = "ocamlbuild";
     version = "0.14.1";
@@ -278,7 +230,7 @@
     src = ./.;
     opam = "${src}/onix.opam";
     depends = with self; [ bos cmdliner dune easy-format fpath ocaml
-                           opam-0install uri yojson ];
+                           opam-0install yojson ];
     depexts = [ ];
   };
   opam-0install =  {
@@ -360,16 +312,6 @@
     depends = with self; [ dune ocaml seq ];
     depexts = [ ];
   };
-  result =  {
-    name = "result";
-    version = "1.5";
-    src = builtins.fetchurl {
-      url = "https://github.com/janestreet/result/releases/download/1.5/result-1.5.tbz";
-    };
-    opam = "${opam-repo}/packages/result/result.1.5/opam";
-    depends = with self; [ dune ocaml ];
-    depexts = [ ];
-  };
   rresult =  {
     name = "rresult";
     version = "0.7.0";
@@ -400,17 +342,6 @@
     depends = with self; [ dune ocaml ];
     depexts = [ ];
   };
-  stringext =  {
-    name = "stringext";
-    version = "1.6.0";
-    src = pkgs.fetchurl {
-      url = "https://github.com/rgrinberg/stringext/releases/download/1.6.0/stringext-1.6.0.tbz";
-      sha256 = "db41f5d52e9eab17615f110b899dfeb27dd7e7f89cd35ae43827c5119db206ea";
-    };
-    opam = "${opam-repo}/packages/stringext/stringext.1.6.0/opam";
-    depends = with self; [ base-bytes dune ocaml ];
-    depexts = [ ];
-  };
   topkg =  {
     name = "topkg";
     version = "1.0.5";
@@ -420,17 +351,6 @@
     };
     opam = "${opam-repo}/packages/topkg/topkg.1.0.5/opam";
     depends = with self; [ ocaml ocamlbuild ocamlfind ];
-    depexts = [ ];
-  };
-  uri =  {
-    name = "uri";
-    version = "4.2.0";
-    src = pkgs.fetchurl {
-      url = "https://github.com/mirage/ocaml-uri/releases/download/v4.2.0/uri-v4.2.0.tbz";
-      sha256 = "c5c013d940dbb6731ea2ee75c2bf991d3435149c3f3659ec2e55476f5473f16b";
-    };
-    opam = "${opam-repo}/packages/uri/uri.4.2.0/opam";
-    depends = with self; [ angstrom dune ocaml stringext ];
     depexts = [ ];
   };
   yojson =  {

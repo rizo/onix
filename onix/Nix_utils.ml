@@ -27,7 +27,8 @@ let fetch_git_expr ~rev url =
       |}
     url rev
 
-let fetch_git ~rev url = url |> fetch_git_expr ~rev |> eval |> Fpath.v
+let fetch_git ~rev url =
+  url |> fetch_git_expr ~rev |> eval |> OpamFilename.Dir.of_string
 
 let fetch_git_resolve_expr url =
   Fmt.str
@@ -36,14 +37,14 @@ let fetch_git_resolve_expr url =
           url = %S;
         };
         in
-        "${result.outPath},${result.rev}"
+        "${result.rev},${result.outPath}"
       |}
     url
 
 let fetch_git_resolve url =
   let result = url |> fetch_git_resolve_expr |> eval ~pure:false in
   match String.split_on_char ',' result with
-  | [path; rev] -> (Fpath.v path, rev)
+  | [path; rev] -> (rev, OpamFilename.Dir.of_string path)
   | _ -> Fmt.failwith "Could not fetch: %S, output=%S" url result
 
 let maybe opt =
@@ -75,7 +76,7 @@ let prefetch_url_with_path ?hash_type ?hash url =
     |> Utils.Result.force_with_msg
   in
   match lines with
-  | [hash; path] -> (hash, Fpath.v path)
+  | [hash; path] -> (hash, OpamFilename.Dir.of_string path)
   | _ ->
     Fmt.invalid_arg "Invalid output from nix-prefetch-url: %a"
       Fmt.Dump.(list string)

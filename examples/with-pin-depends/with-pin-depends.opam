@@ -24,7 +24,9 @@ depends: [
   "dune" {>= "2.0"}
   "fmt"
   "repr"
+  "options"
 ]
 pin-depends: [
   ["repr.dev" "git+https://github.com/mirage/repr.git#0aee7b84b5d5b09a9495ece75c2c9fde0415872c"]
+  ["options.dev" "git+https://github.com/odis-labs/options.git#5b1165d99aba112d550ddc3133a8eb1d174441ec"]
 ]

@@ -1,3 +1,3 @@
 
 let () =
-  Fmt.pr "%a" (Repr.pp Repr.string) "hello"
+  Fmt.pr "%a" (Repr.pp Repr.(option string)) (Options.some "hello")
