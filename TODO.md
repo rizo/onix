@@ -9,15 +9,22 @@
 - [x] Better depexts mapping:
   - https://github.com/tweag/opam-nix/blob/8062dfe742f6636191017232ff504f6765a7f2d1/src/overlays/external/debian.nix#L35
 - [x] Filter invalid depexts names.
+- [x] Run opam actions natively with Bos.
+- [x] Apply "with-test" var when extracting install.
+- [x] Use native nixpkgs to build onix itself.
+- [x] Use the same compiler for onix and project build.
+- [x] Properly fix ocaml env var export for deps.
+  - Using hooks seems is problematic due to multi-export (fails with "Argument list too long").
+  - Computing the dep closure is more deterministic albeit potentially costly.
+  - How do we setup env vars for shell?
+- [ ] Define build/test/dev dependencies separately in lock file?
+  - So we can correctly set up buildInputs/nativeBuildInputs, etc.
 - [ ] Fix ocaml env vars propagation for shell.
 - [ ] Use nix-prefetch-url.
-- [x] Apply "with-test" var when extracting install.
+- [ ] Handle .config files (like conf-binutils.config). Is this related to opam's `flag: conf`.
 - [ ] Implement onix shell.
 - [ ] Implement onix build.
 - [ ] Add --with-dev flag and support for dev dependencies.
-- [ ] Run opam actions natively.
-- [ ] Use native nix packages to build onix itself.
-- [ ] Use the same compiler for onix and project build.
 - [ ] Add --lock-file argument to actions.
 - [ ] Improve logging.
 - [ ] Improve error-handling.
@@ -25,3 +32,7 @@
 - [ ] Handle empty lock file.
 - [ ] Handle lock file without ocaml.
 - [ ] Drop fpath, use OpamFilename.
+- [ ] If we replace --path (i.e. inputSrcs) by $out lookup, will this improve caching?
+- [ ] Do we need to include `opam` in build ctx json or can we pass repo-url?
+  - Do we really want opam files for all deps (for opam's `depends` var)?
+- [ ] Changing project's opam file currently triggers full scope rebuild.
