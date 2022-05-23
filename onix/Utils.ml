@@ -79,3 +79,16 @@ module Result = struct
     | Ok x -> x
     | Error (`Msg err) -> failwith err
 end
+
+module Os = struct
+  let run_command cmd =
+    let open Bos in
+    Fmt.epr "cmd: %s@." (String.concat " " cmd);
+    let cmd = Cmd.of_list cmd in
+    match OS.Cmd.run_status cmd with
+    | Ok (`Exited 0) -> ()
+    | Ok (`Exited n) ->
+      Fmt.failwith "Command terminated with a non-zero code: %d@." n
+    | Ok (`Signaled n) -> Fmt.failwith "Command terminated by signal: %d@." n
+    | Error (`Msg err) -> Fmt.failwith "Could not run command: %s" err
+end

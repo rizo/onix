@@ -178,19 +178,6 @@ end
 
 let patch = Patch.run
 
-let run_commands commands =
-  let open Bos in
-  List.iter
-    (fun cmd ->
-      let cmd = Cmd.of_list cmd in
-      match OS.Cmd.run_status cmd with
-      | Ok (`Exited 0) -> ()
-      | Ok (`Exited n) ->
-        Fmt.failwith "Command terminated with a non-zero code: %d@." n
-      | Ok (`Signaled n) -> Fmt.failwith "Command terminated by signal: %d@." n
-      | Error (`Msg err) -> Fmt.failwith "Could not run command: %s" err)
-    commands
-
 let build ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
   let ctx : Build_context.t =
     Build_context.read_file ~ocaml_version ~path build_ctx_file
@@ -215,41 +202,43 @@ let build ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
     else [])
     |> List.filter List.is_not_empty
   in
-  List.iter (fun cmd -> Fmt.epr ">>> %s@." (String.concat " " cmd)) commands;
-  run_commands commands
+  List.iter Utils.Os.run_command commands
 
-let make_path_lib ~ocaml_version (pkg : Build_context.package) =
-  let prefix = OpamFilename.Dir.to_string pkg.path in
-  String.concat "/"
-    [
-      prefix;
-      "lib/ocaml";
-      OpamPackage.Version.to_string ocaml_version;
-      "site-lib";
-    ]
+module Install = struct
+  let make_path_lib ~ocaml_version (pkg : Build_context.package) =
+    let prefix = OpamFilename.Dir.to_string pkg.path in
+    String.concat "/"
+      [
+        prefix;
+        "lib/ocaml";
+        OpamPackage.Version.to_string ocaml_version;
+        "site-lib";
+      ]
 
-let make_opam_install_commands ~path (ctx : Build_context.t) =
-  let install_file = OpamPackage.Name.to_string ctx.self.name ^ ".install" in
-  let libdir = make_path_lib ~ocaml_version:ctx.ocaml_version ctx.self in
-  if Sys.file_exists install_file then
-    ["opam-installer"; "--prefix=" ^ path; "--libdir=" ^ libdir; install_file]
-  else (
-    Fmt.epr "Warning: no %S file: cwd=%S@." install_file (Sys.getcwd ());
-    [])
+  let make_opam_install_commands ~path (ctx : Build_context.t) =
+    let install_file = OpamPackage.Name.to_string ctx.self.name ^ ".install" in
+    let libdir = make_path_lib ~ocaml_version:ctx.ocaml_version ctx.self in
+    if Sys.file_exists install_file then
+      ["opam-installer"; "--prefix=" ^ path; "--libdir=" ^ libdir; install_file]
+    else (
+      Fmt.epr "Warning: no %S file: cwd=%S@." install_file (Sys.getcwd ());
+      [])
 
-let install ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
-  let ctx : Build_context.t =
-    Build_context.read_file ~ocaml_version ~path build_ctx_file
-  in
-  let opam = Opam_utils.read_opam ctx.self.opam in
-  Fmt.epr "Decoded build context for: %S@."
-    (OpamPackage.Name.to_string ctx.self.name);
-  let commands =
-    OpamFilter.commands
-      (Build_context.resolve ctx ~local:(local_vars ~test ~doc))
-      (OpamFile.OPAM.install opam)
-    @ [make_opam_install_commands ~path ctx]
-    |> List.filter List.is_not_empty
-  in
-  List.iter (fun cmd -> Fmt.epr ">>> %s@." (String.concat " " cmd)) commands;
-  run_commands commands
+  let run ?(test = false) ?(doc = false) ~ocaml_version ~path build_ctx_file =
+    let ctx : Build_context.t =
+      Build_context.read_file ~ocaml_version ~path build_ctx_file
+    in
+    let opam = Opam_utils.read_opam ctx.self.opam in
+    Fmt.epr "Decoded build context for: %S@."
+      (OpamPackage.Name.to_string ctx.self.name);
+    let commands =
+      OpamFilter.commands
+        (Build_context.resolve ctx ~local:(local_vars ~test ~doc))
+        (OpamFile.OPAM.install opam)
+      @ [make_opam_install_commands ~path ctx]
+      |> List.filter List.is_not_empty
+    in
+    List.iter Utils.Os.run_command commands
+end
+
+let install = Install.run
