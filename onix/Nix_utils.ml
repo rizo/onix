@@ -51,7 +51,7 @@ let maybe opt =
   | Some x -> Bos.Cmd.v x
   | None -> Bos.Cmd.empty
 
-let prefetch_url_cmd ?(print_path = true) ?(hash_type = `sha256) ?hash uri =
+let prefetch_url_cmd ?(print_path = true) ?(hash_type = `sha256) ?hash url =
   let open Bos in
   let hash_type =
     match hash_type with
@@ -63,13 +63,13 @@ let prefetch_url_cmd ?(print_path = true) ?(hash_type = `sha256) ?hash uri =
     %% on print_path (v "--print-path")
     % "--type"
     % hash_type
-    % Uri.to_string uri
+    % url
     %% maybe hash)
 
-let prefetch_url_with_path ?hash_type ?hash uri =
+let prefetch_url_with_path ?hash_type ?hash url =
   let open Bos in
   let lines =
-    prefetch_url_cmd ~print_path:true ?hash_type ?hash uri
+    prefetch_url_cmd ~print_path:true ?hash_type ?hash url
     |> OS.Cmd.run_out
     |> OS.Cmd.to_lines
     |> Utils.Result.force_with_msg

@@ -3,8 +3,6 @@
  (package onix)
  (modules :standard \ Main)
  (libraries
-  rresult
-  uri
   fmt
   bos
   fpath

@@ -123,18 +123,17 @@ let select_opam_hash hashes =
 
 let get_src opam_url =
   let url = OpamFile.URL.url opam_url in
-  let str_url = OpamUrl.to_string url in
   match url.OpamUrl.backend with
   | `git -> (
-    match String.split_on_char '#' str_url with
-    | [url; rev] -> Ok (Git { url; rev })
-    | _ -> Error (`Msg ("Missing rev in git url: " ^ str_url)))
+    match url.OpamUrl.hash with
+    | Some rev -> Ok (Git { url = OpamUrl.base_url url; rev })
+    | _ -> Error (`Msg ("Missing rev in git url: " ^ OpamUrl.to_string url)))
   | `http -> (
     let hashes = OpamFile.URL.checksum opam_url in
     match select_opam_hash hashes with
     | Ok hash -> Ok (Http { url; hash })
     | Error err -> Error err)
-  | _ -> Error (`Msg ("Unsupported url: " ^ str_url))
+  | _ -> Error (`Msg ("Unsupported url: " ^ OpamUrl.to_string url))
 
 let get_deps ?(depopts = OpamPackage.Name.Set.empty) ~required ~test ~doc
     filtered_formula =

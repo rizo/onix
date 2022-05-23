@@ -17,7 +17,6 @@ let
       bos
       cmdliner
       fpath
-      uri
       yojson
       opam-core
       opam-state

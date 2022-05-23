@@ -1,17 +1,19 @@
 type t = {
-  repo_uri : Uri.t;
+  repo_url : OpamUrl.t;
   packages : Lock_pkg.t list;
 }
 
-let pp_repo_uri f repo_uri =
-  match Uri.fragment repo_uri with
+let pp_repo_uri f repo_url =
+  match repo_url.OpamUrl.hash with
   | Some rev ->
     Fmt.pf f
-      "opam-repo ? builtins.fetchGit {@ url = %S;@ rev = %S;@ allRefs = \
+      "opam-repo ? builtins.fetchGit {@ url = %a;@ rev = %S;@ allRefs = \
        true;@]@ }"
-      (Uri.to_string (Uri.with_fragment repo_uri None))
+      (Fmt.quote Opam_utils.pp_url)
+      { repo_url with OpamUrl.hash = None }
       rev
-  | None -> Fmt.invalid_arg "Repo URI without fragment: %a" Uri.pp repo_uri
+  | None ->
+    Fmt.invalid_arg "Repo URI without fragment: %a" Opam_utils.pp_url repo_url
 
 let pp fmt t =
   let pp_nix_attr fmt t =
@@ -21,12 +23,10 @@ let pp fmt t =
   in
   let pp_list = Fmt.iter ~sep:(Fmt.any ";@,") List.iter pp_nix_attr in
   Fmt.pf fmt {|@[<v2>{ pkgs, self, %a@] }:@.@[<v2>{@,%a;@]@,}@.|} pp_repo_uri
-    t.repo_uri (Fmt.hvbox pp_list) t.packages
+    t.repo_url (Fmt.hvbox pp_list) t.packages
 
-let make ~repo_uri packages =
-  if Option.is_none (Uri.fragment repo_uri) then
-    Fmt.failwith "Repo URI without rev when creating a lock file: %a" Uri.pp
-      repo_uri;
-  { repo_uri; packages }
-
-
+let make ~repo_url packages =
+  if Option.is_none repo_url.OpamUrl.hash then
+    Fmt.failwith "Repo URI without rev when creating a lock file: %a"
+      Opam_utils.pp_url repo_url;
+  { repo_url; packages }

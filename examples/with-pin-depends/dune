@@ -1,0 +1,3 @@
+(executable
+ (public_name with_pin_depends)
+ (libraries fmt repr))

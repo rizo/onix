@@ -62,6 +62,22 @@ let
       buildCtxFile = pkgs.writeText (name + ".json") (builtins.toJSON buildCtx);
       depPaths = collectPaths ocamlVersion (collectDeps scope lockPkg.depends);
 
+      onixSetupEnv = pkgs.writeText "onixSetupEnv.sh" ''
+        addOCamlPath () {
+          if test -d "$1/lib/ocaml/${ocamlVersion}/site-lib"; then
+            export OCAMLPATH="''${OCAMLPATH-}''${OCAMLPATH:+:}$1/lib/ocaml/${ocamlVersion}/site-lib/"
+          fi
+          if test -d "$1/lib/ocaml/${ocamlVersion}/site-lib/stublibs"; then
+            export CAML_LD_LIBRARY_PATH="''${CAML_LD_LIBRARY_PATH-}''${CAML_LD_LIBRARY_PATH:+:}$1/lib/ocaml/${ocamlVersion}/site-lib/stublibs"
+          fi
+          if test -d "$1/lib/ocaml/${ocamlVersion}/site-lib/toplevel"; then
+            export OCAMLTOP_INCLUDE_PATH="''${OCAMLTOP_INCLUDE_PATH-}''${OCAMLTOP_INCLUDE_PATH:+:}$1/lib/ocaml/${ocamlVersion}/site-lib/toplevel"
+          fi
+        }
+
+        addEnvHooks "$targetOffset" addOCamlPath
+      '';
+
     in stdenv.mkDerivation {
       pname = name;
       version = lockPkg.version;
@@ -73,10 +89,7 @@ let
 
       nativeBuildInputs = [ pkgs.opam-installer ];
 
-      OCAMLPATH = lib.strings.concatStringsSep ":" depPaths.libdir;
-      CAML_LD_LIBRARY_PATH = lib.strings.concatStringsSep ":" depPaths.stublibs;
-      OCAMLTOP_INCLUDE_PATH =
-        lib.strings.concatStringsSep ":" depPaths.toplevel;
+      setupHook = onixSetupEnv;
 
       # strictDeps = false;
 
@@ -100,6 +113,7 @@ let
       '';
 
       # ocamlfind install requires the liddir to exist.
+      # move packages installed with dune.
       installPhase = ''
         echo + installPhase ${name} $out
         mkdir -p $out/lib/ocaml/${ocamlVersion}/site-lib/${name}

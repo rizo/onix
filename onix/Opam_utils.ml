@@ -1,3 +1,5 @@
+open Utils
+
 let opam_name = OpamFile.OPAM.name
 let pp_package = Fmt.using OpamPackage.to_string Fmt.string
 let pp_package_version = Fmt.using OpamPackage.Version.to_string Fmt.string
@@ -51,16 +53,14 @@ let find_root_packages input_opams =
 let get_root_package_names root_opams =
   root_opams |> OpamPackage.Name.Map.keys |> List.map OpamPackage.Name.to_string
 
-let fetch uri =
-  let uri = Uri.with_scheme uri (Some "https") in
-  let rev = Uri.fragment uri |> Option.get in
-  let nix_url = Uri.with_fragment uri None |> Uri.to_string in
+let fetch url =
+  let rev = url.OpamUrl.hash |> Option.or_fail "Missing rev in opam url" in
+  let nix_url = OpamUrl.base_url url in
   Fmt.epr "[DEBUG] Fetching git repository: url=%S rev=%S@." nix_url rev;
   Nix_utils.fetch_git ~rev nix_url
 
-let fetch_resolve uri =
-  let uri = Uri.with_scheme uri (Some "https") in
-  let nix_url = Uri.with_fragment uri None |> Uri.to_string in
+let fetch_resolve url =
+  let nix_url = OpamUrl.base_url url in
   Fmt.epr "[DEBUG] Fetching git repository: url=%S rev=None@." nix_url;
   Nix_utils.fetch_git_resolve nix_url
 
@@ -94,11 +94,11 @@ module Pins = struct
       project_opam_files []
     |> sort_uniq
 
-  let read_opam package opam_url =
+  let load_opam package url =
     let name = OpamPackage.name_to_string package in
-    let src = fetch (Uri.of_string (OpamUrl.to_string opam_url)) in
-    Fmt.epr "Reading opam file for pin: name=%S url=%a src=%a@." name pp_url
-      opam_url Fpath.pp src;
+    let src = fetch url in
+    Fmt.epr "Reading opam file for pin: name=%S url=%a src=%a@." name pp_url url
+      Fpath.pp src;
     let opam_path = Fpath.(src / name |> add_ext "opam") in
     (dev_version, read_opam opam_path)
 
@@ -107,7 +107,7 @@ module Pins = struct
     OpamPackage.Name.Map.map
       (fun (pkg, url) ->
         (* Read original opam file for pin and add use a fixed [url]. *)
-        let version, opam = read_opam pkg url in
+        let version, opam = load_opam pkg url in
         let file_url = OpamFile.URL.create url in
         let opam' = OpamFile.OPAM.with_url file_url opam in
         (version, opam'))

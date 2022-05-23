@@ -1,5 +1,5 @@
 opam-version: "2.0"
-synopsis: "OCaml project manager based on Nix"
+synopsis: "Simple hello-world example using onix"
 maintainer: ["Rizo I. <rizo@odis.io>"]
 license: "ISC"
 homepage: "https://github.com/odis-labs/onix"
@@ -20,13 +20,11 @@ build: [
   ]
 ]
 depends: [
-  "ocaml" {>= "4.08" & < "5.0.0"}
+  "ocaml" {>= "4.08" & < "5.0"}
   "dune" {>= "2.0"}
-  "odoc" {with-doc}
-  "cmdliner"
-  "bos"
-  "fpath"
-  "opam-0install"
-  "yojson"
-  "easy-format" {="1.3.2"}
+  "fmt"
+  "repr"
+]
+pin-depends: [
+  ["repr.dev" "git+https://github.com/mirage/repr.git#0aee7b84b5d5b09a9495ece75c2c9fde0415872c"]
 ]

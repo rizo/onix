@@ -9,15 +9,15 @@ let make_context ~repo_path fixed_packages =
 
 module Solver = Opam_0install.Solver.Make (Solver_context.Required)
 
-let solve ~repo_uri ~root_packages ~pins package_names =
-  let repo_path, repo_uri =
-    let uri = Uri.of_string repo_uri in
-    if Option.is_some (Uri.fragment uri) then (Opam_utils.fetch uri, uri)
+let solve ~repo_url ~root_packages ~pins package_names =
+  let repo_path, repo_url =
+    let url = OpamUrl.of_string repo_url in
+    if Option.is_some url.hash then (Opam_utils.fetch url, url)
     else
-      let path, rev = Opam_utils.fetch_resolve uri in
-      (path, Uri.with_fragment uri (Some rev))
+      let path, rev = Opam_utils.fetch_resolve url in
+      (path, { url with hash = Some rev })
   in
-  Fmt.epr "Using OPAM repository: %a@." Uri.pp repo_uri;
+  Fmt.epr "Using OPAM repository: %a@." Opam_utils.pp_url repo_url;
   let fixed_packages = Opam_utils.make_fixed_packages ~root_packages ~pins in
   let context = make_context ~repo_path fixed_packages in
   match
@@ -34,7 +34,7 @@ let solve ~repo_uri ~root_packages ~pins package_names =
              Fmt.epr "Missing url for package: %a@." Opam_utils.pp_package pkg;
              None
            | some -> some)
-    |> Lock_file.make ~repo_uri
+    |> Lock_file.make ~repo_url
   | Error err ->
     prerr_endline (Solver.diagnostics err);
     exit 2
