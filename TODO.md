@@ -58,6 +58,7 @@
 - [ ] Fetch opam extra-source files.
 - [ ] Add an example with overrides.
 - [ ] Support static compilation.
+- [ ] Handle setenv and build-env.
 - [ ] Support cross-compilation.
 - [ ] Decide how to support dependency flags:
   - with-build
