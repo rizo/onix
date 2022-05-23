@@ -46,6 +46,7 @@
 - [ ] Implement onix shell.
 - [ ] Implement onix build.
 - [ ] Use builtins.foldl’.
+- [ ] Use builtins.filterSource for ./. src to exclude unwanted dirs (gitignore, _build).
 - [ ] Add --with-dev flag and support for dev dependencies.
 - [ ] Add --lock-file argument to actions.
 - [ ] Add a command similar to `opam var` to lookup package variables?
