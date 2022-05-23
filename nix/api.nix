@@ -2,6 +2,7 @@
 
 let
   inherit (pkgs) lib stdenv;
+  inherit (builtins) trace;
 
   # Build the compiler from lock file from source by default.
   defaultOCaml = null;
@@ -15,15 +16,15 @@ let
     installPhase = "${pkgs.coreutils}/bin/touch $out";
   };
 
-  collectDeps = scope: lockDeps:
+  collectDeps = init: scope: lockDeps: parentName:
     lib.lists.foldr (lockDep: acc:
-      if isNull lockDep then
+      if isNull lockDep || builtins.hasAttr lockDep.name acc then
         acc
       else
         let pkg = builtins.getAttr lockDep.name scope;
         in acc // {
           ${lockDep.name} = pkg;
-        } // collectDeps scope lockDep.depends) { } lockDeps;
+        } // collectDeps acc scope lockDep.depends lockDep.name) init lockDeps;
 
   collectPaths = ocamlVersion: pkgDeps:
     let
@@ -60,23 +61,8 @@ let
     let
       buildCtx = makeBuildCtx scope lockPkg;
       buildCtxFile = pkgs.writeText (name + ".json") (builtins.toJSON buildCtx);
-      depPaths = collectPaths ocamlVersion (collectDeps scope lockPkg.depends);
-
-      onixSetupEnv = pkgs.writeText "onixSetupEnv.sh" ''
-        addOCamlPath () {
-          if test -d "$1/lib/ocaml/${ocamlVersion}/site-lib"; then
-            export OCAMLPATH="''${OCAMLPATH-}''${OCAMLPATH:+:}$1/lib/ocaml/${ocamlVersion}/site-lib/"
-          fi
-          if test -d "$1/lib/ocaml/${ocamlVersion}/site-lib/stublibs"; then
-            export CAML_LD_LIBRARY_PATH="''${CAML_LD_LIBRARY_PATH-}''${CAML_LD_LIBRARY_PATH:+:}$1/lib/ocaml/${ocamlVersion}/site-lib/stublibs"
-          fi
-          if test -d "$1/lib/ocaml/${ocamlVersion}/site-lib/toplevel"; then
-            export OCAMLTOP_INCLUDE_PATH="''${OCAMLTOP_INCLUDE_PATH-}''${OCAMLTOP_INCLUDE_PATH:+:}$1/lib/ocaml/${ocamlVersion}/site-lib/toplevel"
-          fi
-        }
-
-        addEnvHooks "$targetOffset" addOCamlPath
-      '';
+      depPaths = collectPaths ocamlVersion
+        (collectDeps { } scope lockPkg.depends lockPkg.name);
 
     in stdenv.mkDerivation {
       pname = name;
@@ -89,7 +75,10 @@ let
 
       nativeBuildInputs = [ pkgs.opam-installer ];
 
-      setupHook = onixSetupEnv;
+      OCAMLPATH = lib.strings.concatStringsSep ":" depPaths.libdir;
+      CAML_LD_LIBRARY_PATH = lib.strings.concatStringsSep ":" depPaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH =
+        lib.strings.concatStringsSep ":" depPaths.toplevel;
 
       # strictDeps = false;
 
