@@ -2,11 +2,19 @@
  (name onix)
  (package onix)
  (modules :standard \ Main)
- (libraries fmt bos yojson opam-0install opam-format opam-state opam-core))
+ (libraries
+  fmt
+  bos
+  logs
+  yojson
+  opam-0install
+  opam-format
+  opam-state
+  opam-core))
 
 (executable
  (name Main)
  (package onix)
  (public_name onix)
  (modules Main)
- (libraries fpath fmt cmdliner onix))
+ (libraries fpath logs logs.fmt logs.cli fmt fmt.cli fmt.tty cmdliner onix))

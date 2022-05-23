@@ -42,7 +42,7 @@ let find_root_packages input_opams =
   opams
   |> Seq.map (fun filename ->
          let opam_name = opam_name_of_filename filename in
-         Fmt.epr "Reading packages from %S...@." filename;
+         Logs.info (fun log -> log "Reading packages from %S..." filename);
          let opam = read_opam (OpamFilename.of_string filename) in
          let version = root_version in
          (opam_name, (version, opam)))
@@ -51,12 +51,13 @@ let find_root_packages input_opams =
 let fetch url =
   let rev = url.OpamUrl.hash |> Option.or_fail "Missing rev in opam url" in
   let nix_url = OpamUrl.base_url url in
-  Fmt.epr "[DEBUG] Fetching git repository: url=%S rev=%S@." nix_url rev;
+  Logs.debug (fun log ->
+      log "Fetching git repository: url=%S rev=%S" nix_url rev);
   Nix_utils.fetch_git ~rev nix_url
 
 let fetch_resolve url =
   let nix_url = OpamUrl.base_url url in
-  Fmt.epr "[DEBUG] Fetching git repository: url=%S rev=None@." nix_url;
+  Logs.debug (fun log -> log "Fetching git repository: url=%S rev=None" nix_url);
   Nix_utils.fetch_git_resolve nix_url
 
 module Pins = struct
@@ -92,8 +93,9 @@ module Pins = struct
   let load_opam package url =
     let name = OpamPackage.name_to_string package in
     let src = fetch url in
-    Fmt.epr "Reading opam file for pin: name=%S url=%a src=%a@." name pp_url url
-      pp_filename_dir src;
+    Logs.debug (fun log ->
+        log "Reading opam file for pin: name=%S url=%a src=%a" name pp_url url
+          pp_filename_dir src);
     (* FIXME: Could be just ./opam *)
     let opam_path =
       OpamFilename.add_extension OpamFilename.Op.(src // name) "opam"

@@ -229,7 +229,7 @@
     version = "root";
     src = ./.;
     opam = "${src}/onix.opam";
-    depends = with self; [ bos cmdliner dune easy-format fpath ocaml
+    depends = with self; [ bos cmdliner dune easy-format fpath logs ocaml
                            opam-0install yojson ];
     depexts = [ ];
   };

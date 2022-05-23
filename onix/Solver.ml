@@ -17,7 +17,7 @@ let resolve_repo repo_url =
       let rev, path = Opam_utils.fetch_resolve url in
       (path, { url with hash = Some rev })
   in
-  Fmt.epr "Using OPAM repository: %a@." Opam_utils.pp_url url;
+  Logs.info (fun log -> log "Using OPAM repository: %a" Opam_utils.pp_url url);
   (path, url)
 
 let solve ~repo_url input_opam_files =
@@ -53,8 +53,8 @@ let solve ~repo_url input_opam_files =
            let opam = Solver_context.get_opam_file context pkg in
            match Lock_pkg.of_opam pkg opam with
            | None ->
-             Fmt.epr "Missing url for %a, ignoring...@." Opam_utils.pp_package
-               pkg;
+             Logs.warn (fun log ->
+                 log "Missing url for %a, ignoring..." Opam_utils.pp_package pkg);
              None
            | some -> some)
     |> Lock_file.make ~repo_url

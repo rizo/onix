@@ -80,6 +80,8 @@ let
       OCAMLTOP_INCLUDE_PATH =
         lib.strings.concatStringsSep ":" depPaths.toplevel;
 
+      ONIX_LOG_LEVEL = "debug";
+
       # strictDeps = false;
 
       prePatch = ''

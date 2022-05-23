@@ -23,8 +23,10 @@ depends: [
   "ocaml" {>= "4.08" & < "5.0.0"}
   "dune" {>= "2.0"}
   "odoc" {with-doc}
-  "cmdliner"
   "bos"
+  "cmdliner"
+  "logs"
+  "fmt"
   "fpath"
   "opam-0install"
   "yojson"

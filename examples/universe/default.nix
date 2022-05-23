@@ -8,6 +8,6 @@ let
   scope = onix.build {
     ocaml = ocamlPackages.ocaml;
     lock = ./onix-lock.nix;
-    overrides = { };
+    overrides = { dune = pkg: ocamlPackages.dune_3; };
   };
 in scope.universe
