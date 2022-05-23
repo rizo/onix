@@ -14,7 +14,19 @@ module Option = struct
     match t with
     | Some x -> f x
     | None -> ()
+
+  let ( or ) t default =
+    match t with
+    | Some x -> x
+    | None -> default
+
+  let or_else default t =
+    match t with
+    | Some x -> x
+    | None -> default ()
 end
+
+let ( or ) = Option.( or )
 
 module List = struct
   include List
@@ -83,7 +95,6 @@ end
 module Os = struct
   let run_command cmd =
     let open Bos in
-    Fmt.epr "cmd: %s@." (String.concat " " cmd);
     let cmd = Cmd.of_list cmd in
     match OS.Cmd.run_status cmd with
     | Ok (`Exited 0) -> ()

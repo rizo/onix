@@ -163,6 +163,31 @@ module Vars = struct
 
   let resolve_from_env full_var = OpamVariable.Full.read_from_env full_var
 
+  let resolve_from_etc_env t full_var =
+    let ( </> ) = OpamFilename.Op.( / ) in
+    let resolve_for_package pkg var =
+      let base =
+        OpamFilename.Base.of_string
+          (OpamPackage.Name.to_string pkg.name ^ ".config")
+      in
+      let config_filename = OpamFilename.create (pkg.path </> "etc") base in
+      if OpamFilename.exists config_filename then (
+        Logs.debug (fun log ->
+            log "Build_context.resolve_from_etc_env: loading %a..."
+              Opam_utils.pp_filename config_filename);
+        let config_file = OpamFile.make config_filename in
+        let config = OpamFile.Dot_config.read config_file in
+        OpamFile.Dot_config.variable config var)
+      else None
+    in
+    match OpamVariable.Full.(scope full_var, variable full_var) with
+    | Global, _var -> None
+    | Self, var -> resolve_for_package t.self var
+    | Package pkg_name, var -> (
+      match OpamPackage.Name.Map.find_opt pkg_name t.scope with
+      | Some pkg -> resolve_for_package pkg var
+      | None -> None)
+
   let resolve_from_static vars full_var =
     OpamVariable.Full.Map.find_opt full_var vars
 
@@ -221,6 +246,7 @@ let resolve t ?(local = OpamVariable.Map.empty) full_var =
       [
         Vars.resolve_from_local local;
         Vars.resolve_from_env;
+        Vars.resolve_from_etc_env t;
         Vars.resolve_from_static t.vars;
         Vars.resolve_from_global_scope t;
         Vars.resolve_from_scope t;
