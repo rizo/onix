@@ -45,6 +45,7 @@
   - https://docs.ocaml.pro/docs/LIBRARY.opam_format@opam-format.2.0.8/OpamFile/Dot_install/index.html
 - [ ] Implement onix shell.
 - [ ] Implement onix build.
+- [ ] Use builtins.foldl’.
 - [ ] Add --with-dev flag and support for dev dependencies.
 - [ ] Add --lock-file argument to actions.
 - [ ] Add a command similar to `opam var` to lookup package variables?
