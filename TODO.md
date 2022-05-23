@@ -56,6 +56,7 @@
 - [ ] Make depends/depexts optional.
 - [ ] Handle empty lock file.
 - [ ] Fetch opam extra-source files.
+- [ ] Always patch shebangs?
 - [ ] Add an example with overrides.
 - [ ] Support static compilation.
 - [ ] Handle setenv and build-env.
