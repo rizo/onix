@@ -55,6 +55,7 @@
 - [ ] Build any package without a project `onix build utop` or similar.
 - [ ] Make depends/depexts optional.
 - [ ] Handle empty lock file.
+- [ ] Fetch opam extra-source files.
 - [ ] Add an example with overrides.
 - [ ] Support static compilation.
 - [ ] Support cross-compilation.
