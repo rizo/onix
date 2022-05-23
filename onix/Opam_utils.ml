@@ -15,6 +15,7 @@ let read_opam path =
       OpamFile.OPAM.read_from_channel ~filename ic)
 
 let ocaml_name = OpamPackage.Name.of_string "ocaml"
+let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
 
 let is_opam_filename filename =
   String.equal (Filename.extension filename) ".opam"
@@ -46,9 +47,6 @@ let find_root_packages input_opams =
          let version = root_version in
          (opam_name, (version, opam)))
   |> OpamPackage.Name.Map.of_seq
-
-let get_root_package_names root_opams =
-  root_opams |> OpamPackage.Name.Map.keys |> List.map OpamPackage.Name.to_string
 
 let fetch url =
   let rev = url.OpamUrl.hash |> Option.or_fail "Missing rev in opam url" in
@@ -113,9 +111,3 @@ module Pins = struct
         (version, opam'))
       pin_urls
 end
-
-let make_fixed_packages ~root_packages ~pins =
-  OpamPackage.Name.Map.union
-    (fun _local _pin ->
-      failwith "Locally defined packages are not allowed in pin-depends")
-    root_packages pins

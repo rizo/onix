@@ -76,15 +76,7 @@ module Lock = struct
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
   let run repo_url input_opam_files =
-    let root_packages = Onix.Opam_utils.find_root_packages input_opam_files in
-    let root_package_names =
-      Onix.Opam_utils.get_root_package_names root_packages
-    in
-    let pins = Onix.Opam_utils.Pins.collect_from_opam_files root_packages in
-    let lock_file =
-      Onix.Solver.solve ~repo_url ~root_packages ~pins
-        ("ocaml-base-compiler" :: root_package_names)
-    in
+    let lock_file = Onix.Solver.solve ~repo_url input_opam_files in
     Onix.Utils.Out_channel.with_open_text onix_lock_file_name (fun chan ->
         let out = Format.formatter_of_out_channel chan in
         Fmt.pf out "%a" Onix.Lock_file.pp lock_file);
