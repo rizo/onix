@@ -66,6 +66,7 @@
   - with-dev/with-tools?
 - [ ] Support static-cross-compilation.
 - [ ] Add flakes support.
+- [ ] Use strictDeps.
 - [ ] Ensure valid pkg names (exclude ~).
 - [ ] Handle lock file without ocaml.
 - [ ] Changing project's opam file currently triggers full scope rebuild.
