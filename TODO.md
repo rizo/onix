@@ -14,6 +14,7 @@
 - [x] Use native nixpkgs to build onix itself.
 - [x] Use the same compiler for onix and project build.
 - [x] Drop fpath, use OpamFilename.
+- [x] Improve logging.
 - [ ] Properly fix ocaml env var export for deps.
   - Using hooks seems is problematic due to multi-export (fails with "Argument list too long").
   - Computing the dep closure is more deterministic albeit potentially costly.
@@ -28,7 +29,7 @@
 - [ ] Fix ocaml env vars propagation for shell.
 - [ ] Use nix-prefetch-url.
 - [ ] Remove empty libdir after install.
-- [ ] Handle .config files (like conf-binutils.config). Is this related to opam's `flag: conf`.
+- [x] Handle .config files (like conf-binutils.config). Is this related to opam's `flag: conf`.
   - https://github.com/tweag/opam-nix/blob/8062dfe742f6636191017232ff504f6765a7f2d1/src/builder.nix#L358
   - Generated on build: https://github.com/ocaml/opam-repository/blob/00777c1a37b2eac5e802e10570a76c89bc5d221e/packages/conf-binutils/conf-binutils.0.3/opam#L9
   - The vars from config files should be loaded into env/vars for a package that depends on the package providing the config file.
@@ -36,7 +37,7 @@
   - Could be loaded via OPAM_VAR_xxx with a hook?
   - The .config files also contain additional files, do we really want to copy them?
     - This is because in some cases they will actually resolve to nix paths.
-    - An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Build_context from the saved `onix-propagated-opam-vars` file.
+    - [x] An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Build_context from the saved `onix-propagated-opam-vars` file.
 - [ ] Document that opam vars can be set by defining OPAM_VAR_pkg_name.
 - [ ] Consider using opaline.
   - Or we could even intall ourselves with OpamFile.Dot_install.
@@ -45,7 +46,6 @@
 - [ ] Implement onix build.
 - [ ] Add --with-dev flag and support for dev dependencies.
 - [ ] Add --lock-file argument to actions.
-- [ ] Improve logging.
 - [ ] Add a command similar to `opam var` to lookup package variables?
 - [ ] Support zip unpacking (tezos?).
 - [ ] Improve error-handling.
