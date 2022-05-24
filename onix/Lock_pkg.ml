@@ -18,6 +18,13 @@ type t = {
   depexts : [`Nix of String_set.t | `Other of String_set.t];
 }
 
+let is_zip_src src =
+  match src with
+  | Git _ -> false
+  | Http { url; _ } ->
+    let basename = OpamUrl.basename url in
+    Filename.extension basename = ".zip"
+
 let name t = OpamPackage.name t.package
 let is_pinned t = Opam_utils.is_pinned t.package
 let is_root t = Opam_utils.is_root t.package
@@ -203,6 +210,11 @@ let get_depexts ~package_name depexts =
     | Some deps -> `Nix (String_set.of_list deps)
     | None -> `Other deps)
 
+let add_depext name depexts =
+  match depexts with
+  | `Nix deps -> `Nix (String_set.add name deps)
+  | `Other deps -> `Other (String_set.add name deps)
+
 let of_opam ?(test = false) ?(doc = false) package opam =
   let src =
     match OpamFile.OPAM.url opam with
@@ -227,5 +239,9 @@ let of_opam ?(test = false) ?(doc = false) package opam =
   let depexts =
     get_depexts ~package_name:(OpamPackage.name package)
       (OpamFile.OPAM.depexts opam)
+  in
+  let depexts =
+    if Option.map_default false is_zip_src src then add_depext "unzip" depexts
+    else depexts
   in
   Some { package; src; depends; depexts; depopts }

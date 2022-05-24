@@ -1,7 +1,7 @@
 module Option = struct
   include Option
 
-  let map_default ~f ~default = function
+  let map_default default f = function
     | None -> default
     | Some x -> f x
 

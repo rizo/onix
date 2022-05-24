@@ -1,8 +1,10 @@
 { pkgs ? import <nixpkgs> { }, onix }:
 
 let
+  inherit (builtins)
+    trace hasAttr getAttr setAttr mapAttrs concatMap pathExists foldl';
   inherit (pkgs) lib stdenv;
-  inherit (builtins) trace;
+  inherit (pkgs.lib.lists) optional;
 
   # Build the compiler from lock file from source by default.
   defaultOCaml = null;
@@ -16,19 +18,19 @@ let
     installPhase = "${pkgs.coreutils}/bin/touch $out";
   };
 
-  collectDeps = init: scope: lockDeps: parentName:
-    lib.lists.foldr (lockDep: acc:
+  collectTransitiveDeps = init: scope: lockDeps:
+    foldl' (acc: lockDep:
       if isNull lockDep || builtins.hasAttr lockDep.name acc then
         acc
       else
-        let pkg = builtins.getAttr lockDep.name scope;
+        let pkg = getAttr lockDep.name scope;
         in acc // {
           ${lockDep.name} = pkg;
-        } // collectDeps acc scope lockDep.depends lockDep.name) init lockDeps;
+        } // collectTransitiveDeps acc scope lockDep.depends) init lockDeps;
 
   collectPaths = ocamlVersion: pkgDeps:
     let
-      path = dir: if builtins.pathExists dir then [ dir ] else [ ];
+      path = dir: optional (pathExists dir) dir;
       empty = {
         libdir = [ ];
         stublibs = [ ];
@@ -44,25 +46,15 @@ let
           stublibs = acc.stublibs ++ stublibs;
           toplevel = acc.toplevel ++ toplevel;
         };
-    in lib.lists.foldl updatePath empty (builtins.attrValues pkgDeps);
-
-  makeBuildCtx = scope: lockPkg: {
-    inherit (lockPkg) name version opam;
-    depends = builtins.concatMap (lockPkgDep:
-      if isNull lockPkgDep then
-        [ ]
-      else [{
-        inherit (lockPkgDep) name version opam;
-        path = builtins.getAttr lockPkgDep.name scope;
-      }]) lockPkg.depends;
-  };
+    in foldl' updatePath empty (builtins.attrValues pkgDeps);
 
   buildPkg = ocamlVersion: scope: name: lockPkg:
     let
-      buildCtx = makeBuildCtx scope lockPkg;
-      buildCtxFile = pkgs.writeText (name + ".json") (builtins.toJSON buildCtx);
-      depPaths = collectPaths ocamlVersion
-        (collectDeps { } scope lockPkg.depends lockPkg.name);
+      transitiveDeps = collectTransitiveDeps { } scope lockPkg.depends;
+      transitiveDepsPaths = collectPaths ocamlVersion transitiveDeps;
+      directDeps = concatMap (lockDep:
+        optional (!isNull lockDep) (getAttr lockDep.name transitiveDeps))
+        lockPkg.depends;
 
     in stdenv.mkDerivation {
       pname = name;
@@ -70,23 +62,24 @@ let
       src = lockPkg.src;
       dontUnpack = isNull lockPkg.src;
 
-      propagatedBuildInputs = lockPkg.depexts
-        ++ builtins.map (dep: dep.path) buildCtx.depends;
+      propagatedBuildInputs = lockPkg.depexts ++ directDeps;
 
+      # strictDeps = true;
+      # nativeBuildInputs = [ scope.ocaml scope.dune pkgs.opam-installer ];
       nativeBuildInputs = [ pkgs.opam-installer ];
 
-      OCAMLPATH = lib.strings.concatStringsSep ":" depPaths.libdir;
-      CAML_LD_LIBRARY_PATH = lib.strings.concatStringsSep ":" depPaths.stublibs;
+      OCAMLPATH = lib.strings.concatStringsSep ":" transitiveDepsPaths.libdir;
+      CAML_LD_LIBRARY_PATH =
+        lib.strings.concatStringsSep ":" transitiveDepsPaths.stublibs;
       OCAMLTOP_INCLUDE_PATH =
-        lib.strings.concatStringsSep ":" depPaths.toplevel;
+        lib.strings.concatStringsSep ":" transitiveDepsPaths.toplevel;
 
       ONIX_LOG_LEVEL = "debug";
 
-      # strictDeps = false;
-
       prePatch = ''
         echo + prePatch ${name} $out
-        ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
+        echo ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
+        ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
       '';
 
       # Not sure if OCAMLFIND_DESTDIR is needed.
@@ -100,7 +93,7 @@ let
 
       buildPhase = ''
         echo + buildPhase ${name} $out
-        ${onix}/bin/onix opam-build  --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
+        ${onix}/bin/onix opam-build  --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
       '';
 
       # ocamlfind install requires the liddir to exist.
@@ -108,7 +101,7 @@ let
       installPhase = ''
         echo + installPhase ${name} $out
         mkdir -p $out/lib/ocaml/${ocamlVersion}/site-lib/${name}
-        ${onix}/bin/onix opam-install --ocaml-version=${ocamlVersion} --path=$out ${buildCtxFile}
+        ${onix}/bin/onix opam-install --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
 
         if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
           echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"
@@ -142,13 +135,12 @@ in {
       } // overrides;
 
       # The scope without overrides.
-      baseScope =
-        builtins.mapAttrs (buildPkg onix-lock.ocaml.version scope) onix-lock;
+      baseScope = mapAttrs (buildPkg onix-lock.ocaml.version scope) onix-lock;
 
       # The final scope with all packages and applied overrides.
-      scope = builtins.mapAttrs (name: pkg:
-        if builtins.hasAttr name allOverrides then
-          (builtins.getAttr name allOverrides) pkg
+      scope = mapAttrs (name: pkg:
+        if hasAttr name allOverrides then
+          (getAttr name allOverrides) pkg
         else
           pkg) baseScope;
     in scope;

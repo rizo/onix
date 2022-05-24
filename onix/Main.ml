@@ -1,8 +1,7 @@
 let setup_logs style_renderer log_level =
   Fmt_tty.setup_std_outputs ?style_renderer ();
   Logs.set_level log_level;
-  Logs.set_reporter (Logs_fmt.reporter ());
-  Logs.debug (fun log -> log "Logging ready.")
+  Logs.set_reporter (Logs_fmt.reporter ())
 
 open Cmdliner
 
@@ -17,9 +16,14 @@ let ocaml_version_arg =
   Arg.(info ["ocaml-version"] ~docv ~doc |> opt (some string) None |> required)
 
 let path_arg =
-  let doc = "Path to the built package." in
+  let doc = "Nix store path of the package (i.e. the $out directory)." in
   let docv = "PATH" in
-  Arg.(info ["path"] ~docv ~doc |> opt (some string) None |> required)
+  Arg.(info [] ~docv ~doc |> pos 0 (some string) None |> required)
+
+let opam_arg =
+  let doc = "Path to the opam file of the package to be built." in
+  let docv = "OPAM" in
+  Arg.(info ["opam"] ~docv ~doc |> opt (some string) None |> required)
 
 let repo_arg =
   let doc =
@@ -36,12 +40,12 @@ let repo_arg =
     |> required)
 
 module Opam_patch = struct
-  let run style_renderer log_level ocaml_version path build_ctx =
+  let run style_renderer log_level ocaml_version opam path =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
-        log "opam-patch: Running... ocaml=%S path=%S ctx=%S" ocaml_version path
-          build_ctx);
-    Onix.Opam_actions.patch ~ocaml_version ~path build_ctx;
+        log "opam-patch: Running... ocaml=%S path=%S opam=%S" ocaml_version path
+          opam);
+    Onix.Opam_actions.patch ~ocaml_version ~opam path;
     Logs.info (fun log -> log "opam-patch: Done.")
 
   let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
@@ -53,17 +57,17 @@ module Opam_patch = struct
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ocaml_version_arg
-        $ path_arg
-        $ build_ctx_file_arg)
+        $ opam_arg
+        $ path_arg)
 end
 
 module Opam_build = struct
-  let run style_renderer log_level ocaml_version path build_ctx =
+  let run style_renderer log_level ocaml_version opam path =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
-        log "opam-build: Running... ocaml=%S path=%S ctx=%S" ocaml_version path
-          build_ctx);
-    Onix.Opam_actions.build ~ocaml_version ~path build_ctx;
+        log "opam-build: Running... ocaml=%S path=%S opam=%S" ocaml_version path
+          opam);
+    Onix.Opam_actions.build ~ocaml_version ~opam path;
     Logs.info (fun log -> log "opam-build: Done.")
 
   let info =
@@ -76,16 +80,16 @@ module Opam_build = struct
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ocaml_version_arg
-        $ path_arg
-        $ build_ctx_file_arg)
+        $ opam_arg
+        $ path_arg)
 end
 
 module Opam_install = struct
-  let run ocaml_version path build_ctx =
+  let run ocaml_version opam path =
     Logs.info (fun log ->
-        log "opam-install: Running... ocaml=%S path=%S ctx=%S" ocaml_version
-          path build_ctx);
-    Onix.Opam_actions.install ~ocaml_version ~path build_ctx;
+        log "opam-install: Running... ocaml=%S path=%S opam=%S" ocaml_version
+          path opam);
+    Onix.Opam_actions.install ~ocaml_version ~opam path;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =
@@ -93,8 +97,7 @@ module Opam_install = struct
       ~doc:"Install a package from a package closure file."
 
   let cmd =
-    Cmd.v info
-      Term.(const run $ ocaml_version_arg $ path_arg $ build_ctx_file_arg)
+    Cmd.v info Term.(const run $ ocaml_version_arg $ opam_arg $ path_arg)
 end
 
 let onix_lock_file_name = "./onix-lock.nix"

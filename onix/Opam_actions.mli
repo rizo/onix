@@ -1,11 +1,11 @@
-val patch : ocaml_version:string -> path:string -> string -> unit
+val patch : ocaml_version:string -> opam:string -> string -> unit
 
 val build :
   ?test:bool ->
   ?doc:bool ->
   ?tools:bool ->
   ocaml_version:string ->
-  path:string ->
+  opam:string ->
   string ->
   unit
 
@@ -14,6 +14,6 @@ val install :
   ?doc:bool ->
   ?tools:bool ->
   ocaml_version:string ->
-  path:string ->
+  opam:string ->
   string ->
   unit

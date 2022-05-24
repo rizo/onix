@@ -12,6 +12,8 @@ type t = {
   vars : OpamVariable.variable_contents OpamVariable.Full.Map.t;
 }
 
+val pp_package : Format.formatter -> package -> unit
+
 module Vars : sig
   val default : OpamVariable.variable_contents OpamVariable.Full.Map.t
   val nixos : OpamVariable.variable_contents OpamVariable.Full.Map.t
@@ -32,11 +34,11 @@ val resolve :
   OpamVariable.variable_contents option
 
 val make :
-  self:package ->
-  ocaml_version:string ->
+  ?ocamlpath:string ->
   ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
-  package OpamTypes.name_map ->
+  ocaml_version:string ->
+  opam:string ->
+  string ->
   t
-
-val read_json : ocaml_version:string -> path:string -> Yojson.Basic.t -> t
-val read_file : ocaml_version:string -> path:string -> string -> t
+(* [make ?vars ~ocaml_version path] creates a build context for a package
+   located at a nix store path [path] with opam file located at [opam]. *)

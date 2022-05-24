@@ -14,6 +14,18 @@ type t = {
   vars : OpamTypes.variable_contents OpamVariable.Full.Map.t;
 }
 
+let pp_package formatter package =
+  let field = Fmt.Dump.field in
+  Fmt.pf formatter "%a"
+    (Fmt.Dump.record
+       [
+         field "name" (fun r -> r.name) Opam_utils.pp_package_name;
+         field "version" (fun r -> r.version) Opam_utils.pp_package_version;
+         field "opam" (fun r -> r.opam) Opam_utils.pp_filename;
+         field "path" (fun r -> r.path) Opam_utils.pp_filename_dir;
+       ])
+    package
+
 module Vars = struct
   let add_native_system_vars vars =
     let system_variables = OpamSysPoll.variables in
@@ -255,103 +267,42 @@ let resolve t ?(local = OpamVariable.Map.empty) full_var =
   in
   contents
 
-let make ~self ~ocaml_version ?(vars = Vars.default) scope =
-  (* TODO: check ocaml versions. *)
+let package_of_nix_store_path ~libdir (store_path : Nix_utils.store_path) =
+  let package_name = OpamPackage.Name.to_string store_path.package_name in
+  {
+    name = store_path.package_name;
+    version = store_path.package_version;
+    path = store_path.prefix;
+    (* FIXME: This is not the opam file from the repo. *)
+    opam = OpamFilename.Op.(libdir / package_name // "opam");
+  }
+
+let make ?(ocamlpath = Sys.getenv_opt "OCAMLPATH" or "") ?(vars = Vars.default)
+    ~ocaml_version ~opam path =
+  Logs.debug (fun log -> log "Build_context.make: OCAMLPATH=%s" ocamlpath);
+  let deps =
+    if String.length ocamlpath = 0 then OpamPackage.Name.Map.empty
+    else
+      let ocaml_libdirs = String.split_on_char ':' ocamlpath in
+      List.fold_left
+        (fun acc libdir ->
+          let libdir = OpamFilename.Dir.of_string libdir in
+          let store_path = Nix_utils.parse_store_path libdir in
+          let pkg = package_of_nix_store_path ~libdir store_path in
+          OpamPackage.Name.Map.add store_path.package_name pkg acc)
+        OpamPackage.Name.Map.empty ocaml_libdirs
+  in
+  let self =
+    let path = OpamFilename.Dir.of_string path in
+    let opam = OpamFilename.of_string opam in
+    let store_path = Nix_utils.parse_store_path path in
+    {
+      name = store_path.package_name;
+      version = store_path.package_version;
+      path;
+      opam;
+    }
+  in
+  let scope = OpamPackage.Name.Map.add self.name self deps in
   let ocaml_version = OpamPackage.Version.of_string ocaml_version in
   { self; ocaml_version; vars; scope }
-
-let decode_depend json =
-  match json with
-  | `Assoc bindings ->
-    let name = ref None in
-    let version = ref None in
-    let path = ref None in
-    let opam = ref None in
-    let decode_binding (key, json) =
-      match (key, json) with
-      | "name", `String x -> name := Some x
-      | "name", _ -> invalid_arg "could not decode JSON: name must be a string"
-      | "version", `String x -> version := Some x
-      | "version", _ ->
-        invalid_arg "could not decode JSON: version must be a string"
-      | "path", `String x -> path := Some x
-      | "path", _ -> invalid_arg "could not decode JSON: path must be a string"
-      | "opam", `String x -> opam := Some x
-      | "opam", _ -> invalid_arg "could not decode JSON: opam must be a string"
-      | _, _ -> invalid_arg ("could not decode JSON: unknown key: " ^ key)
-    in
-    List.iter decode_binding bindings;
-    let name =
-      !name
-      |> Option.or_fail "could not decode JSON: missing name key"
-      |> OpamPackage.Name.of_string
-    in
-    let version =
-      !version
-      |> Option.or_fail "could not decode JSON: missing version key"
-      |> OpamPackage.Version.of_string
-    in
-    let path =
-      !path
-      |> Option.or_fail "could not decode JSON: missing path key"
-      |> OpamFilename.Dir.of_string
-    in
-    let opam =
-      !opam
-      |> Option.or_fail "could not decode JSON: missing opam key"
-      |> OpamFilename.of_string
-    in
-    { name; version; opam; path }
-  | _ -> invalid_arg "depends entry must be an object"
-
-let read_json ~ocaml_version ~path json =
-  match json with
-  | `Assoc bindings ->
-    let name = ref None in
-    let version = ref None in
-    let opam = ref None in
-    let depends = ref [] in
-    let decode_binding (key, json) =
-      match (key, json) with
-      | "name", `String x -> name := Some x
-      | "name", _ -> invalid_arg "could not decode JSON: name must be a string"
-      | "version", `String x -> version := Some x
-      | "version", _ ->
-        invalid_arg "could not decode JSON: version must be a string"
-      | "opam", `String x -> opam := Some x
-      | "opam", _ -> invalid_arg "could not decode JSON: opam must be a string"
-      | "depends", `List xs -> depends := List.map decode_depend xs
-      | "depends", _ ->
-        invalid_arg "could not decode JSON: depends must be an array"
-      | _, _ -> invalid_arg ("could not decode JSON: unknown key: " ^ key)
-    in
-    List.iter decode_binding bindings;
-    let name =
-      !name
-      |> Option.or_fail "could not decode JSON: missing name key"
-      |> OpamPackage.Name.of_string
-    in
-    let version =
-      !version
-      |> Option.or_fail "could not decode JSON: missing version key"
-      |> OpamPackage.Version.of_string
-    in
-    let opam =
-      !opam
-      |> Option.or_fail "could not decode JSON: missing opam key"
-      |> OpamFilename.of_string
-    in
-    let path = path |> OpamFilename.Dir.of_string in
-    let self = { name; version; opam; path } in
-    let depends =
-      List.fold_left
-        (fun acc pkg -> OpamPackage.Name.Map.add pkg.name pkg acc)
-        OpamPackage.Name.Map.empty !depends
-    in
-    let scope = OpamPackage.Name.Map.add self.name self depends in
-    make ~self ~ocaml_version scope
-  | _ -> invalid_arg "build context must be an object"
-
-let read_file ~ocaml_version ~path file =
-  let json = Yojson.Basic.from_file file in
-  read_json ~ocaml_version ~path json

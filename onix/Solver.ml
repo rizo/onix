@@ -12,9 +12,9 @@ module Solver = Opam_0install.Solver.Make (Solver_context)
 let resolve_repo repo_url =
   let path, url =
     let url = OpamUrl.of_string repo_url in
-    if Option.is_some url.hash then (Opam_utils.fetch url, url)
+    if Option.is_some url.hash then (Nix_utils.fetch url, url)
     else
-      let rev, path = Opam_utils.fetch_resolve url in
+      let rev, path = Nix_utils.fetch_resolve url in
       (path, { url with hash = Some rev })
   in
   Logs.info (fun log -> log "Using OPAM repository: %a" Opam_utils.pp_url url);
@@ -25,7 +25,7 @@ let solve ~repo_url input_opam_files =
   let root_packages = Opam_utils.find_root_packages input_opam_files in
 
   (* Pin-depends packages found in root_packages. *)
-  let pins = Opam_utils.Pins.collect_from_opam_files root_packages in
+  let pins = Pin_depends.collect_from_opam_files root_packages in
 
   (* Packages provided by the project (roots + pins). *)
   let fixed_packages =

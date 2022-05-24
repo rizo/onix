@@ -158,10 +158,8 @@ module Patch = struct
 
   (* TODO: implement extra file fetching via lock-file?:
      - https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L455 *)
-  let run ~ocaml_version ~path build_ctx_file =
-    let ctx : Build_context.t =
-      Build_context.read_file ~ocaml_version ~path build_ctx_file
-    in
+  let run ~ocaml_version ~opam path =
+    let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
     let opam = Opam_utils.read_opam ctx.self.opam in
     let opamfile = ctx.self.opam in
     Logs.debug (fun log ->
@@ -186,11 +184,9 @@ end
 
 let patch = Patch.run
 
-let build ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~path
-    build_ctx_file =
-  let ctx : Build_context.t =
-    Build_context.read_file ~ocaml_version ~path build_ctx_file
-  in
+let build ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~opam
+    path =
+  let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
   let opam = Opam_utils.read_opam ctx.self.opam in
   Logs.debug (fun log ->
       log "Decoded build context for: %S"
@@ -249,11 +245,9 @@ module Install = struct
             dst);
       OpamFilename.copy ~src ~dst)
 
-  let run ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~path
-      build_ctx_file =
-    let ctx : Build_context.t =
-      Build_context.read_file ~ocaml_version ~path build_ctx_file
-    in
+  let run ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~opam
+      path =
+    let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
     let opam = Opam_utils.read_opam ctx.self.opam in
     Logs.debug (fun log ->
         log "Decoded build context for: %S"
