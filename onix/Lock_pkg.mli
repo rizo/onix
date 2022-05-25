@@ -8,4 +8,9 @@ val pp : Format.formatter -> t -> unit
 val pp_name : Format.formatter -> OpamTypes.name -> unit
 
 val of_opam :
-  ?test:bool -> ?doc:bool -> OpamPackage.t -> OpamFile.OPAM.t -> t option
+  ?with_build:bool ->
+  ?with_test:bool ->
+  ?with_doc:bool ->
+  OpamPackage.t ->
+  OpamFile.OPAM.t ->
+  t option

@@ -4,7 +4,7 @@
   allRefs = true;
 } }:
 {
-  "0install-solver" =  {
+  "0install-solver" = {
     name = "0install-solver";
     version = "2.17";
     src = pkgs.fetchurl {
@@ -13,43 +13,35 @@
     };
     opam = "${opam-repo}/packages/0install-solver/0install-solver.2.17/opam";
     depends = with self; [ dune ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
+    testDepends = with self; [ ounit2 ];
   };
-  astring =  {
+  astring = {
     name = "astring";
     version = "0.8.5";
     src = builtins.fetchurl {
       url = "https://erratique.ch/software/astring/releases/astring-0.8.5.tbz";
     };
     opam = "${opam-repo}/packages/astring/astring.0.8.5/opam";
-    depends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
-    depexts = [ ];
+    depends = with self; [ ocaml ];
+    buildDepends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
   };
-  base-bigarray =  {
+  base-bigarray = {
     name = "base-bigarray";
     version = "base";
-    src = null;
     opam = "${opam-repo}/packages/base-bigarray/base-bigarray.base/opam";
-    depends = with self; [ ];
-    depexts = [ ];
   };
-  base-threads =  {
+  base-threads = {
     name = "base-threads";
     version = "base";
-    src = null;
     opam = "${opam-repo}/packages/base-threads/base-threads.base/opam";
-    depends = with self; [ ];
-    depexts = [ ];
   };
-  base-unix =  {
+  base-unix = {
     name = "base-unix";
     version = "base";
-    src = null;
     opam = "${opam-repo}/packages/base-unix/base-unix.base/opam";
-    depends = with self; [ ];
-    depexts = [ ];
   };
-  biniou =  {
+  biniou = {
     name = "biniou";
     version = "1.2.1";
     src = pkgs.fetchurl {
@@ -58,9 +50,9 @@
     };
     opam = "${opam-repo}/packages/biniou/biniou.1.2.1/opam";
     depends = with self; [ dune easy-format ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
   };
-  bos =  {
+  bos = {
     name = "bos";
     version = "0.2.1";
     src = pkgs.fetchurl {
@@ -68,11 +60,11 @@
       sha512 = "8daeb8a4c2dd1f2460f6274ada19f4f1b6ebe875ff83a938c93418ce0e6bdb74b8afc5c9a7d410c1c9df2dad030e4fa276b6ed2da580639484e8b5bc92610b1d";
     };
     opam = "${opam-repo}/packages/bos/bos.0.2.1/opam";
-    depends = with self; [ astring base-unix fmt fpath logs ocaml ocamlbuild
-                           ocamlfind rresult topkg ];
-    depexts = [ ];
+    depends = with self; [ astring base-unix fmt fpath logs ocaml rresult ];
+    buildDepends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
+    testDepends = with self; [ mtime ];
   };
-  cmdliner =  {
+  cmdliner = {
     name = "cmdliner";
     version = "1.1.1";
     src = pkgs.fetchurl {
@@ -81,9 +73,9 @@
     };
     opam = "${opam-repo}/packages/cmdliner/cmdliner.1.1.1/opam";
     depends = with self; [ ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ ocaml ];
   };
-  cppo =  {
+  cppo = {
     name = "cppo";
     version = "1.6.9";
     src = pkgs.fetchurl {
@@ -92,9 +84,9 @@
     };
     opam = "${opam-repo}/packages/cppo/cppo.1.6.9/opam";
     depends = with self; [ base-unix dune ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
   };
-  dune =  {
+  dune = {
     name = "dune";
     version = "3.2.0";
     src = pkgs.fetchurl {
@@ -104,9 +96,9 @@
     opam = "${opam-repo}/packages/dune/dune.3.2.0/opam";
     depends = with self; [ base-threads base-unix (self.ocaml or null)
                            (self.ocamlfind-secondary or null) ];
-    depexts = [ ];
+    buildDepends = with self; [ (self.ocaml or null) ];
   };
-  easy-format =  {
+  easy-format = {
     name = "easy-format";
     version = "1.3.2";
     src = pkgs.fetchurl {
@@ -115,9 +107,9 @@
     };
     opam = "${opam-repo}/packages/easy-format/easy-format.1.3.2/opam";
     depends = with self; [ dune ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
   };
-  fmt =  {
+  fmt = {
     name = "fmt";
     version = "0.9.0";
     src = pkgs.fetchurl {
@@ -125,44 +117,42 @@
       sha512 = "66cf4b8bb92232a091dfda5e94d1c178486a358cdc34b1eec516d48ea5acb6209c0dfcb416f0c516c50ddbddb3c94549a45e4a6d5c5fd1c81d3374dec823a83b";
     };
     opam = "${opam-repo}/packages/fmt/fmt.0.9.0/opam";
-    depends = with self; [ ocaml ocamlbuild ocamlfind topkg
-                           (self.base-unix or null) (self.cmdliner or null) ];
-    depexts = [ ];
+    depends = with self; [ ocaml (self.base-unix or null)
+                           (self.cmdliner or null) ];
+    buildDepends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
   };
-  fpath =  {
+  fpath = {
     name = "fpath";
     version = "0.7.3";
     src = builtins.fetchurl {
       url = "https://erratique.ch/software/fpath/releases/fpath-0.7.3.tbz";
     };
     opam = "${opam-repo}/packages/fpath/fpath.0.7.3/opam";
-    depends = with self; [ astring ocaml ocamlbuild ocamlfind topkg ];
-    depexts = [ ];
+    depends = with self; [ astring ocaml ];
+    buildDepends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
   };
-  logs =  {
+  logs = {
     name = "logs";
     version = "0.7.0";
     src = builtins.fetchurl {
       url = "https://erratique.ch/software/logs/releases/logs-0.7.0.tbz";
     };
     opam = "${opam-repo}/packages/logs/logs.0.7.0/opam";
-    depends = with self; [ ocaml ocamlbuild ocamlfind topkg
-                           (self.base-threads or null)
+    depends = with self; [ ocaml (self.base-threads or null)
                            (self.cmdliner or null) (self.fmt or null)
                            (self.js_of_ocaml or null) (self.lwt or null) ];
-    depexts = [ ];
+    buildDepends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
+    testDepends = with self; [ mtime ];
   };
-  ocaml =  {
+  ocaml = {
     name = "ocaml";
     version = "4.14.0";
-    src = null;
     opam = "${opam-repo}/packages/ocaml/ocaml.4.14.0/opam";
     depends = with self; [ ocaml-config (self.ocaml-base-compiler or null)
                            (self.ocaml-system or null)
                            (self.ocaml-variants or null) ];
-    depexts = [ ];
   };
-  ocaml-base-compiler =  {
+  ocaml-base-compiler = {
     name = "ocaml-base-compiler";
     version = "4.14.0";
     src = pkgs.fetchurl {
@@ -170,28 +160,21 @@
       sha256 = "39f44260382f28d1054c5f9d8bf4753cb7ad64027da792f7938344544da155e8";
     };
     opam = "${opam-repo}/packages/ocaml-base-compiler/ocaml-base-compiler.4.14.0/opam";
-    depends = with self; [ ];
-    depexts = [ ];
   };
-  ocaml-config =  {
+  ocaml-config = {
     name = "ocaml-config";
     version = "2";
-    src = null;
     opam = "${opam-repo}/packages/ocaml-config/ocaml-config.2/opam";
     depends = with self; [ (self.ocaml-base-compiler or null)
                            (self.ocaml-system or null)
                            (self.ocaml-variants or null) ];
-    depexts = [ ];
   };
-  ocaml-options-vanilla =  {
+  ocaml-options-vanilla = {
     name = "ocaml-options-vanilla";
     version = "1";
-    src = null;
     opam = "${opam-repo}/packages/ocaml-options-vanilla/ocaml-options-vanilla.1/opam";
-    depends = with self; [ ];
-    depexts = [ ];
   };
-  ocamlbuild =  {
+  ocamlbuild = {
     name = "ocamlbuild";
     version = "0.14.1";
     src = pkgs.fetchurl {
@@ -200,9 +183,9 @@
     };
     opam = "${opam-repo}/packages/ocamlbuild/ocamlbuild.0.14.1/opam";
     depends = with self; [ ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ ocaml ];
   };
-  ocamlfind =  {
+  ocamlfind = {
     name = "ocamlfind";
     version = "1.9.3";
     src = pkgs.fetchurl {
@@ -211,9 +194,9 @@
     };
     opam = "${opam-repo}/packages/ocamlfind/ocamlfind.1.9.3/opam";
     depends = with self; [ ocaml (self.graphics or null) ];
-    depexts = [ ];
+    buildDepends = with self; [ ocaml ];
   };
-  ocamlgraph =  {
+  ocamlgraph = {
     name = "ocamlgraph";
     version = "2.0.0";
     src = pkgs.fetchurl {
@@ -222,18 +205,20 @@
     };
     opam = "${opam-repo}/packages/ocamlgraph/ocamlgraph.2.0.0/opam";
     depends = with self; [ dune ocaml stdlib-shims ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
+    testDepends = with self; [ graphics ];
   };
   onix = rec {
     name = "onix";
     version = "root";
     src = ./.;
     opam = "${src}/onix.opam";
-    depends = with self; [ bos cmdliner dune easy-format fmt fpath logs ocaml
+    depends = with self; [ bos cmdliner easy-format fmt fpath logs ocaml
                            opam-0install yojson ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
+    docDepends = with self; [ odoc ];
   };
-  opam-0install =  {
+  opam-0install = {
     name = "opam-0install";
     version = "0.4.3";
     src = pkgs.fetchurl {
@@ -243,9 +228,11 @@
     opam = "${opam-repo}/packages/opam-0install/opam-0install.0.4.3/opam";
     depends = with self; [ self."0install-solver" cmdliner dune fmt ocaml
                            opam-file-format opam-state ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
+    testDepends = with self; [ alcotest astring opam-client opam-solver ];
+    docDepends = with self; [ odoc ];
   };
-  opam-core =  {
+  opam-core = {
     name = "opam-core";
     version = "2.1.2";
     src = pkgs.fetchurl {
@@ -253,11 +240,10 @@
       sha512 = "bea6f75728a6ef25bcae4f8903dde7a297df7186208dccacb3f58bd6a0caec551c11b79e8544f0983feac038971dbe49481fc405a5962973a5f56ec811abe396";
     };
     opam = "${opam-repo}/packages/opam-core/opam-core.2.1.2/opam";
-    depends = with self; [ base-bigarray base-unix cppo dune ocaml ocamlgraph
-                           re ];
-    depexts = [ ];
+    depends = with self; [ base-bigarray base-unix dune ocaml ocamlgraph re ];
+    buildDepends = with self; [ cppo dune ocaml ];
   };
-  opam-file-format =  {
+  opam-file-format = {
     name = "opam-file-format";
     version = "2.1.4";
     src = pkgs.fetchurl {
@@ -266,9 +252,10 @@
     };
     opam = "${opam-repo}/packages/opam-file-format/opam-file-format.2.1.4/opam";
     depends = with self; [ ocaml (self.dune or null) ];
-    depexts = [ ];
+    buildDepends = with self; [ ocaml (self.dune or null) ];
+    testDepends = with self; [ alcotest ];
   };
-  opam-format =  {
+  opam-format = {
     name = "opam-format";
     version = "2.1.2";
     src = pkgs.fetchurl {
@@ -277,9 +264,9 @@
     };
     opam = "${opam-repo}/packages/opam-format/opam-format.2.1.2/opam";
     depends = with self; [ dune ocaml opam-core opam-file-format re ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
   };
-  opam-repository =  {
+  opam-repository = {
     name = "opam-repository";
     version = "2.1.2";
     src = pkgs.fetchurl {
@@ -288,9 +275,9 @@
     };
     opam = "${opam-repo}/packages/opam-repository/opam-repository.2.1.2/opam";
     depends = with self; [ dune ocaml opam-format ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
   };
-  opam-state =  {
+  opam-state = {
     name = "opam-state";
     version = "2.1.2";
     src = pkgs.fetchurl {
@@ -299,9 +286,9 @@
     };
     opam = "${opam-repo}/packages/opam-state/opam-state.2.1.2/opam";
     depends = with self; [ dune ocaml opam-repository ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
   };
-  re =  {
+  re = {
     name = "re";
     version = "1.10.4";
     src = pkgs.fetchurl {
@@ -310,9 +297,10 @@
     };
     opam = "${opam-repo}/packages/re/re.1.10.4/opam";
     depends = with self; [ dune ocaml seq ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
+    testDepends = with self; [ ounit ];
   };
-  rresult =  {
+  rresult = {
     name = "rresult";
     version = "0.7.0";
     src = pkgs.fetchurl {
@@ -320,18 +308,17 @@
       sha512 = "f1bb631c986996388e9686d49d5ae4d8aaf14034f6865c62a88fb58c48ce19ad2eb785327d69ca27c032f835984e0bd2efd969b415438628a31f3e84ec4551d3";
     };
     opam = "${opam-repo}/packages/rresult/rresult.0.7.0/opam";
-    depends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
-    depexts = [ ];
+    depends = with self; [ ocaml ];
+    buildDepends = with self; [ ocaml ocamlbuild ocamlfind topkg ];
   };
-  seq =  {
+  seq = {
     name = "seq";
     version = "base";
-    src = null;
     opam = "${opam-repo}/packages/seq/seq.base/opam";
     depends = with self; [ ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ ocaml ];
   };
-  stdlib-shims =  {
+  stdlib-shims = {
     name = "stdlib-shims";
     version = "0.3.0";
     src = pkgs.fetchurl {
@@ -340,9 +327,9 @@
     };
     opam = "${opam-repo}/packages/stdlib-shims/stdlib-shims.0.3.0/opam";
     depends = with self; [ dune ocaml ];
-    depexts = [ ];
+    buildDepends = with self; [ dune ocaml ];
   };
-  topkg =  {
+  topkg = {
     name = "topkg";
     version = "1.0.5";
     src = pkgs.fetchurl {
@@ -350,17 +337,18 @@
       sha512 = "9450e9139209aacd8ddb4ba18e4225770837e526a52a56d94fd5c9c4c9941e83e0e7102e2292b440104f4c338fabab47cdd6bb51d69b41cc92cc7a551e6fefab";
     };
     opam = "${opam-repo}/packages/topkg/topkg.1.0.5/opam";
-    depends = with self; [ ocaml ocamlbuild ocamlfind ];
-    depexts = [ ];
+    depends = with self; [ ocaml ocamlbuild ];
+    buildDepends = with self; [ ocaml ocamlbuild ocamlfind ];
   };
-  yojson =  {
+  yojson = {
     name = "yojson";
     version = "1.7.0";
     src = builtins.fetchurl {
       url = "https://github.com/ocaml-community/yojson/releases/download/1.7.0/yojson-1.7.0.tbz";
     };
     opam = "${opam-repo}/packages/yojson/yojson.1.7.0/opam";
-    depends = with self; [ biniou cppo dune easy-format ocaml ];
-    depexts = [ ];
+    depends = with self; [ biniou dune easy-format ocaml ];
+    buildDepends = with self; [ cppo dune ocaml ];
+    testDepends = with self; [ alcotest ];
   };
 }

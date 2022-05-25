@@ -16,7 +16,17 @@ let read_opam path =
       OpamFile.OPAM.read_from_channel ~filename ic)
 
 let ocaml_name = OpamPackage.Name.of_string "ocaml"
+let ocamlfind_name = OpamPackage.Name.of_string "ocamlfind"
+let dune_name = OpamPackage.Name.of_string "dune"
+let ocamlbuild_name = OpamPackage.Name.of_string "ocamlbuild"
+let topkg_name = OpamPackage.Name.of_string "ocamlfind"
+let cppo_name = OpamPackage.Name.of_string "cppo"
 let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
+
+let build_depends_names =
+  [
+    ocaml_name; ocamlfind_name; dune_name; ocamlbuild_name; topkg_name; cppo_name;
+  ]
 
 let is_opam_filename filename =
   String.equal (Filename.extension filename) ".opam"

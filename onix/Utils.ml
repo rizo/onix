@@ -103,3 +103,6 @@ module Os = struct
     | Ok (`Signaled n) -> Fmt.failwith "Command terminated by signal: %d@." n
     | Error (`Msg err) -> Fmt.failwith "Could not run command: %s" err
 end
+
+module Name_set = OpamPackage.Name.Set
+module Name_map = OpamPackage.Name.Map

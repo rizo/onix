@@ -72,9 +72,10 @@ module Vars = struct
     |> add "os-version" (string "unknown")
 
   let default =
-    OpamVariable.Full.Map.empty |> add_native_system_vars |> add_global_vars
-
-  let nixos = default |> add_nixos_vars
+    OpamVariable.Full.Map.empty
+    |> add_native_system_vars
+    |> add_global_vars
+    |> add_nixos_vars
 
   let make_path_ ?suffix ~prefix pkg_name =
     match (pkg_name, suffix) with
@@ -142,7 +143,9 @@ module Vars = struct
     | "name", `Package pkg -> string (OpamPackage.Name.to_string pkg.name)
     (* Should this be allowed? *)
     (* | "name", `Missing -> string (OpamPackage.Name.to_string OpamVariable.Full.scope) *)
-    | "build", _ -> string "ONIX_NOT_IMPLEMENTED_build"
+    | "build", _ ->
+      Fmt.failwith "ONIX_NOT_IMPLEMENTED_build: %a" Opam_utils.pp_package_name
+        t.self.name
     | "dev", _ -> bool false
     | "version", `Global ->
       string (OpamPackage.Version.to_string t.self.version)

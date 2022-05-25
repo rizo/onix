@@ -2,11 +2,11 @@
 
 let
   ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_14;
-  onix = import ./default.nix { };
+  onix = import ../default.nix { };
 
   scope = onix.build {
     ocaml = ocamlPackages.ocaml;
-    lock = ./onix-lock.nix;
+    lock = ../onix-lock.nix;
     overrides = { };
   };
 in scope.onix

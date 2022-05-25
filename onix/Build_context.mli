@@ -16,7 +16,6 @@ val pp_package : Format.formatter -> package -> unit
 
 module Vars : sig
   val default : OpamVariable.variable_contents OpamVariable.Full.Map.t
-  val nixos : OpamVariable.variable_contents OpamVariable.Full.Map.t
 
   val resolve_from_env :
     OpamTypes.full_variable -> OpamVariable.variable_contents option

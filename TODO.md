@@ -67,7 +67,7 @@
   - with-doc
   - with-dev/with-tools?
 - [ ] Add flakes support.
-- [ ] Use strictDeps.
+- [ ] Use strictDeps. This will require handling conf- packages in the lock file.
 - [ ] Ensure valid pkg names (exclude ~).
 - [ ] Handle lock file without ocaml.
 - [ ] Changing project's opam file currently triggers full scope rebuild?

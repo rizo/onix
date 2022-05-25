@@ -1,3 +1,9 @@
 (test
  (name Test_vars)
+ (modules Test_vars)
  (libraries yojson onix opam-format fmt))
+
+(test
+ (name Test_lock)
+ (modules Test_lock)
+ (libraries onix opam-format fmt))

@@ -4,7 +4,7 @@ let
   inherit (builtins)
     trace hasAttr getAttr setAttr mapAttrs concatMap pathExists foldl';
   inherit (pkgs) lib stdenv;
-  inherit (pkgs.lib.lists) optional;
+  inherit (pkgs.lib.lists) optional optionals;
 
   # Build the compiler from lock file from source by default.
   defaultOCaml = null;
@@ -26,9 +26,10 @@ let
         let pkg = getAttr lockDep.name scope;
         in acc // {
           ${lockDep.name} = pkg;
-        } // collectTransitiveDeps acc scope lockDep.depends) init lockDeps;
+        } // collectTransitiveDeps acc scope (lockDep.depends or [ ])) init
+    lockDeps;
 
-  collectPaths = ocamlVersion: pkgDeps:
+  collectDepsPaths = ocamlVersion: pkgDeps:
     let
       path = dir: optional (pathExists dir) dir;
       empty = {
@@ -48,60 +49,84 @@ let
         };
     in foldl' updatePath empty (builtins.attrValues pkgDeps);
 
-  buildPkg = ocamlVersion: scope: name: lockPkg:
+  buildPkg = { scope, strictDeps, logLevel }:
+    name: lockPkg:
     let
-      transitiveDeps = collectTransitiveDeps { } scope lockPkg.depends;
-      transitiveDepsPaths = collectPaths ocamlVersion transitiveDeps;
-      directDeps = concatMap (lockDep:
-        optional (!isNull lockDep) (getAttr lockDep.name transitiveDeps))
-        lockPkg.depends;
+      ocaml = scope.ocaml;
+
+      # Transitive dependencies and their OCaml paths.
+      transitiveDeps = collectTransitiveDeps { } scope
+        (lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ]);
+      transitiveDepsPaths = collectDepsPaths ocaml.version transitiveDeps;
+
+      # Direct dependencies of the package.
+      directDeps = concatMap
+        (lockDep: optional (!isNull lockDep) (getAttr lockDep.name scope))
+        (lockPkg.depends or [ ]);
+
+      # Build dependencies of the package.
+      directBuildDeps = concatMap
+        (lockDep: optional (!isNull lockDep) (getAttr lockDep.name scope))
+        (lockPkg.buildDepends or [ ]);
+
+      # All but one package in opam follow this convention:
+      # $ opam list --all --has-flag=conf
+      isConfigPkg = lib.strings.hasPrefix "conf-" lockPkg.name;
+
+      src = lockPkg.src or null;
 
     in stdenv.mkDerivation {
       pname = name;
       version = lockPkg.version;
-      src = lockPkg.src;
-      dontUnpack = isNull lockPkg.src;
+      inherit src;
+      dontUnpack = isNull src;
 
-      propagatedBuildInputs = lockPkg.depexts ++ directDeps;
+      # Unfortunately many packages misclassify their dependencies so this
+      # should be false for most packages.
+      inherit strictDeps;
 
-      # strictDeps = true;
-      # nativeBuildInputs = [ scope.ocaml scope.dune pkgs.opam-installer ];
-      nativeBuildInputs = [ pkgs.opam-installer ];
+      # Propage direct dependencies and but not depexts for config packages.
+      propagatedBuildInputs = directDeps ++ (lockPkg.depexts or [ ]);
 
+      # Onix calls opam-installer to install packages. Add direct build deps 
+      nativeBuildInputs = [ pkgs.opam-installer ] ++ directBuildDeps
+        ++ optionals isConfigPkg (lockPkg.depexts or [ ]);
+
+      # Set environment variables for OCaml library lookup. This needs to use
+      # transitive dependencies as dune requires the full dependency tree.
       OCAMLPATH = lib.strings.concatStringsSep ":" transitiveDepsPaths.libdir;
       CAML_LD_LIBRARY_PATH =
         lib.strings.concatStringsSep ":" transitiveDepsPaths.stublibs;
       OCAMLTOP_INCLUDE_PATH =
         lib.strings.concatStringsSep ":" transitiveDepsPaths.toplevel;
 
-      ONIX_LOG_LEVEL = "debug";
+      ONIX_LOG_LEVEL = logLevel;
 
       prePatch = ''
         echo + prePatch ${name} $out
-        echo ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
-        ${onix}/bin/onix opam-patch --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
+        echo ${onix}/bin/onix opam-patch --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
+        ${onix}/bin/onix opam-patch --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
       '';
 
       # Not sure if OCAMLFIND_DESTDIR is needed.
       # dune install is not flexible enough to provide libdir via env.
-      # some packages call dune install from build.
       configurePhase = ''
         echo + configurePhase
-        export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocamlVersion}/site-lib"
+        export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
         export DUNE_INSTALL_PREFIX=$out
       '';
 
       buildPhase = ''
         echo + buildPhase ${name} $out
-        ${onix}/bin/onix opam-build  --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
+        ${onix}/bin/onix opam-build  --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
       '';
 
       # ocamlfind install requires the liddir to exist.
       # move packages installed with dune.
       installPhase = ''
         echo + installPhase ${name} $out
-        mkdir -p $out/lib/ocaml/${ocamlVersion}/site-lib/${name}
-        ${onix}/bin/onix opam-install --ocaml-version=${ocamlVersion} --opam=${lockPkg.opam} $out
+        mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/${name}
+        ${onix}/bin/onix opam-install --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
 
         if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
           echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"
@@ -111,7 +136,8 @@ let
     };
 
 in {
-  build = { ocaml ? defaultOCaml, lock, overrides ? { } }:
+  build = { ocaml ? defaultOCaml, lock, overrides ? { }, strictDeps ? false
+    , logLevel ? "debug" }:
 
     let
       onix-lock = import lock {
@@ -119,7 +145,7 @@ in {
         self = onix-lock;
       };
 
-      allOverrides = import ./overrides { inherit pkgs ocaml; } // {
+      allOverrides = import ./overrides { inherit pkgs ocaml scope; } // {
         ocaml = pkg:
           if isNull ocaml then
             pkg
@@ -135,7 +161,8 @@ in {
       } // overrides;
 
       # The scope without overrides.
-      baseScope = mapAttrs (buildPkg onix-lock.ocaml.version scope) onix-lock;
+      baseScope =
+        mapAttrs (buildPkg { inherit strictDeps scope logLevel; }) onix-lock;
 
       # The final scope with all packages and applied overrides.
       scope = mapAttrs (name: pkg:
