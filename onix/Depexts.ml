@@ -5,4 +5,5 @@ let from_opam_name pkg_name =
   | "conf-binutils" -> Some ["binutils"]
   | "bap-std" -> Some ["binutils"; "zlib"]
   | "bitvec-sexp" -> Some ["which"]
+  | "conf-gmp" -> Some ["gmp.dev"]
   | _ -> None

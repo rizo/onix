@@ -13,4 +13,4 @@ let
     ocaml = ocamlPackages.ocaml;
     lock = ./onix-lock.nix;
   };
-in scope.hello
+in scope.with-depexts-postgresql

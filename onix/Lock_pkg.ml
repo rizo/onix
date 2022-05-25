@@ -48,6 +48,21 @@ let pp_name f name =
   if Utils.String.starts_with_number name then Fmt.Dump.string f name
   else Fmt.string f name
 
+let pp_version f version =
+  let version = OpamPackage.Version.to_string version in
+  (* We require that the version does NOT contain any '-' or '~' characters.
+     - Note that nix will replace '~' to '-' automatically.
+     The version is parsed with Nix_utils.parse_store_path by splitting bytes
+     '- ' to obtain the Build_context.package information.
+     This is fine because the version in the lock file is mostly informative. *)
+  let set_valid_char i =
+    match String.get version i with
+    | '-' | '~' -> '+'
+    | valid -> valid
+  in
+  let version = String.init (String.length version) set_valid_char in
+  Fmt.pf f "%S" version
+
 let pp_hash f hash =
   let kind = OpamHash.kind hash in
   match kind with
@@ -79,7 +94,7 @@ let pp_src f t =
 
 let pp f t =
   let name = OpamPackage.name_to_string t.package in
-  let version = OpamPackage.version_to_string t.package in
+  let version = OpamPackage.version t.package in
   let pp_depends f depopts =
     OpamPackage.Name.Set.iter
       (fun dep ->
@@ -103,9 +118,9 @@ let pp f t =
         deps
   in
   Format.fprintf f
-    "@ name = %S;@ version = %S;@ src = %a;@ opam = %S;@ depends = with self; \
+    "@ name = %S;@ version = %a;@ src = %a;@ opam = %S;@ depends = with self; \
      @[<hov2>[%a%a@ @]];@ depexts = @[<hov2>[%a@ @]];"
-    name version pp_src t
+    name pp_version version pp_src t
     (opam_path_for_locked_package t)
     pp_depends t.depends pp_depopts t.depopts pp_depexts t.depexts
 
