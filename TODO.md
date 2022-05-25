@@ -56,6 +56,8 @@
 - [ ] Handle empty lock file.
 - [ ] Fetch opam extra-source files.
 - [ ] Always patch shebangs?
+- [ ] Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?
+- [ ] Pass package nv to opam actions. This will fix the develop $out issue.
 - [ ] Add an example with overrides.
 - [ ] Use to sets for depexts: nix * other instead of nix | other.
 - [ ] Support static compilation.
