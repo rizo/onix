@@ -15,20 +15,20 @@
 - [x] Use the same compiler for onix and project build.
 - [x] Drop fpath, use OpamFilename.
 - [x] Improve logging.
-- [ ] Properly fix ocaml env var export for deps.
+- [x] Properly fix ocaml env var export for deps.
   - Using hooks seems is problematic due to multi-export (fails with "Argument list too long").
   - Computing the dep closure is more deterministic albeit potentially costly.
-  - How do we setup env vars for shell?
-  - Do we need to use propagatedBuildInputs with static path generation?
-- [ ] If we replace --path (i.e. inputSrcs) by $out lookup, will this improve caching?
-- [ ] Do we need to include `opam` in build ctx json or can we pass repo-url?
-  - Do we really want opam files for all deps (for opam's `depends` var)?
+- [x] Replace build ctx json with OCAMLPATH lookup.
+  - [ ] Consider installing the opam file as $libdir/$pkg/onix-opam or even overwritting ./opam.
+- [ ] ~~Do we need to include `opam` in build ctx json or can we pass repo-url?~~
+  - ~~Do we really want opam files for all deps (for opam's `depends` var)?~~
 - [ ] Define build/test/dev dependencies separately in lock file?
+- [ ] Handle strange version names in nix paths (like dream-pure-1.0.0-alpha2).
   - So we can correctly set up buildInputs/nativeBuildInputs, etc.
 - [ ] Make dev tools work: vscode/vim plugins.
 - [ ] Fix ocaml env vars propagation for shell.
 - [ ] Use nix-prefetch-url.
-- [ ] Remove empty libdir after install.
+- [ ] Remove empty libdir after install (should at least have opam!!)?
 - [x] Handle .config files (like conf-binutils.config). Is this related to opam's `flag: conf`.
   - https://github.com/tweag/opam-nix/blob/8062dfe742f6636191017232ff504f6765a7f2d1/src/builder.nix#L358
   - Generated on build: https://github.com/ocaml/opam-repository/blob/00777c1a37b2eac5e802e10570a76c89bc5d221e/packages/conf-binutils/conf-binutils.0.3/opam#L9
@@ -45,19 +45,19 @@
   - https://docs.ocaml.pro/docs/LIBRARY.opam_format@opam-format.2.0.8/OpamFile/Dot_install/index.html
 - [ ] Implement onix shell.
 - [ ] Implement onix build.
-- [ ] Use builtins.foldl’.
+- [x] Use builtins.foldl’.
 - [ ] Use builtins.filterSource for ./. src to exclude unwanted dirs (gitignore, _build).
-- [ ] Add --with-dev flag and support for dev dependencies.
 - [ ] Add --lock-file argument to actions.
 - [ ] Add a command similar to `opam var` to lookup package variables?
 - [ ] Support zip unpacking (tezos?).
 - [ ] Improve error-handling.
 - [ ] Build any package without a project `onix build utop` or similar.
-- [ ] Make depends/depexts optional.
+- [ ] ~~Make depends/depexts optional fields.~~ No longer needed for new build context.
 - [ ] Handle empty lock file.
 - [ ] Fetch opam extra-source files.
 - [ ] Always patch shebangs?
 - [ ] Add an example with overrides.
+- [ ] Use to sets for depexts: nix * other instead of nix | other.
 - [ ] Support static compilation.
 - [ ] Handle setenv and build-env.
 - [ ] Support cross-compilation.
@@ -66,11 +66,14 @@
   - with-test
   - with-doc
   - with-dev/with-tools?
-- [ ] Support static-cross-compilation.
 - [ ] Add flakes support.
 - [ ] Use strictDeps.
 - [ ] Ensure valid pkg names (exclude ~).
 - [ ] Handle lock file without ocaml.
-- [ ] Changing project's opam file currently triggers full scope rebuild.
+- [ ] Changing project's opam file currently triggers full scope rebuild?
 - [ ] Version the lock file.
   - Add version, packages and repo fields.
+- [ ] Consider using joinSymlinks to create a build scope.
+- [ ] Nix store path parsing does not work for `nix develop`.
+- [ ] Should the lock file include transitive deps already?
+- [ ] Stop using emptyPkg.
