@@ -251,7 +251,7 @@ let get_depexts ~package_name ~is_zip_src ~env depexts =
     | `Nix nix_depexts -> (nix_depexts, String_set.empty)
     | `Unknown unknown_depexts -> (
       (* Lookup our depexts mappings before giving up. *)
-      match Depexts.from_opam_name package_name with
+      match Overrides.depexts_for_opam_name package_name with
       | Some nix_depexts -> (String_set.of_list nix_depexts, String_set.empty)
       | None -> (String_set.empty, unknown_depexts))
   in
@@ -335,14 +335,14 @@ let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
     List.fold_left
       (fun acc name ->
         if Name_set.mem name depends then Name_set.add name acc else acc)
-      depends_build Opam_utils.build_depends_names
+      depends_build Overrides.build_depends_names
   in
 
   let depopts_build =
     List.fold_left
       (fun acc name ->
         if Name_set.mem name depopts then Name_set.add name acc else acc)
-      depopts_build Opam_utils.build_depends_names
+      depopts_build Overrides.build_depends_names
   in
 
   (* Collect depexts. *)

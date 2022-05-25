@@ -23,11 +23,6 @@ let topkg_name = OpamPackage.Name.of_string "ocamlfind"
 let cppo_name = OpamPackage.Name.of_string "cppo"
 let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
 
-let build_depends_names =
-  [
-    ocaml_name; ocamlfind_name; dune_name; ocamlbuild_name; topkg_name; cppo_name;
-  ]
-
 let is_opam_filename filename =
   String.equal (Filename.extension filename) ".opam"
 
