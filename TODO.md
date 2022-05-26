@@ -22,9 +22,10 @@
   - [ ] Consider installing the opam file as $libdir/$pkg/onix-opam or even overwritting ./opam.
 - [ ] ~~Do we need to include `opam` in build ctx json or can we pass repo-url?~~
   - ~~Do we really want opam files for all deps (for opam's `depends` var)?~~
-- [ ] Define build/test/dev dependencies separately in lock file?
-- [ ] Handle strange version names in nix paths (like dream-pure-1.0.0-alpha2).
+- [x] Define build/test/dev dependencies separately in lock file?
+- [x] Handle strange version names in nix paths (like dream-pure-1.0.0-alpha2).
   - So we can correctly set up buildInputs/nativeBuildInputs, etc.
+- Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
 - [ ] Make dev tools work: vscode/vim plugins.
 - [ ] Fix ocaml env vars propagation for shell.
 - [ ] Use nix-prefetch-url.
@@ -63,19 +64,18 @@
 - [ ] Support static compilation.
 - [ ] Handle setenv and build-env.
 - [ ] Support cross-compilation.
-- [ ] Decide how to support dependency flags:
-  - with-build
-  - with-test
-  - with-doc
-  - with-dev/with-tools?
+- [x] Support dependency flags: with-build with-test with-doc with-dev/with-tools?
+  - Expose flags in the api module.
 - [ ] Add flakes support.
 - [ ] Use strictDeps. This will require handling conf- packages in the lock file.
-- [ ] Ensure valid pkg names (exclude ~).
+- [x] Ensure valid pkg names (exclude ~).
 - [ ] Handle lock file without ocaml.
-- [ ] Changing project's opam file currently triggers full scope rebuild?
+- [x] Changing project's opam file currently triggers full scope rebuild?
 - [ ] Version the lock file.
   - Add version, packages and repo fields.
 - [ ] Consider using joinSymlinks to create a build scope.
+  - Use this for the `onix build` command, i.e., result will contain the root outputs.
 - [ ] Nix store path parsing does not work for `nix develop`.
-- [ ] Should the lock file include transitive deps already?
-- [ ] Stop using emptyPkg.
+- [x] Should the lock file include transitive deps already?
+  - No.
+- [ ] Stop using emptyPkg. Override the base compiler only?
