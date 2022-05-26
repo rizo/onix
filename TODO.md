@@ -28,6 +28,7 @@
   - So we can correctly set up buildInputs/nativeBuildInputs, etc.
 - [x] Changing project's opam file currently triggers full scope rebuild?
 - [x] Support gitignore.
+- api.lock could be a derivation.
 - [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
 - [ ] Make dev tools work: vscode/vim plugins.
 - [ ] Fix ocaml env vars propagation for shell.
