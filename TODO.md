@@ -80,4 +80,4 @@
 - [ ] Nix store path parsing does not work for `nix develop`.
 - [ ] Stop using emptyPkg. Override the base compiler only?
 - [ ] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
-
+- [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
