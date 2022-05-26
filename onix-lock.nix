@@ -211,7 +211,7 @@
   onix = rec {
     name = "onix";
     version = "root";
-    src = ./.;
+    src = pkgs.nix-gitignore.gitignoreSource [] ./.;
     opam = "${src}/onix.opam";
     depends = with self; [ bos cmdliner easy-format fmt fpath logs ocaml
                            opam-0install yojson ];

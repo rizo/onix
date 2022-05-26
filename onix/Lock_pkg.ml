@@ -79,8 +79,11 @@ let pp_hash f hash =
   | `SHA512 -> Fmt.pf f "sha512 = %S" (OpamHash.contents hash)
   | `MD5 -> Fmt.pf f "md5 = %S" (OpamHash.contents hash)
 
-let pp_src f t =
-  if is_root t then Fmt.pf f "@ src = ./.;"
+let pp_src ~gitignore f t =
+  if is_root t then
+    if gitignore then
+      Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSource [] ./.;"
+    else Fmt.pf f "@ src = ./.;"
   else
     match t.src with
     | None -> ()
@@ -131,11 +134,11 @@ let pp_depexts_sets name f (req, opt) =
   else
     Fmt.pf f "@ %s = with pkgs; [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
 
-let pp f t =
+let pp ~gitignore f t =
   let name = OpamPackage.name_to_string t.package in
   let version = OpamPackage.version t.package in
   Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a" name
-    pp_version version pp_src t
+    pp_version version (pp_src ~gitignore) t
     (opam_path_for_locked_package t)
     (pp_depends_sets "depends")
     (t.depends, t.depopts)

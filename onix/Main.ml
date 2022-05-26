@@ -5,11 +5,6 @@ let setup_logs style_renderer log_level =
 
 open Cmdliner
 
-let build_ctx_file_arg =
-  let doc = "Path to the build context of the package to be built." in
-  let docv = "FILE" in
-  Arg.(info [] ~docv ~doc |> pos 0 (some file) None |> required)
-
 let ocaml_version_arg =
   let doc = "The version of OCaml to be used." in
   let docv = "VERSION" in
@@ -25,7 +20,7 @@ let opam_arg =
   let docv = "OPAM" in
   Arg.(info ["opam"] ~docv ~doc |> opt (some string) None |> required)
 
-let repo_arg =
+let repo_url_arg =
   let doc =
     "The URL of the OPAM repository to be used when solving the dependencies.\n\
     \     Examples:\n\
@@ -33,9 +28,9 @@ let repo_arg =
     \     - \
      https://github.com/ocaml/opam-repository.git#16ff1304f8ccdd5a8c9fa3ebe906c32ecdd576ee"
   in
-  let docv = "REPO" in
+  let docv = "URL" in
   Arg.(
-    info ["repo"] ~docv ~doc
+    info ["repo-url"] ~docv ~doc
     |> opt (some string) (Some "https://github.com/ocaml/opam-repository.git")
     |> required)
 
@@ -123,7 +118,7 @@ module Lock = struct
         const run
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
-        $ repo_arg
+        $ repo_url_arg
         $ input_opam_files_arg)
 end
 
