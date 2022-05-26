@@ -52,7 +52,7 @@ let fetch_resolve url =
   Logs.debug (fun log -> log "Fetching git repository: url=%S rev=None" nix_url);
   let result = nix_url |> fetch_git_resolve_expr |> eval ~pure:false in
   match String.split_on_char ',' result with
-  | [path; rev] -> (rev, OpamFilename.Dir.of_string path)
+  | [rev; path] -> (rev, OpamFilename.Dir.of_string path)
   | _ -> Fmt.failwith "Could not fetch: %S, output=%S" nix_url result
 
 let maybe opt =
