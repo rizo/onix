@@ -22,10 +22,13 @@
   - [ ] Consider installing the opam file as $libdir/$pkg/onix-opam or even overwritting ./opam.
 - [ ] ~~Do we need to include `opam` in build ctx json or can we pass repo-url?~~
   - ~~Do we really want opam files for all deps (for opam's `depends` var)?~~
+- [ ] ~~Use builtins.filterSource for ./. src to exclude unwanted dirs (gitignore, _build).~~
 - [x] Define build/test/dev dependencies separately in lock file?
 - [x] Handle strange version names in nix paths (like dream-pure-1.0.0-alpha2).
   - So we can correctly set up buildInputs/nativeBuildInputs, etc.
-- Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
+- [x] Changing project's opam file currently triggers full scope rebuild?
+- [x] Support gitignore.
+- [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
 - [ ] Make dev tools work: vscode/vim plugins.
 - [ ] Fix ocaml env vars propagation for shell.
 - [ ] Use nix-prefetch-url.
@@ -47,10 +50,9 @@
 - [ ] Implement onix shell.
 - [ ] Implement onix build.
 - [x] Use builtins.foldl’.
-- [ ] Use builtins.filterSource for ./. src to exclude unwanted dirs (gitignore, _build).
 - [ ] Add --lock-file argument to actions.
 - [ ] Add a command similar to `opam var` to lookup package variables?
-- [ ] Support zip unpacking (tezos?).
+- [x] Support zip unpacking (tezos?).
 - [ ] Improve error-handling.
 - [ ] Build any package without a project `onix build utop` or similar.
 - [ ] ~~Make depends/depexts optional fields.~~ No longer needed for new build context.
@@ -58,9 +60,9 @@
 - [ ] Fetch opam extra-source files.
 - [ ] Always patch shebangs?
 - [ ] Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?
-- [ ] Pass package nv to opam actions. This will fix the develop $out issue.
+  - [ ] Pass package nv to opam actions. This will fix the develop $out issue.
 - [ ] Add an example with overrides.
-- [ ] Use to sets for depexts: nix * other instead of nix | other.
+- [x] Use two sets for depexts: nix * other instead of nix | other.
 - [ ] Support static compilation.
 - [ ] Handle setenv and build-env.
 - [ ] Support cross-compilation.
@@ -70,15 +72,12 @@
 - [ ] Use strictDeps. This will require handling conf- packages in the lock file.
 - [x] Ensure valid pkg names (exclude ~).
 - [ ] Handle lock file without ocaml.
-- [x] Changing project's opam file currently triggers full scope rebuild?
 - [ ] Version the lock file.
   - Add version, packages and repo fields.
 - [ ] Consider using joinSymlinks to create a build scope.
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
+- [ ] Consider using makeScope for the scope.
 - [ ] Nix store path parsing does not work for `nix develop`.
-- [x] Should the lock file include transitive deps already?
-  - No.
 - [ ] Stop using emptyPkg. Override the base compiler only?
-- [x] Support gitignore.
 - [ ] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
 
