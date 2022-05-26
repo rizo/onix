@@ -79,3 +79,6 @@
 - [x] Should the lock file include transitive deps already?
   - No.
 - [ ] Stop using emptyPkg. Override the base compiler only?
+- [x] Support gitignore.
+- [ ] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
+
