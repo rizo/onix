@@ -162,9 +162,6 @@ module Patch = struct
     let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
     let opam = Opam_utils.read_opam ctx.self.opam in
     let opamfile = ctx.self.opam in
-    Logs.debug (fun log ->
-        log "Decoded build context for: %S"
-          (OpamPackage.Name.to_string ctx.self.name));
     let () =
       let build_dir = OpamFilename.Dir.of_string (Sys.getcwd ()) in
       match OpamFile.OPAM.extra_files opam with
@@ -188,9 +185,6 @@ let build ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~opam
     path =
   let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
   let opam = Opam_utils.read_opam ctx.self.opam in
-  Logs.debug (fun log ->
-      log "Decoded build context for: %S"
-        (OpamPackage.Name.to_string ctx.self.name));
   let commands =
     (OpamFilter.commands
        (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~tools))
@@ -249,9 +243,6 @@ module Install = struct
       path =
     let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
     let opam = Opam_utils.read_opam ctx.self.opam in
-    Logs.debug (fun log ->
-        log "Decoded build context for: %S"
-          (OpamPackage.Name.to_string ctx.self.name));
     let commands =
       OpamFilter.commands
         (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~tools))

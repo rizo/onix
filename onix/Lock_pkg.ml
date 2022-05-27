@@ -46,7 +46,7 @@ let opam_path_for_locked_package t =
   if is_pinned t || is_root t then "${src}" </> name ^ ".opam"
   else
     let name_with_version = OpamPackage.to_string pkg in
-    "${opam-repo}/packages/" </> name </> name_with_version </> "opam"
+    "${repo}/packages/" </> name </> name_with_version </> "opam"
 
 let pp_name_string f name =
   if Utils.String.starts_with_number name then Fmt.Dump.string f name
@@ -79,11 +79,14 @@ let pp_hash f hash =
   | `SHA512 -> Fmt.pf f "sha512 = %S" (OpamHash.contents hash)
   | `MD5 -> Fmt.pf f "md5 = %S" (OpamHash.contents hash)
 
-let pp_src ~gitignore f t =
+let pp_src ~ignore_file f t =
   if is_root t then
-    if gitignore then
+    match ignore_file with
+    | Some ".gitignore" ->
       Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSource [] ./.;"
-    else Fmt.pf f "@ src = ./.;"
+    | Some custom ->
+      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] ./.;" custom
+    | None -> Fmt.pf f "@ src = ./.;"
   else
     match t.src with
     | None -> ()
@@ -134,11 +137,11 @@ let pp_depexts_sets name f (req, opt) =
   else
     Fmt.pf f "@ %s = with pkgs; [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
 
-let pp ~gitignore f t =
+let pp ~ignore_file f t =
   let name = OpamPackage.name_to_string t.package in
   let version = OpamPackage.version t.package in
   Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a" name
-    pp_version version (pp_src ~gitignore) t
+    pp_version version (pp_src ~ignore_file) t
     (opam_path_for_locked_package t)
     (pp_depends_sets "depends")
     (t.depends, t.depopts)
