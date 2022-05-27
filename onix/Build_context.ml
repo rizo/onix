@@ -77,15 +77,6 @@ module Vars = struct
     |> add_global_vars
     |> add_nixos_vars
 
-  let make_path_ ?suffix ~prefix pkg_name =
-    match (pkg_name, suffix) with
-    | Some pkg_name, Some suffix ->
-      String.concat "/" [prefix; suffix; OpamPackage.Name.to_string pkg_name]
-    | Some package_name, None ->
-      String.concat "/" [prefix; OpamPackage.Name.to_string package_name]
-    | None, Some suffix -> String.concat "/" [prefix; suffix]
-    | None, None -> prefix
-
   let make_path ?suffix ~prefix pkg_name =
     match (pkg_name, suffix) with
     | Some pkg_name, Some suffix ->
@@ -98,11 +89,11 @@ module Vars = struct
   let resolve_from_scope t v =
     let scope =
       match OpamVariable.Full.scope v with
-      | Self -> `Package t.self
+      | Self -> `Installed t.self
       | Package pkg_name -> (
         match OpamPackage.Name.Map.find_opt pkg_name t.scope with
-        | Some pkg -> `Package pkg
-        | None -> `Missing)
+        | Some pkg -> `Installed pkg
+        | None -> `Missing pkg_name)
       | Global -> `Global
     in
     let bool x = Some (OpamVariable.bool x) in
@@ -134,46 +125,46 @@ module Vars = struct
     match (v, scope) with
     (* metadata vars *)
     | "installed", `Global -> bool false (* not yet? *)
-    | "installed", `Package _ -> bool true
-    | "installed", `Missing -> bool false
+    | "installed", `Installed _ -> bool true
+    | "installed", `Missing _ -> bool false
     | "pinned", `Global -> bool (Opam_utils.is_pinned_version t.self.version)
-    | "pinned", `Package pkg -> bool (Opam_utils.is_pinned_version pkg.version)
-    | "pinned", `Missing -> bool false
+    | "pinned", `Installed pkg ->
+      bool (Opam_utils.is_pinned_version pkg.version)
+    | "pinned", `Missing _ -> bool false
     | "name", `Global -> string (OpamPackage.Name.to_string t.self.name)
-    | "name", `Package pkg -> string (OpamPackage.Name.to_string pkg.name)
-    (* Should this be allowed? *)
-    (* | "name", `Missing -> string (OpamPackage.Name.to_string OpamVariable.Full.scope) *)
-    | "build", _ ->
-      Fmt.failwith "ONIX_NOT_IMPLEMENTED_build: %a" Opam_utils.pp_package_name
-        t.self.name
+    | "name", `Installed pkg -> string (OpamPackage.Name.to_string pkg.name)
+    | "name", `Missing pkg_name -> string (OpamPackage.Name.to_string pkg_name)
+    | "build", `Global -> string (Sys.getcwd ())
     | "dev", _ -> bool false
     | "version", `Global ->
       string (OpamPackage.Version.to_string t.self.version)
-    | "version", `Package pkg ->
+    | "version", `Installed pkg ->
       string (OpamPackage.Version.to_string pkg.version)
     | "build-id", `Global -> string (OpamFilename.Dir.to_string t.self.path)
-    | "build-id", `Package pkg -> string (OpamFilename.Dir.to_string pkg.path)
+    | "build-id", `Installed pkg -> string (OpamFilename.Dir.to_string pkg.path)
     | "opamfile", `Global -> string (OpamFilename.to_string t.self.opam)
-    | "opamfile", `Package pkg -> string (OpamFilename.to_string pkg.opam)
+    | "opamfile", `Installed pkg -> string (OpamFilename.to_string pkg.opam)
     | "depends", _ | "hash", _ -> string ("ONIX_NOT_IMPLEMENTED_" ^ v)
     (* site-lib paths *)
     | "lib", `Global -> lib None
-    | "lib", `Package pkg -> lib (Some pkg)
+    | "lib", `Installed pkg -> lib (Some pkg)
     | "stublibs", `Global -> lib ~suffix:v None
-    | "stublibs", `Package pkg -> lib ~suffix:v (Some pkg)
+    | "stublibs", `Installed pkg -> lib ~suffix:v (Some pkg)
     | "toplevel", `Global -> lib ~suffix:v None
-    | "toplevel", `Package pkg -> lib ~suffix:v (Some pkg)
+    | "toplevel", `Installed pkg -> lib ~suffix:v (Some pkg)
     (* base paths *)
-    | "bin", `Global | "bin", `Package _ | "sbin", `Global | "sbin", `Package _
-      -> out ~suffix:v None ~scoped:false
+    | "bin", `Global
+    | "bin", `Installed _
+    | "sbin", `Global
+    | "sbin", `Installed _ -> out ~suffix:v None ~scoped:false
     | "man", `Global -> out ~suffix:v None ~scoped:false
-    | "man", `Package pkg -> out ~suffix:v (Some pkg) ~scoped:false
+    | "man", `Installed pkg -> out ~suffix:v (Some pkg) ~scoped:false
     | "doc", `Global -> out ~suffix:v None ~scoped:false
-    | "doc", `Package pkg -> out ~suffix:v (Some pkg) ~scoped:true
+    | "doc", `Installed pkg -> out ~suffix:v (Some pkg) ~scoped:true
     | "share", `Global -> out ~suffix:v None ~scoped:false
-    | "share", `Package pkg -> out ~suffix:v (Some pkg) ~scoped:true
+    | "share", `Installed pkg -> out ~suffix:v (Some pkg) ~scoped:true
     | "etc", `Global -> out ~suffix:v None ~scoped:true
-    | "etc", `Package pkg -> out ~suffix:v (Some pkg) ~scoped:true
+    | "etc", `Installed pkg -> out ~suffix:v (Some pkg) ~scoped:true
     | _ -> None
 
   let resolve_from_env full_var = OpamVariable.Full.read_from_env full_var
@@ -217,8 +208,6 @@ module Vars = struct
         | some -> some
       with Not_found -> None)
 
-  let get_package_path () = None
-
   let resolve_from_global_scope t full_var =
     let string x = Some (OpamVariable.string x) in
     let var_str = OpamVariable.Full.to_string full_var in
@@ -249,11 +238,12 @@ module Vars = struct
 end
 
 let debug_var var contents =
-  Fmt.pr "Variable lookup: %S = %a@."
-    (OpamVariable.Full.to_string var)
-    (Fmt.Dump.option
-       (Fmt.using OpamVariable.string_of_variable_contents Fmt.Dump.string))
-    contents
+  Logs.debug (fun log ->
+      log "Variable lookup: %S = %a@."
+        (OpamVariable.Full.to_string var)
+        (Fmt.Dump.option
+           (Fmt.using OpamVariable.string_of_variable_contents Fmt.Dump.string))
+        contents)
 
 let resolve t ?(local = OpamVariable.Map.empty) full_var =
   let contents =
@@ -268,6 +258,7 @@ let resolve t ?(local = OpamVariable.Map.empty) full_var =
       ]
       full_var
   in
+  debug_var full_var contents;
   contents
 
 let package_of_nix_store_path ~libdir (store_path : Nix_utils.store_path) =
