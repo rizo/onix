@@ -78,7 +78,7 @@
 - [ ] Consider using joinSymlinks to create a build scope.
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
 - [ ] Consider using makeScope for the scope.
-- [ ] Read ONIX_REPO_URL
+- [ ] Read ONIX_REPO_URL.
 - [ ] Nix store path parsing does not work for `nix develop`.
 - [ ] Stop using emptyPkg. Override the base compiler only?
 - [ ] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
