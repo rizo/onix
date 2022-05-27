@@ -201,8 +201,7 @@ let get_src ~package opam_url_opt =
       None
     | Ok src -> Some src)
 
-let get_deps ?(opt = Name_set.empty) ~required ?(with_build = false)
-    ?(with_test = false) ?(with_doc = false) ~env filtered_formula =
+let collect_deps ?(opt = Name_set.empty) ~required ~env depends_formula =
   let rec collect ~req ~opt ~required (formula : OpamFormula.t) =
     match formula with
     | Empty -> (req, opt)
@@ -217,9 +216,8 @@ let get_deps ?(opt = Name_set.empty) ~required ?(with_build = false)
       let req, opt = collect ~req ~opt ~required:false x in
       collect ~req ~opt ~required:false y
   in
-  filtered_formula
-  |> OpamPackageVar.filter_depends_formula ~build:with_build ~post:false
-       ~test:with_test ~doc:with_doc ~default:false ~env
+  depends_formula
+  |> OpamFilter.filter_formula ~default:false env
   |> collect ~req:Name_set.empty ~opt ~required
 
 let get_opam_depexts ~env depexts =
@@ -266,27 +264,34 @@ let get_depexts ~package_name ~is_zip_src ~env depexts =
   in
   (nix_depexts, unknown_depexts)
 
-let add_depext name depexts =
-  match depexts with
-  | `Nix deps -> `Nix (String_set.add name deps)
-  | `Unknown deps -> `Unknown (String_set.add name deps)
-
-let add_with_tools_var v =
-  (OpamVariable.of_string "with-tools", Some (OpamVariable.B v))
-
-let mk_env ?(with_tools = false) () =
-  let vars =
-    if with_tools then
-      let var = OpamVariable.Full.of_string "with-tools" in
-      let contents = OpamVariable.B true in
-      OpamVariable.Full.Map.add var contents Build_context.Vars.default
-    else Build_context.Vars.default
+let resolve ?(build = false) ?(with_test = false) ?(with_doc = false)
+    ?(with_tools = false) pkg v =
+  let contents =
+    Build_context.Vars.try_resolvers
+      [
+        Build_context.Vars.resolve_package pkg;
+        Build_context.Vars.resolve_from_base;
+        Build_context.Vars.resolve_dep_flags ~build ~with_test ~with_doc
+          ~with_tools;
+      ]
+      v
   in
-  Build_context.Vars.try_resolvers
-    [
-      Build_context.Vars.resolve_from_env;
-      Build_context.Vars.resolve_from_static vars;
-    ]
+  Opam_utils.debug_var
+    ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg)
+    v contents;
+  contents
+
+let get_deps  ~opam_depends ~opam_depopts pkg =
+  let env = resolve pkg in
+  let _depends, depopts = get_deps ~env ~required:false opam_depopts in
+  assert (Name_set.is_empty _depends);
+  get_deps ~env ~required:true ~opt:depopts opam_depends
+
+let get_depends_build' ~opam_depends ~opam_depopts pkg =
+  let env = resolve ~build:true pkg in
+  let _depends, depopts = get_deps ~env ~required:false opam_depopts in
+  assert (Name_set.is_empty _depends);
+  get_deps ~env ~required:true ~opt:depopts opam_depends
 
 let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
   let src = get_src ~package (OpamFile.OPAM.url opam) in
@@ -294,7 +299,7 @@ let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
   let opam_depopts = OpamFile.OPAM.depopts opam in
   let opam_depexts = OpamFile.OPAM.depexts opam in
 
-  let env = mk_env () in
+  let env = Build_context.basic_resolve Build_context.Vars.default in
 
   let get_req ?(env = env) = get_deps ~env ~required:true in
   let get_opt ?(env = env) = get_deps ~env ~required:false in
@@ -359,7 +364,7 @@ let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
   in
 
   (* Collect tools. *)
-  let env = mk_env ~with_tools:true () in
+  (* let env = resolve (Build_context.Vars.make_default ~with_tools:true ()) in *)
 
   (* Collect depopts+test, and then depends+test and remaining depopts+test. *)
   let _depends_tools', depopts_tools' = get_opt ~env opam_depopts in

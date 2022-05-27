@@ -83,3 +83,6 @@
 - [ ] Stop using emptyPkg. Override the base compiler only?
 - [ ] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
 - [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
+- [ ] Handle enable-ocaml-beta-repository.
+- [ ] Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.
+- [ ] Hanlde "sys-ocaml-version" var.

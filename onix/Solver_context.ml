@@ -1,22 +1,19 @@
+(* Based on https://github.com/ocaml-opam/opam-0install-solver/blob/master/lib/dir_context.ml *)
+
 let ( </> ) = Filename.concat
 
 type t = {
-  env : string -> OpamVariable.variable_contents option;
+  with_test : bool;
+  with_doc : bool;
+  with_tools : bool;
   repo_packages_dir : string;
   fixed_packages :
     (OpamPackage.Version.t * OpamFile.OPAM.t) OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;
-  test : OpamPackage.Name.Set.t;
   prefer_oldest : bool;
 }
 
 module Private = struct
-  type error =
-    [ `Unsupported_archive of string
-    | `Unavailable of string ]
-
-  type 'a result = ('a, error) Stdlib.result
-
   let load_opam ~fixed_packages ~repo_packages_dir pkg =
     let { OpamPackage.name; version = _ } = pkg in
     match OpamPackage.Name.Map.find_opt name fixed_packages with
@@ -30,44 +27,28 @@ module Private = struct
       in
       OpamFile.OPAM.read (OpamFile.make (OpamFilename.raw opam_path))
 
-  let env t pkg v =
-    if List.mem v OpamPackageVar.predefined_depends_variables then None
-    else
-      match OpamVariable.Full.to_string v with
-      | "version" ->
-        Some
-          (OpamTypes.S (OpamPackage.Version.to_string (OpamPackage.version pkg)))
-      | x -> t.env x
+  (* Availability only seems to require os, ocaml-version, opam-version. *)
+  let resolve_available available =
+    let env = Build_context.Vars.resolve_from_base in
+    OpamFilter.eval_to_bool ~default:false env available
 end
 
-let make ?(prefer_oldest = false) ?(test = OpamPackage.Name.Set.empty)
-    ?(fixed_packages = OpamPackage.Name.Map.empty) ~constraints ~env
-    repo_packages_dir =
+let make ?(prefer_oldest = false) ?(fixed_packages = OpamPackage.Name.Map.empty)
+    ~constraints ~with_test ~with_doc ~with_tools repo_packages_dir =
   let repo_packages_dir = OpamFilename.Dir.to_string repo_packages_dir in
-  { env; repo_packages_dir; fixed_packages; constraints; test; prefer_oldest }
+  {
+    with_test;
+    with_doc;
+    with_tools;
+    repo_packages_dir;
+    fixed_packages;
+    constraints;
+    prefer_oldest;
+  }
 
 let version_compare t v1 v2 =
   if t.prefer_oldest then OpamPackage.Version.compare v1 v2
   else OpamPackage.Version.compare v2 v1
-
-let std_env ?(ocaml_native = true) ?sys_ocaml_version ?opam_version ~arch ~os
-    ~os_distribution ~os_family ~os_version () = function
-  | "arch" -> Some (OpamTypes.S arch)
-  | "os" -> Some (OpamTypes.S os)
-  | "os-distribution" -> Some (OpamTypes.S os_distribution)
-  | "os-version" -> Some (OpamTypes.S os_version)
-  | "os-family" -> Some (OpamTypes.S os_family)
-  | "opam-version" ->
-    Some
-      (OpamVariable.S
-         (Option.value ~default:OpamVersion.(to_string current) opam_version))
-  | "sys-ocaml-version" ->
-    sys_ocaml_version |> Option.map (fun v -> OpamTypes.S v)
-  | "ocaml:native" -> Some (OpamTypes.B ocaml_native)
-  | "enable-ocaml-beta-repository" -> None (* Fake variable? *)
-  | v ->
-    OpamConsole.warning "Unknown variable %S" v;
-    None
 
 type rejection =
   | UserConstraint of OpamFormula.atom
@@ -104,38 +85,51 @@ let candidates t name =
                when not
                       (OpamFormula.check_version_formula (OpamFormula.Atom test)
                          v) -> (v, Error (UserConstraint (name, Some test)))
-             | _ -> (
+             | _ ->
                let pkg = OpamPackage.create name v in
                let opam =
                  Private.load_opam ~fixed_packages:t.fixed_packages
                    ~repo_packages_dir:t.repo_packages_dir pkg
                in
                let available = OpamFile.OPAM.available opam in
-               match
-                 OpamFilter.eval ~default:(B false) (Private.env t pkg)
-                   available
-               with
-               | B true -> (v, Ok opam)
-               | B false -> (v, Error Unavailable)
-               | _ ->
-                 OpamConsole.error "Available expression not a boolean: %s"
-                   (OpamFilter.to_string available);
-                 (v, Error Unavailable)))
+               if Private.resolve_available available then (v, Ok opam)
+               else (v, Error Unavailable))
     | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
       OpamConsole.log "opam-0install" "Package %S not found!"
         (OpamPackage.Name.to_string name);
       [])
 
-let filter_deps t pkg f =
-  let dev =
-    OpamPackage.Version.compare (OpamPackage.version pkg) Opam_utils.dev_version
-    = 0
+(*
+  Variable lookup frequency for a small sample project:
+
+      1  arch
+   4139  build
+    137  dev
+     80  opam-version
+     41  os
+      1  os-distribution
+   2572  post
+    672  version
+    224  with-doc
+   2339  with-test
+     12  with-tools *)
+let filter_deps { with_test; with_doc; with_tools; _ } pkg depends_formula =
+  let nv = OpamPackage.to_string pkg in
+  let env var =
+    let contents =
+      Build_context.Vars.try_resolvers
+        [
+          Build_context.Vars.resolve_package pkg;
+          Build_context.Vars.resolve_from_base;
+          Build_context.Vars.resolve_dep_flags ~with_test
+            ~with_doc ~with_tools;
+        ]
+        var
+    in
+    Opam_utils.debug_var ~scope:("filter_deps/" ^ nv) var contents;
+    contents
   in
-  let test = OpamPackage.Name.Set.mem (OpamPackage.name pkg) t.test in
-  f
-  |> OpamFilter.partial_filter_formula (Private.env t pkg)
-  |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev
-       ~default:false
+  OpamFilter.filter_formula ~default:false env depends_formula
 
 let get_opam_file t pkg =
   let name = OpamPackage.name pkg in

@@ -1,24 +1,12 @@
 type t
 
-val std_env :
-  ?ocaml_native:bool ->
-  ?sys_ocaml_version:string ->
-  ?opam_version:string ->
-  arch:string ->
-  os:string ->
-  os_distribution:string ->
-  os_family:string ->
-  os_version:string ->
-  unit ->
-  string ->
-  OpamVariable.variable_contents option
-
 val make :
   ?prefer_oldest:bool ->
-  ?test:OpamTypes.name_set ->
   ?fixed_packages:(OpamTypes.version * OpamFile.OPAM.t) OpamTypes.name_map ->
   constraints:OpamFormula.version_constraint OpamTypes.name_map ->
-  env:(string -> OpamVariable.variable_contents option) ->
+  with_test:bool->
+  with_doc:bool->
+  with_tools:bool->
   OpamTypes.dirname ->
   t
 

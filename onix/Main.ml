@@ -28,6 +28,18 @@ let opam_arg =
   let docv = "OPAM" in
   Arg.(info ["opam"] ~docv ~doc |> opt (some string) None |> required)
 
+let with_test_arg =
+  let doc = "Include packages {with-test} constrained packages." in
+  Arg.(info ["with-test"] ~doc |> flag |> value)
+
+let with_doc_arg =
+  let doc = "Include packages {with-doc} constrained packages." in
+  Arg.(info ["with-doc"] ~doc |> flag |> value)
+
+let with_tools_arg =
+  let doc = "Include packages {with-tools} constrained packages." in
+  Arg.(info ["with-tools"] ~doc |> flag |> value)
+
 let repo_url_arg =
   let doc =
     "The URL of the OPAM repository to be used when solving the dependencies. \
@@ -107,7 +119,8 @@ module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level ignore_file repo_url input_opam_files =
+  let run style_renderer log_level with_test with_doc with_tools ignore_file
+      repo_url input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
     let ignore_file =
@@ -123,7 +136,7 @@ module Lock = struct
               ignore_file);
         None)
     in
-    let lock_file = Onix.Solver.solve ~repo_url input_opam_files in
+    let lock_file = Onix.Solver.solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files in
     Onix.Utils.Out_channel.with_open_text onix_lock_file_name (fun chan ->
         let out = Format.formatter_of_out_channel chan in
         Fmt.pf out "%a" (Onix.Lock_file.pp ~ignore_file) lock_file);
@@ -137,6 +150,9 @@ module Lock = struct
         const run
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
+        $ with_test_arg
+        $ with_doc_arg
+        $ with_tools_arg
         $ ignore_file_arg
         $ repo_url_arg
         $ input_opam_files_arg)

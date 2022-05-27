@@ -1,11 +1,4 @@
-let env =
-  Solver_context.std_env ~arch:"x86_64" ~os:"linux" ~os_family:"debian"
-    ~os_distribution:"debian" ~os_version:"10" ()
-
-let make_context ~repo_path fixed_packages =
-  Solver_context.make
-    OpamFilename.Op.(repo_path / "packages")
-    ~fixed_packages ~constraints:OpamPackage.Name.Map.empty ~env
+let constraints = OpamPackage.Name.Map.empty
 
 module Solver = Opam_0install.Solver.Make (Solver_context)
 
@@ -20,7 +13,7 @@ let resolve_repo repo_url =
   Logs.info (fun log -> log "Using OPAM repository: %a" Opam_utils.pp_url url);
   (path, url)
 
-let solve ~repo_url input_opam_files =
+let solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files =
   (* Packages with .opam files at the root of the project. *)
   let root_packages = Opam_utils.find_root_packages input_opam_files in
 
@@ -43,11 +36,18 @@ let solve ~repo_url input_opam_files =
 
   let repo_path, repo_url = resolve_repo repo_url in
 
-  let context = make_context ~repo_path fixed_packages in
+  let context =
+    Solver_context.make
+      OpamFilename.Op.(repo_path / "packages")
+      ~fixed_packages ~constraints ~with_test ~with_doc ~with_tools
+  in
+  Logs.info (fun log ->
+      log "Solving dependencies... with-test=%b with-doc=%b with-tools=%b"
+        with_test with_doc with_tools);
   match Solver.solve context target_packages with
   | Ok selections ->
     let packages = Solver.packages_of_result selections in
-    List.iter (Fmt.pr "- dep: %a@." Opam_utils.pp_package) packages;
+    List.iter (Fmt.pr "- %a@." Opam_utils.pp_package) packages;
     packages
     |> List.filter_map (fun pkg ->
            let opam = Solver_context.get_opam_file context pkg in

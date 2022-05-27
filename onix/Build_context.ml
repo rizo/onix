@@ -71,11 +71,31 @@ module Vars = struct
     |> add "os-family" (string "nixos")
     |> add "os-version" (string "unknown")
 
-  let default =
+  let base =
     OpamVariable.Full.Map.empty
     |> add_native_system_vars
     |> add_global_vars
     |> add_nixos_vars
+
+  let resolve_dep_flags ?(build = true) ?(post = false) ?(with_test = false)
+      ?(with_doc = false) ?(with_tools = false) var =
+    let bool x = Some (OpamVariable.bool x) in
+    match OpamVariable.Full.to_string var with
+    | "build" -> bool build
+    | "post" -> bool post
+    | "with-test" -> bool with_test
+    | "with-doc" -> bool with_doc
+    | "with-tools" -> bool with_tools
+    | _ -> None
+
+  let resolve_package pkg v =
+    let string x = Some (OpamVariable.string x) in
+    let bool x = Some (OpamVariable.bool x) in
+    match OpamVariable.Full.to_string v with
+    | "name" -> string (OpamPackage.name_to_string pkg)
+    | "version" -> string (OpamPackage.version_to_string pkg)
+    | "dev" -> bool (Opam_utils.is_pinned pkg)
+    | _ -> None
 
   let make_path ?suffix ~prefix pkg_name =
     match (pkg_name, suffix) with
@@ -167,9 +187,9 @@ module Vars = struct
     | "etc", `Installed pkg -> out ~suffix:v (Some pkg) ~scoped:true
     | _ -> None
 
-  let resolve_from_env full_var = OpamVariable.Full.read_from_env full_var
+  let resolve_from_stdenv full_var = OpamVariable.Full.read_from_env full_var
 
-  let resolve_from_etc_env t full_var =
+  let resolve_from_config_env t full_var =
     let ( </> ) = OpamFilename.Op.( / ) in
     let resolve_for_package pkg var =
       let base =
@@ -196,6 +216,8 @@ module Vars = struct
 
   let resolve_from_static vars full_var =
     OpamVariable.Full.Map.find_opt full_var vars
+
+  let resolve_from_base = resolve_from_static base
 
   let resolve_from_local local_vars var =
     match OpamVariable.Full.package var with
@@ -237,28 +259,33 @@ module Vars = struct
     try loop resolvers with Exit -> None
 end
 
-let debug_var var contents =
-  Logs.debug (fun log ->
-      log "Variable lookup: %S = %a@."
-        (OpamVariable.Full.to_string var)
-        (Fmt.Dump.option
-           (Fmt.using OpamVariable.string_of_variable_contents Fmt.Dump.string))
-        contents)
-
-let resolve t ?(local = OpamVariable.Map.empty) full_var =
+let basic_resolve ?(local = OpamVariable.Map.empty) vars full_var =
   let contents =
     Vars.try_resolvers
       [
         Vars.resolve_from_local local;
-        Vars.resolve_from_env;
-        Vars.resolve_from_etc_env t;
+        Vars.resolve_from_stdenv;
+        Vars.resolve_from_static vars;
+      ]
+      full_var
+  in
+  Opam_utils.debug_var ~scope:"basic_resovle" full_var contents;
+  contents
+
+let resolve ?(local = OpamVariable.Map.empty) t full_var =
+  let contents =
+    Vars.try_resolvers
+      [
+        Vars.resolve_from_local local;
+        Vars.resolve_from_stdenv;
+        Vars.resolve_from_config_env t;
         Vars.resolve_from_static t.vars;
         Vars.resolve_from_global_scope t;
         Vars.resolve_from_scope t;
       ]
       full_var
   in
-  debug_var full_var contents;
+  Opam_utils.debug_var ~scope:"resolve" full_var contents;
   contents
 
 let package_of_nix_store_path ~libdir (store_path : Nix_utils.store_path) =
@@ -271,7 +298,7 @@ let package_of_nix_store_path ~libdir (store_path : Nix_utils.store_path) =
     opam = OpamFilename.Op.(libdir / package_name // "opam");
   }
 
-let make ?(ocamlpath = Sys.getenv_opt "OCAMLPATH" or "") ?(vars = Vars.default)
+let make ?(ocamlpath = Sys.getenv_opt "OCAMLPATH" or "") ?(vars = Vars.base)
     ~ocaml_version ~opam path =
   Logs.debug (fun log -> log "Build_context.make: OCAMLPATH=%s" ocamlpath);
   let deps =

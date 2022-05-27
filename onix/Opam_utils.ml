@@ -37,6 +37,14 @@ let is_root_version version = OpamPackage.Version.equal version root_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)
 let is_root package = is_root_version (OpamPackage.version package)
 
+let debug_var ?(scope = "unknown") var contents =
+  Logs.debug (fun log ->
+      log "Variable lookup: %s=%a scope=%s"
+        (OpamVariable.Full.to_string var)
+        (Fmt.Dump.option
+           (Fmt.using OpamVariable.string_of_variable_contents Fmt.Dump.string))
+        contents scope)
+
 let find_root_packages input_opams =
   let opams =
     match input_opams with
