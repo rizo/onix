@@ -10,7 +10,7 @@ let
 
     passthru = { inherit (api) build lock; };
 
-    src = ./.;
+    src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 
     nativeBuildInputs = [ pkgs.git ];
     propagatedBuildInputs = with onixPackages; [
