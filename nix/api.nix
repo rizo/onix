@@ -4,6 +4,7 @@ let
   inherit (builtins)
     trace hasAttr getAttr setAttr mapAttrs concatMap pathExists foldl';
   inherit (pkgs) lib stdenv;
+  inherit (lib) optionalString;
   inherit (pkgs.lib.lists) optional optionals;
 
   # Build the compiler from lock file from source by default.
@@ -104,27 +105,37 @@ let
 
       prePatch = ''
         echo + prePatch ${name} $out
-        echo ${onix}/bin/onix opam-patch --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
-        ${onix}/bin/onix opam-patch --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
+        ${onix}/bin/onix opam-patch \
+          --ocaml-version=${ocaml.version} \
+          --opam=${lockPkg.opam} \
+          $out
       '';
 
       # Not sure if OCAMLFIND_DESTDIR is needed.
       # dune install is not flexible enough to provide libdir via env.
+      # Do we need export OPAM_SWITCH_PREFIX="$out"
+      # Do we need export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
       configurePhase = ''
-        echo + configurePhase
-        export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
+        runHook preConfigure
+        ${optionalString pkgs.stdenv.cc.isClang ''
+          export NIX_CFLAGS_COMPILE="''${NIX_CFLAGS_COMPILE-} -Wno-error=unused-command-line-argument"''}
         export DUNE_INSTALL_PREFIX=$out
+        runHook postConfigure
       '';
 
       buildPhase = ''
-        echo + buildPhase ${name} $out
-        ${onix}/bin/onix opam-build  --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
+        runHook preBuild
+        ${onix}/bin/onix opam-build \
+          --ocaml-version=${ocaml.version} \
+          --opam=${lockPkg.opam} \
+          $out
+        runHook postBuild
       '';
 
       # ocamlfind install requires the liddir to exist.
       # move packages installed with dune.
       installPhase = ''
-        echo + installPhase ${name} $out
+        runHook preInstall
         mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/${name}
         ${onix}/bin/onix opam-install --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
 
@@ -132,6 +143,7 @@ let
           echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"
           mv "$out/lib/${name}" "$OCAMLFIND_DESTDIR"
         fi
+        runHook postInstall
       '';
     };
 
