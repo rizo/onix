@@ -15,22 +15,39 @@ type t = {
 val pp_package : Format.formatter -> package -> unit
 
 module Vars : sig
-  val default : OpamVariable.variable_contents OpamVariable.Full.Map.t
+  val base : OpamVariable.variable_contents OpamVariable.Full.Map.t
+  (** Base variables consist of native system variables, global variables
+      and nixos-specific variables. *)
 
-  val resolve_from_env :
-    OpamTypes.full_variable -> OpamVariable.variable_contents option
+  val resolve_dep_flags :
+    ?build:bool ->
+    ?post:bool ->
+    ?test:bool ->
+    ?doc:bool ->
+    ?tools:bool ->
+    OpamFilter.env
+  (** The opam filter env for resolving dependencies based on flags. *)
+
+  val resolve_package : OpamPackage.t -> OpamFilter.env
+  val resolve_from_stdenv : OpamFilter.env
 
   val resolve_from_static :
-    'a OpamVariable.Full.Map.t -> OpamTypes.full_variable -> 'a option
+    OpamVariable.variable_contents OpamVariable.Full.Map.t -> OpamFilter.env
 
+  val resolve_from_base : OpamFilter.env
   val try_resolvers : ('a -> 'b option) list -> 'a -> 'b option
 end
 
 val resolve :
-  t ->
   ?local:OpamVariable.variable_contents option OpamVariable.Map.t ->
-  OpamTypes.full_variable ->
-  OpamVariable.variable_contents option
+  t ->
+  OpamFilter.env
+
+val basic_resolve :
+  ?local:OpamVariable.variable_contents option OpamVariable.Map.t ->
+  OpamVariable.variable_contents OpamVariable.Full.Map.t ->
+  OpamFilter.env
+(** Resolve without build context for local, env and static vars. *)
 
 val make :
   ?ocamlpath:string ->

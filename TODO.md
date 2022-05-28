@@ -78,10 +78,13 @@
 - [ ] Consider using joinSymlinks to create a build scope.
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
 - [ ] Consider using makeScope for the scope.
-- [ ] Read ONIX_REPO_URL
+- [ ] Read ONIX_REPO_URL.
 - [ ] Allow setting dep flags for both the project and the deps. 
 - [ ] Handle pkg:installed?enable:disable.
 - [ ] Nix store path parsing does not work for `nix develop`.
 - [ ] Stop using emptyPkg. Override the base compiler only?
 - [ ] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
 - [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
+- [ ] Handle enable-ocaml-beta-repository.
+- [ ] Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.
+- [ ] Hanlde "sys-ocaml-version" var.

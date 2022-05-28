@@ -1,6 +1,5 @@
 (library
- (name onix)
- (package onix)
+ (public_name onix)
  (modules :standard \ Main)
  (libraries
   fmt

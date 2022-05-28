@@ -8,5 +8,8 @@ let
     ocaml = ocamlPackages.ocaml;
     lock = ../onix-lock.nix;
     overrides = { };
+    withTest = true;
+    withDoc = true;
+    withTools = true;
   };
 in scope.onix

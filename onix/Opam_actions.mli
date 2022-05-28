@@ -1,19 +1,19 @@
 val patch : ocaml_version:string -> opam:string -> string -> unit
 
 val build :
-  ?test:bool ->
-  ?doc:bool ->
-  ?tools:bool ->
   ocaml_version:string ->
   opam:string ->
+  with_test:Opam_utils.dep_flag ->
+  with_doc:Opam_utils.dep_flag ->
+  with_tools:Opam_utils.dep_flag ->
   string ->
   unit
 
 val install :
-  ?test:bool ->
-  ?doc:bool ->
-  ?tools:bool ->
   ocaml_version:string ->
   opam:string ->
+  with_test:Opam_utils.dep_flag ->
+  with_doc:Opam_utils.dep_flag ->
+  with_tools:Opam_utils.dep_flag ->
   string ->
   unit

@@ -46,7 +46,7 @@ let opam_path_for_locked_package t =
   if is_pinned t || is_root t then "${src}" </> name ^ ".opam"
   else
     let name_with_version = OpamPackage.to_string pkg in
-    "${opam-repo}/packages/" </> name </> name_with_version </> "opam"
+    "${repo}/packages/" </> name </> name_with_version </> "opam"
 
 let pp_name_string f name =
   if Utils.String.starts_with_number name then Fmt.Dump.string f name
@@ -79,11 +79,14 @@ let pp_hash f hash =
   | `SHA512 -> Fmt.pf f "sha512 = %S" (OpamHash.contents hash)
   | `MD5 -> Fmt.pf f "md5 = %S" (OpamHash.contents hash)
 
-let pp_src ~gitignore f t =
+let pp_src ~ignore_file f t =
   if is_root t then
-    if gitignore then
+    match ignore_file with
+    | Some ".gitignore" ->
       Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSource [] ./.;"
-    else Fmt.pf f "@ src = ./.;"
+    | Some custom ->
+      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] ./.;" custom
+    | None -> Fmt.pf f "@ src = ./.;"
   else
     match t.src with
     | None -> ()
@@ -134,11 +137,11 @@ let pp_depexts_sets name f (req, opt) =
   else
     Fmt.pf f "@ %s = with pkgs; [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
 
-let pp ~gitignore f t =
+let pp ~ignore_file f t =
   let name = OpamPackage.name_to_string t.package in
   let version = OpamPackage.version t.package in
   Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a" name
-    pp_version version (pp_src ~gitignore) t
+    pp_version version (pp_src ~ignore_file) t
     (opam_path_for_locked_package t)
     (pp_depends_sets "depends")
     (t.depends, t.depopts)
@@ -198,8 +201,7 @@ let get_src ~package opam_url_opt =
       None
     | Ok src -> Some src)
 
-let get_deps ?(opt = Name_set.empty) ~required ?(with_build = false)
-    ?(with_test = false) ?(with_doc = false) ~env filtered_formula =
+let filter_deps ?(opt = Name_set.empty) ~required ~env depends_formula =
   let rec collect ~req ~opt ~required (formula : OpamFormula.t) =
     match formula with
     | Empty -> (req, opt)
@@ -214,9 +216,8 @@ let get_deps ?(opt = Name_set.empty) ~required ?(with_build = false)
       let req, opt = collect ~req ~opt ~required:false x in
       collect ~req ~opt ~required:false y
   in
-  filtered_formula
-  |> OpamPackageVar.filter_depends_formula ~build:with_build ~post:false
-       ~test:with_test ~doc:with_doc ~default:false ~env
+  depends_formula
+  |> OpamFilter.filter_formula ~default:false env
   |> collect ~req:Name_set.empty ~opt ~required
 
 let get_opam_depexts ~env depexts =
@@ -263,76 +264,58 @@ let get_depexts ~package_name ~is_zip_src ~env depexts =
   in
   (nix_depexts, unknown_depexts)
 
-let add_depext name depexts =
-  match depexts with
-  | `Nix deps -> `Nix (String_set.add name deps)
-  | `Unknown deps -> `Unknown (String_set.add name deps)
-
-let add_with_tools_var v =
-  (OpamVariable.of_string "with-tools", Some (OpamVariable.B v))
-
-let mk_env ?(with_tools = false) () =
-  let vars =
-    if with_tools then
-      let var = OpamVariable.Full.of_string "with-tools" in
-      let contents = OpamVariable.B true in
-      OpamVariable.Full.Map.add var contents Build_context.Vars.default
-    else Build_context.Vars.default
+let resolve ?(build = false) ?(test = false) ?(doc = false) ?(tools = false) pkg
+    v =
+  let contents =
+    Build_context.Vars.try_resolvers
+      [
+        Build_context.Vars.resolve_package pkg;
+        Build_context.Vars.resolve_from_base;
+        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~tools;
+      ]
+      v
   in
-  Build_context.Vars.try_resolvers
-    [
-      Build_context.Vars.resolve_from_env;
-      Build_context.Vars.resolve_from_static vars;
-    ]
+  (* Opam_utils.debug_var *)
+  (*   ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg) *)
+  (*   v contents; *)
+  contents
 
-let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
+let of_opam ~with_test ~with_doc ~with_tools package opam =
+  let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
+
   let opam_depends = OpamFile.OPAM.depends opam in
   let opam_depopts = OpamFile.OPAM.depopts opam in
-  let opam_depexts = OpamFile.OPAM.depexts opam in
 
-  let env = mk_env () in
-
-  let get_req ?(env = env) = get_deps ~env ~required:true in
-  let get_opt ?(env = env) = get_deps ~env ~required:false in
-
-  (* We start a cerimonial dependency extraction here. The intent is to
-     precisely split the dependencies in the buckets based on filters. *)
-
-  (* Collect just depopts, and then depends and remaining depopts. *)
-  let _depends, depopts = get_opt opam_depopts in
-  assert (Name_set.is_empty _depends);
-  let depends, depopts = get_req ~opt:depopts opam_depends in
-
-  (* Collect depopts+build, and then depends+build and remaining depopts+build. *)
-  let _depends_build', depopts_build' = get_opt ~with_build:true opam_depopts in
-  assert (Name_set.is_empty _depends_build');
-  let depends_build', depopts_build' =
-    get_req ~opt:depopts_build' ~with_build:true opam_depends
+  let get_deps ?build ?test ?doc ?tools ?(depends = Name_set.empty)
+      ?(depopts = Name_set.empty) () =
+    let env = resolve ?build ?test ?doc ?tools package in
+    let _req, opt = filter_deps ~env ~required:false opam_depopts in
+    assert (Name_set.is_empty _req);
+    let req, opt = filter_deps ~env ~required:true ~opt opam_depends in
+    (Name_set.diff req depends, Name_set.diff opt depopts)
   in
 
-  (* Collect depopts+test, and then depends+test and remaining depopts+test. *)
-  let _depends_test', depopts_test' = get_opt ~with_test:true opam_depopts in
-  assert (Name_set.is_empty _depends_test');
-  let depends_test', depopts_test' =
-    get_req ~opt:depopts_test' ~with_test:true opam_depends
-  in
+  let test = Opam_utils.eval_dep_flag ~version with_test in
+  let doc = Opam_utils.eval_dep_flag ~version with_doc in
+  let tools = Opam_utils.eval_dep_flag ~version with_tools in
 
-  (* Collect depopts+doc, and then depends+doc and remaining depopts+doc. *)
-  let _depends_doc', depopts_doc' = get_opt ~with_doc:true opam_depopts in
-  assert (Name_set.is_empty _depends_doc');
-  let depends_doc', depopts_doc' =
-    get_req ~opt:depopts_doc' ~with_doc:true opam_depends
+  let depends, depopts = get_deps () in
+  let depends_build, depopts_build =
+    get_deps ~build:true ~depends ~depopts ()
   in
-
-  (* As far as we can tell there is no way to filter out the normal deps with
-     OpamPackageVar.filter_depends_formula. Might need to go lower-level. *)
-  let depends_build = Name_set.diff depends_build' depends in
-  let depopts_build = Name_set.diff depopts_build' depopts in
-  let depends_test = Name_set.diff depends_test' depends in
-  let depopts_test = Name_set.diff depopts_test' depopts in
-  let depends_doc = Name_set.diff depends_doc' depends in
-  let depopts_doc = Name_set.diff depopts_doc' depopts in
+  let depends_test, depopts_test =
+    if test then get_deps ~test ~depends ~depopts ()
+    else (Name_set.empty, Name_set.empty)
+  in
+  let depends_doc, depopts_doc =
+    if doc then get_deps ~doc ~depends ~depopts ()
+    else (Name_set.empty, Name_set.empty)
+  in
+  let depends_tools, depopts_tools =
+    if tools then get_deps ~tools ~depends ~depopts ()
+    else (Name_set.empty, Name_set.empty)
+  in
 
   let depends_build =
     List.fold_left
@@ -349,23 +332,12 @@ let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
   in
 
   (* Collect depexts. *)
+  let opam_depexts = OpamFile.OPAM.depexts opam in
   let depexts_nix, depexts_unknown =
     let is_zip_src = Option.map_default false check_is_zip_src src in
-    get_depexts ~is_zip_src ~package_name:(OpamPackage.name package) ~env
-      opam_depexts
+    get_depexts ~is_zip_src ~package_name:(OpamPackage.name package)
+      ~env:Build_context.Vars.resolve_from_base opam_depexts
   in
-
-  (* Collect tools. *)
-  let env = mk_env ~with_tools:true () in
-
-  (* Collect depopts+test, and then depends+test and remaining depopts+test. *)
-  let _depends_tools', depopts_tools' = get_opt ~env opam_depopts in
-  assert (Name_set.is_empty _depends_tools');
-  let depends_tools', depopts_tools' =
-    get_req ~env ~opt:depopts_tools' opam_depends
-  in
-  let depends_tools = Name_set.diff depends_tools' depends in
-  let depopts_tools = Name_set.diff depopts_tools' depopts in
 
   Some
     {

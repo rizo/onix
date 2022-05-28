@@ -31,4 +31,6 @@ depends: [
   "opam-0install"
   "yojson"
   "easy-format" {="1.3.2"}
+  "ocaml-lsp-server" {with-tools}
+  "ocamlformat" {with-tools}
 ]

@@ -162,9 +162,6 @@ module Patch = struct
     let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
     let opam = Opam_utils.read_opam ctx.self.opam in
     let opamfile = ctx.self.opam in
-    Logs.debug (fun log ->
-        log "Decoded build context for: %S"
-          (OpamPackage.Name.to_string ctx.self.name));
     let () =
       let build_dir = OpamFilename.Dir.of_string (Sys.getcwd ()) in
       match OpamFile.OPAM.extra_files opam with
@@ -184,13 +181,13 @@ end
 
 let patch = Patch.run
 
-let build ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~opam
-    path =
+let build ~ocaml_version ~opam ~with_test ~with_doc ~with_tools path =
   let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
+  let version = ctx.self.version in
+  let test = Opam_utils.eval_dep_flag ~version with_test in
+  let doc = Opam_utils.eval_dep_flag ~version with_doc in
+  let tools = Opam_utils.eval_dep_flag ~version with_tools in
   let opam = Opam_utils.read_opam ctx.self.opam in
-  Logs.debug (fun log ->
-      log "Decoded build context for: %S"
-        (OpamPackage.Name.to_string ctx.self.name));
   let commands =
     (OpamFilter.commands
        (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~tools))
@@ -245,13 +242,13 @@ module Install = struct
             dst);
       OpamFilename.copy ~src ~dst)
 
-  let run ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~opam
-      path =
+  let run ~ocaml_version ~opam ~with_test ~with_doc ~with_tools path =
     let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
+    let version = ctx.self.version in
+    let test = Opam_utils.eval_dep_flag ~version with_test in
+    let doc = Opam_utils.eval_dep_flag ~version with_doc in
+    let tools = Opam_utils.eval_dep_flag ~version with_tools in
     let opam = Opam_utils.read_opam ctx.self.opam in
-    Logs.debug (fun log ->
-        log "Decoded build context for: %S"
-          (OpamPackage.Name.to_string ctx.self.name));
     let commands =
       OpamFilter.commands
         (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~tools))

@@ -84,16 +84,16 @@ let eq ~actual ~expected =
     Fmt.pr "--- EXPECTED ---\n%s\n\n--- ACTUAL ---\n%s@." expected actual;
     raise Exit)
 
-let mk_lock ?with_build ?with_test ?with_doc ~name str =
+let mk_lock ~name str =
   let pkg = OpamPackage.of_string name in
   str
   |> OpamFile.OPAM.read_from_string
-  |> Onix.Lock_pkg.of_opam ?with_build ?with_test ?with_doc pkg
+  |> Onix.Lock_pkg.of_opam ~with_tools:`all ~with_test:`all ~with_doc:`all pkg
   |> Option.get
 
 let test_complex_opam () =
   let lock_pkg = mk_lock ~name:"complex.root" complex_opam in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~gitignore:true) lock_pkg in
+  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
   let expected =
     {|name = "complex"; version = "root"; src = ./.; opam = "${src}/complex.opam";
 depends = with self; [ bos cmdliner dune easy-format fmt fpath logs ocaml
@@ -106,7 +106,7 @@ depexts = with pkgs; [ libogg ];
 
 let test_dev_opam () =
   let lock_pkg = mk_lock ~name:"dev.dev" dev_opam in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~gitignore:false) lock_pkg in
+  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
   let expected =
     {|name = "dev"; version = "dev";
 src = builtins.fetchGit {
@@ -120,33 +120,40 @@ opam = "${src}/dev.opam";
 
 let test_zip_src_opam () =
   let lock_pkg = mk_lock ~name:"zip.1.0.2" zip_src_opam in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~gitignore:false) lock_pkg in
+  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
   let expected =
     {|name = "zip"; version = "1.0.2";
 src = pkgs.fetchurl {
   url = "https://github.com/xavierleroy/camlzip/archive/rel110.zip";
   sha256 = "a5541cbc38c14467a8abcbdcb54c1d2ed12515c1c4c6da0eb3bdafb44aff7996";
-}; opam = "${opam-repo}/packages/zip/zip.1.0.2/opam";
+}; opam = "${repo}/packages/zip/zip.1.0.2/opam";
 depexts = with pkgs; [ unzip ];
 |}
   in
   eq ~actual ~expected
 
 let test_other_deps_opam () =
-  let lock_pkg =
-    mk_lock ~name:"other-deps.1.0.1" ~with_test:true ~with_doc:true
-      other_deps_opam
-  in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~gitignore:false) lock_pkg in
+  let lock_pkg = mk_lock ~name:"other-deps.1.0.1" other_deps_opam in
+  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
   let expected =
-    {|name = "zip"; version = "1.0.2";
-  src = pkgs.fetchurl {
-    url = "https://github.com/xavierleroy/camlzip/archive/rel110.zip";
-    sha256 = "a5541cbc38c14467a8abcbdcb54c1d2ed12515c1c4c6da0eb3bdafb44aff7996";
-  }; opam = "${opam-repo}/packages/zip/zip.1.0.2/opam";
-  depends = with self; [ ];
-  depexts = [ pkgs.unzip ];
-  |}
+    {|name = "other-deps"; version = "1.0.1";
+opam = "${repo}/packages/other-deps/other-deps.1.0.1/opam";
+depends = with self; [ dep1 dep2 (self.opt1 or null) (self.opt2 or null) ];
+buildDepends = with self; [ dep-build-1 dep-build-2
+                            (self.opt-build-1 or null)
+                            (self.opt-build-2 or null) ];
+testDepends = with self; [ dep-test-1 dep-test-2 dep-test-o-doc-1
+                           (self.opt-test-1 or null)
+                           (self.opt-test-2 or null)
+                           (self.opt-test-o-doc-1 or null) ];
+docDepends = with self; [ dep-doc-1 dep-doc-2 dep-test-o-doc-1
+                          (self.opt-doc-1 or null) (self.opt-doc-2 or null)
+                          (self.opt-test-o-doc-1 or null) ];
+toolsDepends = with self; [ dep-tool-1 dep-tool-2 (self.opt-tool-1 or null)
+                            (self.opt-tool-2 or null) ];
+depexts = with pkgs; [ (pkgs.opt-ext-1 or null) (pkgs.opt-ext-2 or null)
+                       (pkgs.opt-ext-3 or null) ];
+|}
   in
   eq ~actual ~expected
 
