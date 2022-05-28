@@ -280,12 +280,8 @@ let resolve ?(build = false) ?(test = false) ?(doc = false) ?(tools = false) pkg
   (*   v contents; *)
   contents
 
-let print_dep n deps =
-  Fmt.epr "%s: @." n;
-  Name_set.iter (fun n -> Fmt.epr "-%a@.@." Opam_utils.pp_package_name n) deps
-
 let of_opam ~with_test ~with_doc ~with_tools package opam =
-  let is_root = Opam_utils.is_root package in
+  let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
 
   let opam_depends = OpamFile.OPAM.depends opam in
@@ -300,9 +296,9 @@ let of_opam ~with_test ~with_doc ~with_tools package opam =
     (Name_set.diff req depends, Name_set.diff opt depopts)
   in
 
-  let test = Opam_utils.flag_for_scope ~is_root with_test in
-  let doc = Opam_utils.flag_for_scope ~is_root with_doc in
-  let tools = Opam_utils.flag_for_scope ~is_root with_tools in
+  let test = Opam_utils.eval_dep_flag ~version with_test in
+  let doc = Opam_utils.eval_dep_flag ~version with_doc in
+  let tools = Opam_utils.eval_dep_flag ~version with_tools in
 
   let depends, depopts = get_deps () in
   let depends_build, depopts_build =

@@ -43,8 +43,8 @@ let solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files =
   in
   Logs.info (fun log ->
       log "Solving dependencies... with-test=%a with-doc=%a with-tools=%a"
-        Opam_utils.pp_flag_scope with_test Opam_utils.pp_flag_scope with_doc
-        Opam_utils.pp_flag_scope with_tools);
+        Opam_utils.pp_dep_flag with_test Opam_utils.pp_dep_flag with_doc
+        Opam_utils.pp_dep_flag with_tools);
   match Solver.solve context target_packages with
   | Ok selections ->
     let packages = Solver.packages_of_result selections in

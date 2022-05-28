@@ -3,9 +3,9 @@
 let ( </> ) = Filename.concat
 
 type t = {
-  with_test : Opam_utils.flag_scope;
-  with_doc : Opam_utils.flag_scope;
-  with_tools : Opam_utils.flag_scope;
+  with_test : Opam_utils.dep_flag;
+  with_doc : Opam_utils.dep_flag;
+  with_tools : Opam_utils.dep_flag;
   repo_packages_dir : string;
   fixed_packages :
     (OpamPackage.Version.t * OpamFile.OPAM.t) OpamPackage.Name.Map.t;
@@ -114,10 +114,10 @@ let candidates t name =
    2339  with-test
      12  with-tools *)
 let filter_deps t pkg depends_formula =
-  let is_root = Opam_utils.is_root pkg in
-  let test = Opam_utils.flag_for_scope ~is_root t.with_test in
-  let doc = Opam_utils.flag_for_scope ~is_root t.with_doc in
-  let tools = Opam_utils.flag_for_scope ~is_root t.with_tools in
+  let version = OpamPackage.version pkg in
+  let test = Opam_utils.eval_dep_flag ~version t.with_test in
+  let doc = Opam_utils.eval_dep_flag ~version t.with_doc in
+  let tools = Opam_utils.eval_dep_flag ~version t.with_tools in
   let env var =
     let contents =
       Build_context.Vars.try_resolvers

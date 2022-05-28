@@ -38,15 +38,15 @@ let is_root_version version = OpamPackage.Version.equal version root_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)
 let is_root package = is_root_version (OpamPackage.version package)
 
-type flag_scope =
+type dep_flag =
   [ `root
   | `deps
   | `none
   | `all ]
 
-let pp_flag_scope formatter flag_scope =
+let pp_dep_flag formatter dep_flag =
   let str =
-    match flag_scope with
+    match dep_flag with
     | `root -> "root"
     | `deps -> "deps"
     | `none -> "none"
@@ -54,7 +54,8 @@ let pp_flag_scope formatter flag_scope =
   in
   Fmt.pf formatter "%s" str
 
-let flag_for_scope ~is_root scope =
+let eval_dep_flag ~version scope =
+  let is_root = is_root_version version in
   match scope with
   | `root -> is_root
   | `deps -> not is_root

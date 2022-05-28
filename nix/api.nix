@@ -19,18 +19,18 @@ let
     installPhase = "${pkgs.coreutils}/bin/touch $out";
   };
 
-  flagForScope = version: scope:
+  evalDepFlag = version: depFlag:
     let isRoot = version == "root";
-    in if scope == true then
+    in if depFlag == true then
       isRoot
-    else if scope == "deps" then
+    else if depFlag == "deps" then
       !isRoot
-    else if scope == "all" then
+    else if depFlag == "all" then
       true
-    else if scope == false then
+    else if depFlag == false then
       false
     else
-      throw "invalid flag scope value: ${scope}";
+      throw "invalid dependency flag value: ${depFlag}";
 
   # Collect a recursive depends package set from a list of locked packages.
   collectTransitivePkgs = init: scope: lockPkgs:
@@ -118,11 +118,11 @@ let
         # Depexts
         ++ optionals isConfPkg depextsPkgs
         # Test depends
-        ++ optionals (flagForScope lockPkg.version withTest) testPkgs
+        ++ optionals (evalDepFlag lockPkg.version withTest) testPkgs
         # Doc depends
-        ++ optionals (flagForScope lockPkg.version withDoc) docPkgs
+        ++ optionals (evalDepFlag lockPkg.version withDoc) docPkgs
         # Tools depends
-        ++ optionals (flagForScope lockPkg.version withTools) toolsPkgs;
+        ++ optionals (evalDepFlag lockPkg.version withTools) toolsPkgs;
 
       # Set environment variables for OCaml library lookup. This needs to use
       # transitive dependencies as dune requires the full dependency tree.
@@ -145,7 +145,6 @@ let
       # OCAMLFIND_DESTDIR: for ocamlfind install.
       # dune install is not flexible enough to provide libdir via env.
       # Do we need export OPAM_SWITCH_PREFIX="$out"
-      # Do we need export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
       configurePhase = ''
         echo "+ configurePhase ${lockPkg.name}-${lockPkg.version}"
         runHook preConfigure
