@@ -124,8 +124,7 @@ module Opam_build = struct
 end
 
 module Opam_install = struct
-  let run ocaml_version opam with_test with_doc
-      with_tools path =
+  let run ocaml_version opam with_test with_doc with_tools path =
     Logs.info (fun log ->
         log "opam-install: Running... ocaml=%S path=%S opam=%S" ocaml_version
           path opam);
@@ -208,7 +207,7 @@ let () =
   let doc = "Manage OCaml projects with Nix" in
   let sdocs = Manpage.s_common_options in
 
-  let info = Cmd.info "onix" ~version:"0.0.1" ~doc ~sdocs in
+  let info = Cmd.info "onix" ~version:"0.0.2" ~doc ~sdocs in
 
   let default =
     let run () = `Help (`Pager, None) in
