@@ -30,12 +30,13 @@ root package:
 $ onix lock pkg.opam --with-test --with-doc --with-tools
 ```
 
-Create a lock file including test dependencies of all the packages, doc
-dependencies of the root package dependencies and the development tools
-dependencies of the root package:
+Create a lock file including:
+* all test packages;
+* doc packages of the dependencies; and
+* development tools packages of the root package.
 
 ```
-$ onix lock pkg.opam --with-test=all --with-test=deps --with-tools=root
+$ onix lock pkg.opam --with-test=all --with-doc=deps --with-tools=root
 ```
 
 
