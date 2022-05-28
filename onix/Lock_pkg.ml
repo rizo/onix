@@ -201,7 +201,7 @@ let get_src ~package opam_url_opt =
       None
     | Ok src -> Some src)
 
-let collect_deps ?(opt = Name_set.empty) ~required ~env depends_formula =
+let filter_deps ?(opt = Name_set.empty) ~required ~env depends_formula =
   let rec collect ~req ~opt ~required (formula : OpamFormula.t) =
     match formula with
     | Empty -> (req, opt)
@@ -264,83 +264,62 @@ let get_depexts ~package_name ~is_zip_src ~env depexts =
   in
   (nix_depexts, unknown_depexts)
 
-let resolve ?(build = false) ?(with_test = false) ?(with_doc = false)
-    ?(with_tools = false) pkg v =
+let resolve ?(build = false) ?(test = false) ?(doc = false) ?(tools = false) pkg
+    v =
   let contents =
     Build_context.Vars.try_resolvers
       [
         Build_context.Vars.resolve_package pkg;
         Build_context.Vars.resolve_from_base;
-        Build_context.Vars.resolve_dep_flags ~build ~with_test ~with_doc
-          ~with_tools;
+        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~tools;
       ]
       v
   in
-  Opam_utils.debug_var
-    ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg)
-    v contents;
+  (* Opam_utils.debug_var *)
+  (*   ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg) *)
+  (*   v contents; *)
   contents
 
-let get_deps  ~opam_depends ~opam_depopts pkg =
-  let env = resolve pkg in
-  let _depends, depopts = get_deps ~env ~required:false opam_depopts in
-  assert (Name_set.is_empty _depends);
-  get_deps ~env ~required:true ~opt:depopts opam_depends
+let print_dep n deps =
+  Fmt.epr "%s: @." n;
+  Name_set.iter (fun n -> Fmt.epr "-%a@.@." Opam_utils.pp_package_name n) deps
 
-let get_depends_build' ~opam_depends ~opam_depopts pkg =
-  let env = resolve ~build:true pkg in
-  let _depends, depopts = get_deps ~env ~required:false opam_depopts in
-  assert (Name_set.is_empty _depends);
-  get_deps ~env ~required:true ~opt:depopts opam_depends
-
-let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
+let of_opam ~with_test ~with_doc ~with_tools package opam =
+  let is_root = Opam_utils.is_root package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
+
   let opam_depends = OpamFile.OPAM.depends opam in
   let opam_depopts = OpamFile.OPAM.depopts opam in
-  let opam_depexts = OpamFile.OPAM.depexts opam in
 
-  let env = Build_context.basic_resolve Build_context.Vars.default in
-
-  let get_req ?(env = env) = get_deps ~env ~required:true in
-  let get_opt ?(env = env) = get_deps ~env ~required:false in
-
-  (* We start a cerimonial dependency extraction here. The intent is to
-     precisely split the dependencies in the buckets based on filters. *)
-
-  (* Collect just depopts, and then depends and remaining depopts. *)
-  let _depends, depopts = get_opt opam_depopts in
-  assert (Name_set.is_empty _depends);
-  let depends, depopts = get_req ~opt:depopts opam_depends in
-
-  (* Collect depopts+build, and then depends+build and remaining depopts+build. *)
-  let _depends_build', depopts_build' = get_opt ~with_build:true opam_depopts in
-  assert (Name_set.is_empty _depends_build');
-  let depends_build', depopts_build' =
-    get_req ~opt:depopts_build' ~with_build:true opam_depends
+  let get_deps ?build ?test ?doc ?tools ?(depends = Name_set.empty)
+      ?(depopts = Name_set.empty) () =
+    let env = resolve ?build ?test ?doc ?tools package in
+    let _req, opt = filter_deps ~env ~required:false opam_depopts in
+    assert (Name_set.is_empty _req);
+    let req, opt = filter_deps ~env ~required:true ~opt opam_depends in
+    (Name_set.diff req depends, Name_set.diff opt depopts)
   in
 
-  (* Collect depopts+test, and then depends+test and remaining depopts+test. *)
-  let _depends_test', depopts_test' = get_opt ~with_test:true opam_depopts in
-  assert (Name_set.is_empty _depends_test');
-  let depends_test', depopts_test' =
-    get_req ~opt:depopts_test' ~with_test:true opam_depends
-  in
+  let test = Opam_utils.flag_for_scope ~is_root with_test in
+  let doc = Opam_utils.flag_for_scope ~is_root with_doc in
+  let tools = Opam_utils.flag_for_scope ~is_root with_tools in
 
-  (* Collect depopts+doc, and then depends+doc and remaining depopts+doc. *)
-  let _depends_doc', depopts_doc' = get_opt ~with_doc:true opam_depopts in
-  assert (Name_set.is_empty _depends_doc');
-  let depends_doc', depopts_doc' =
-    get_req ~opt:depopts_doc' ~with_doc:true opam_depends
+  let depends, depopts = get_deps () in
+  let depends_build, depopts_build =
+    get_deps ~build:true ~depends ~depopts ()
   in
-
-  (* As far as we can tell there is no way to filter out the normal deps with
-     OpamPackageVar.filter_depends_formula. Might need to go lower-level. *)
-  let depends_build = Name_set.diff depends_build' depends in
-  let depopts_build = Name_set.diff depopts_build' depopts in
-  let depends_test = Name_set.diff depends_test' depends in
-  let depopts_test = Name_set.diff depopts_test' depopts in
-  let depends_doc = Name_set.diff depends_doc' depends in
-  let depopts_doc = Name_set.diff depopts_doc' depopts in
+  let depends_test, depopts_test =
+    if test then get_deps ~test ~depends ~depopts ()
+    else (Name_set.empty, Name_set.empty)
+  in
+  let depends_doc, depopts_doc =
+    if doc then get_deps ~doc ~depends ~depopts ()
+    else (Name_set.empty, Name_set.empty)
+  in
+  let depends_tools, depopts_tools =
+    if tools then get_deps ~tools ~depends ~depopts ()
+    else (Name_set.empty, Name_set.empty)
+  in
 
   let depends_build =
     List.fold_left
@@ -357,23 +336,12 @@ let of_opam ?(with_build = true) ?with_test ?with_doc package opam =
   in
 
   (* Collect depexts. *)
+  let opam_depexts = OpamFile.OPAM.depexts opam in
   let depexts_nix, depexts_unknown =
     let is_zip_src = Option.map_default false check_is_zip_src src in
-    get_depexts ~is_zip_src ~package_name:(OpamPackage.name package) ~env
-      opam_depexts
+    get_depexts ~is_zip_src ~package_name:(OpamPackage.name package)
+      ~env:Build_context.Vars.resolve_from_base opam_depexts
   in
-
-  (* Collect tools. *)
-  (* let env = resolve (Build_context.Vars.make_default ~with_tools:true ()) in *)
-
-  (* Collect depopts+test, and then depends+test and remaining depopts+test. *)
-  let _depends_tools', depopts_tools' = get_opt ~env opam_depopts in
-  assert (Name_set.is_empty _depends_tools');
-  let depends_tools', depopts_tools' =
-    get_req ~env ~opt:depopts_tools' opam_depends
-  in
-  let depends_tools = Name_set.diff depends_tools' depends in
-  let depopts_tools = Name_set.diff depopts_tools' depopts in
 
   Some
     {

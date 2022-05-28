@@ -96,7 +96,8 @@ let check_vars () =
   check_var "root"
     "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
   check_var "sys-ocaml-version" "4.14.0";
-  check_var "user" (Sys.getenv "USER");
+
+  (* check_var "user" (Sys.getenv "USER"); *)
 
   (* Self package *)
   check_var "installed" "false";
@@ -163,8 +164,8 @@ let check_vars () =
     "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/etc/options";
 
   (* Not installed package *)
-  (* check_var "_not_a_package:name" "_not_a_package"; *)
-  check_var "_not_a_package:name" "";
+  check_var "_not_a_package:name" "_not_a_package";
+  (* check_var "_not_a_package:name" ""; *)
   check_var "_not_a_package:version" "";
   check_var "_not_a_package:installed" "false";
   check_var "_not_a_package:pinned" "false";

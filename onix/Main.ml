@@ -28,17 +28,38 @@ let opam_arg =
   let docv = "OPAM" in
   Arg.(info ["opam"] ~docv ~doc |> opt (some string) None |> required)
 
+let flag_scopes =
+  [("true", `root); ("deps", `deps); ("all", `all); ("false", `none)]
+
 let with_test_arg =
-  let doc = "Include packages {with-test} constrained packages." in
-  Arg.(info ["with-test"] ~doc |> flag |> value)
+  let doc =
+    "Include {with-test} constrained packages. Applies to the root packages \
+     only if passed without value. The possible values are: `true', `deps', \
+     `all' or `false'"
+  in
+  Arg.info ["with-test"] ~doc ~docv:"VAL"
+  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) `none
+  |> Arg.value
 
 let with_doc_arg =
-  let doc = "Include packages {with-doc} constrained packages." in
-  Arg.(info ["with-doc"] ~doc |> flag |> value)
+  let doc =
+    "Include {with-doc} constrained packages. Applies to the root packages \
+     only if passed without value. The possible values are: `true', `deps', \
+     `all' or `false'"
+  in
+  Arg.info ["with-doc"] ~doc ~docv:"VAL"
+  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) `none
+  |> Arg.value
 
 let with_tools_arg =
-  let doc = "Include packages {with-tools} constrained packages." in
-  Arg.(info ["with-tools"] ~doc |> flag |> value)
+  let doc =
+    "Include {with-tools} constrained packages. Applies to the root packages \
+     only if passed without value. The possible values are: `true', `deps', \
+     `all' or `false'"
+  in
+  Arg.info ["with-tools"] ~doc ~docv:"VAL"
+  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) `none
+  |> Arg.value
 
 let repo_url_arg =
   let doc =
@@ -75,12 +96,14 @@ module Opam_patch = struct
 end
 
 module Opam_build = struct
-  let run style_renderer log_level ocaml_version opam path =
+  let run style_renderer log_level ocaml_version opam with_test with_doc
+      with_tools path =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
         log "opam-build: Running... ocaml=%S path=%S opam=%S" ocaml_version path
           opam);
-    Onix.Opam_actions.build ~ocaml_version ~opam path;
+    Onix.Opam_actions.build ~ocaml_version ~opam ~with_test ~with_doc
+      ~with_tools path;
     Logs.info (fun log -> log "opam-build: Done.")
 
   let info =
@@ -94,15 +117,20 @@ module Opam_build = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ocaml_version_arg
         $ opam_arg
+        $ with_test_arg
+        $ with_doc_arg
+        $ with_tools_arg
         $ path_arg)
 end
 
 module Opam_install = struct
-  let run ocaml_version opam path =
+  let run ocaml_version opam with_test with_doc
+      with_tools path =
     Logs.info (fun log ->
         log "opam-install: Running... ocaml=%S path=%S opam=%S" ocaml_version
           path opam);
-    Onix.Opam_actions.install ~ocaml_version ~opam path;
+    Onix.Opam_actions.install ~ocaml_version ~opam ~with_test ~with_doc
+      ~with_tools path;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =
@@ -110,7 +138,15 @@ module Opam_install = struct
       ~doc:"Install a package from a package closure file."
 
   let cmd =
-    Cmd.v info Term.(const run $ ocaml_version_arg $ opam_arg $ path_arg)
+    Cmd.v info
+      Term.(
+        const run
+        $ ocaml_version_arg
+        $ opam_arg
+        $ with_test_arg
+        $ with_doc_arg
+        $ with_tools_arg
+        $ path_arg)
 end
 
 let onix_lock_file_name = "./onix-lock.nix"
@@ -119,8 +155,8 @@ module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level with_test with_doc with_tools ignore_file
-      repo_url input_opam_files =
+  let run style_renderer log_level ignore_file repo_url with_test with_doc
+      with_tools input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
     let ignore_file =
@@ -136,7 +172,10 @@ module Lock = struct
               ignore_file);
         None)
     in
-    let lock_file = Onix.Solver.solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files in
+    let lock_file =
+      Onix.Solver.solve ~repo_url ~with_test ~with_doc ~with_tools
+        input_opam_files
+    in
     Onix.Utils.Out_channel.with_open_text onix_lock_file_name (fun chan ->
         let out = Format.formatter_of_out_channel chan in
         Fmt.pf out "%a" (Onix.Lock_file.pp ~ignore_file) lock_file);
@@ -150,11 +189,11 @@ module Lock = struct
         const run
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
+        $ ignore_file_arg
+        $ repo_url_arg
         $ with_test_arg
         $ with_doc_arg
         $ with_tools_arg
-        $ ignore_file_arg
-        $ repo_url_arg
         $ input_opam_files_arg)
 end
 

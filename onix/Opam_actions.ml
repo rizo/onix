@@ -181,9 +181,12 @@ end
 
 let patch = Patch.run
 
-let build ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~opam
-    path =
+let build ~ocaml_version ~opam ~with_test ~with_doc ~with_tools path =
   let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
+  let is_root = Opam_utils.is_root_version ctx.self.version in
+  let test = Opam_utils.flag_for_scope ~is_root with_test in
+  let doc = Opam_utils.flag_for_scope ~is_root with_doc in
+  let tools = Opam_utils.flag_for_scope ~is_root with_tools in
   let opam = Opam_utils.read_opam ctx.self.opam in
   let commands =
     (OpamFilter.commands
@@ -239,9 +242,12 @@ module Install = struct
             dst);
       OpamFilename.copy ~src ~dst)
 
-  let run ?(test = false) ?(doc = false) ?(tools = false) ~ocaml_version ~opam
-      path =
+  let run ~ocaml_version ~opam ~with_test ~with_doc ~with_tools path =
     let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
+    let is_root = Opam_utils.is_root_version ctx.self.version in
+    let test = Opam_utils.flag_for_scope ~is_root with_test in
+    let doc = Opam_utils.flag_for_scope ~is_root with_doc in
+    let tools = Opam_utils.flag_for_scope ~is_root with_tools in
     let opam = Opam_utils.read_opam ctx.self.opam in
     let commands =
       OpamFilter.commands

@@ -84,11 +84,11 @@ let eq ~actual ~expected =
     Fmt.pr "--- EXPECTED ---\n%s\n\n--- ACTUAL ---\n%s@." expected actual;
     raise Exit)
 
-let mk_lock ?with_build ?with_test ?with_doc ~name str =
+let mk_lock ~name str =
   let pkg = OpamPackage.of_string name in
   str
   |> OpamFile.OPAM.read_from_string
-  |> Onix.Lock_pkg.of_opam ?with_build ?with_test ?with_doc pkg
+  |> Onix.Lock_pkg.of_opam ~with_tools:`all ~with_test:`all ~with_doc:`all pkg
   |> Option.get
 
 let test_complex_opam () =
@@ -133,10 +133,7 @@ depexts = with pkgs; [ unzip ];
   eq ~actual ~expected
 
 let test_other_deps_opam () =
-  let lock_pkg =
-    mk_lock ~name:"other-deps.1.0.1" ~with_test:true ~with_doc:true
-      other_deps_opam
-  in
+  let lock_pkg = mk_lock ~name:"other-deps.1.0.1" other_deps_opam in
   let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
   let expected =
     {|name = "other-deps"; version = "1.0.1";

@@ -27,8 +27,9 @@ let is_opam_filename filename =
   String.equal (Filename.extension filename) ".opam"
 
 let opam_name_of_filename filename =
-  let basename = Filename.remove_extension filename in
-  OpamPackage.Name.of_string basename
+  let basename = Filename.basename filename in
+  let name = Filename.remove_extension basename in
+  OpamPackage.Name.of_string name
 
 let dev_version = OpamPackage.Version.of_string "dev"
 let root_version = OpamPackage.Version.of_string "root"
@@ -36,6 +37,29 @@ let is_pinned_version version = OpamPackage.Version.equal version dev_version
 let is_root_version version = OpamPackage.Version.equal version root_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)
 let is_root package = is_root_version (OpamPackage.version package)
+
+type flag_scope =
+  [ `root
+  | `deps
+  | `none
+  | `all ]
+
+let pp_flag_scope formatter flag_scope =
+  let str =
+    match flag_scope with
+    | `root -> "root"
+    | `deps -> "deps"
+    | `none -> "none"
+    | `all -> "all"
+  in
+  Fmt.pf formatter "%s" str
+
+let flag_for_scope ~is_root scope =
+  match scope with
+  | `root -> is_root
+  | `deps -> not is_root
+  | `all -> true
+  | `none -> false
 
 let debug_var ?(scope = "unknown") var contents =
   Logs.debug (fun log ->

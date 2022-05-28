@@ -22,9 +22,9 @@ module Vars : sig
   val resolve_dep_flags :
     ?build:bool ->
     ?post:bool ->
-    ?with_test:bool ->
-    ?with_doc:bool ->
-    ?with_tools:bool ->
+    ?test:bool ->
+    ?doc:bool ->
+    ?tools:bool ->
     OpamFilter.env
   (** The opam filter env for resolving dependencies based on flags. *)
 

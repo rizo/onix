@@ -42,16 +42,18 @@ let solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files =
       ~fixed_packages ~constraints ~with_test ~with_doc ~with_tools
   in
   Logs.info (fun log ->
-      log "Solving dependencies... with-test=%b with-doc=%b with-tools=%b"
-        with_test with_doc with_tools);
+      log "Solving dependencies... with-test=%a with-doc=%a with-tools=%a"
+        Opam_utils.pp_flag_scope with_test Opam_utils.pp_flag_scope with_doc
+        Opam_utils.pp_flag_scope with_tools);
   match Solver.solve context target_packages with
   | Ok selections ->
     let packages = Solver.packages_of_result selections in
+    Fmt.pr "Resolved %d packages:@." (List.length packages);
     List.iter (Fmt.pr "- %a@." Opam_utils.pp_package) packages;
     packages
     |> List.filter_map (fun pkg ->
            let opam = Solver_context.get_opam_file context pkg in
-           match Lock_pkg.of_opam pkg opam with
+           match Lock_pkg.of_opam ~with_test ~with_doc ~with_tools pkg opam with
            | None ->
              Logs.warn (fun log ->
                  log "Missing url for %a, ignoring..." Opam_utils.pp_package pkg);

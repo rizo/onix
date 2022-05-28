@@ -19,6 +19,19 @@ let
     installPhase = "${pkgs.coreutils}/bin/touch $out";
   };
 
+  flagForScope = version: scope:
+    let isRoot = version == "root";
+    in if scope == true then
+      isRoot
+    else if scope == "deps" then
+      !isRoot
+    else if scope == "all" then
+      true
+    else if scope == false then
+      false
+    else
+      throw "invalid flag scope value: ${scope}";
+
   collectTransitiveDeps = init: scope: lockDeps:
     foldl' (acc: lockDep:
       if isNull lockDep || builtins.hasAttr lockDep.name acc then
@@ -50,7 +63,7 @@ let
         };
     in foldl' updatePath empty (builtins.attrValues pkgDeps);
 
-  buildPkg = { scope, strictDeps, logLevel }:
+  buildPkg = { scope, strictDeps, logLevel, withTest, withDoc, withTools }:
     name: lockPkg:
     let
       ocaml = scope.ocaml;
@@ -91,7 +104,16 @@ let
 
       # Onix calls opam-installer to install packages. Add direct build deps 
       nativeBuildInputs = [ pkgs.opam-installer ] ++ directBuildDeps
-        ++ optionals isConfigPkg (lockPkg.depexts or [ ]);
+        ++ optionals isConfigPkg (lockPkg.depexts or [ ])
+        # Test depends
+        ++ optionals (flagForScope lockPkg.version withTest)
+        (lockPkg.testDepends or [ ])
+        # Doc depends
+        ++ optionals (flagForScope lockPkg.version withDoc)
+        (lockPkg.docDepends or [ ])
+        # Tools depends
+        ++ optionals (flagForScope lockPkg.version withTools)
+        (lockPkg.toolsDepends or [ ]);
 
       # Set environment variables for OCaml library lookup. This needs to use
       # transitive dependencies as dune requires the full dependency tree.
@@ -128,6 +150,9 @@ let
         ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
           --opam=${lockPkg.opam} \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
           $out
         runHook postBuild
       '';
@@ -137,7 +162,14 @@ let
       installPhase = ''
         runHook preInstall
         mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/${name}
-        ${onix}/bin/onix opam-install --ocaml-version=${ocaml.version} --opam=${lockPkg.opam} $out
+
+        ${onix}/bin/onix opam-install \
+          --ocaml-version=${ocaml.version} \
+          --opam=${lockPkg.opam} \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
+          $out
 
         if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
           echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"
@@ -149,7 +181,8 @@ let
 
 in {
   build = { ocaml ? defaultOCaml, lock, overrides ? { }, strictDeps ? false
-    , logLevel ? "debug" }:
+    , logLevel ? "debug", withTest ? false, withDoc ? false, withTools ? false
+    }:
 
     let
       onix-lock = import lock {
@@ -173,8 +206,9 @@ in {
       } // overrides;
 
       # The scope without overrides.
-      baseScope =
-        mapAttrs (buildPkg { inherit strictDeps scope logLevel; }) onix-lock;
+      baseScope = mapAttrs (buildPkg {
+        inherit strictDeps scope logLevel withTest withDoc withTools;
+      }) onix-lock;
 
       # The final scope with all packages and applied overrides.
       scope = mapAttrs (name: pkg:

@@ -3,9 +3,9 @@
 let ( </> ) = Filename.concat
 
 type t = {
-  with_test : bool;
-  with_doc : bool;
-  with_tools : bool;
+  with_test : Opam_utils.flag_scope;
+  with_doc : Opam_utils.flag_scope;
+  with_tools : Opam_utils.flag_scope;
   repo_packages_dir : string;
   fixed_packages :
     (OpamPackage.Version.t * OpamFile.OPAM.t) OpamPackage.Name.Map.t;
@@ -113,20 +113,23 @@ let candidates t name =
     224  with-doc
    2339  with-test
      12  with-tools *)
-let filter_deps { with_test; with_doc; with_tools; _ } pkg depends_formula =
-  let nv = OpamPackage.to_string pkg in
+let filter_deps t pkg depends_formula =
+  let is_root = Opam_utils.is_root pkg in
+  let test = Opam_utils.flag_for_scope ~is_root t.with_test in
+  let doc = Opam_utils.flag_for_scope ~is_root t.with_doc in
+  let tools = Opam_utils.flag_for_scope ~is_root t.with_tools in
   let env var =
     let contents =
       Build_context.Vars.try_resolvers
         [
           Build_context.Vars.resolve_package pkg;
           Build_context.Vars.resolve_from_base;
-          Build_context.Vars.resolve_dep_flags ~with_test
-            ~with_doc ~with_tools;
+          Build_context.Vars.resolve_dep_flags ~test ~doc ~tools;
         ]
         var
     in
-    Opam_utils.debug_var ~scope:("filter_deps/" ^ nv) var contents;
+    (* let nv = OpamPackage.to_string pkg in *)
+    (* Opam_utils.debug_var ~scope:("filter_deps/" ^ nv) var contents; *)
     contents
   in
   OpamFilter.filter_formula ~default:false env depends_formula
