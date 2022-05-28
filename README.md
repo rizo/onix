@@ -11,6 +11,12 @@ Create a lock file for all opam packages in the current directory:
 $ onix lock
 ```
 
+Create a lock file using a specific opam repository URL:
+
+```
+$ onix lock --repo-url=https://github.com/ocaml/opam-repository.git#52c72e08d7782967837955f1c50c330a6131721f
+```
+
 Create a lock file for specified opam packages only:
 
 ```
