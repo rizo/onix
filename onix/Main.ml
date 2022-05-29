@@ -20,6 +20,11 @@ let opam_package_arg =
   let docv = "PATH" in
   Arg.(info [] ~docv ~doc |> pos 0 (some string) None |> required)
 
+let lock_file_arg =
+  let doc = "The path to the lock file (by default ./onix-lock.nix)." in
+  let docv = "FILE" in
+  Arg.(info ["lock-file"] ~docv ~doc |> opt string "./onix-lock.nix" |> value)
+
 let ignore_file_arg =
   let doc =
     "The path to the project ignore file (by default .gitignore). Pass \
@@ -156,14 +161,12 @@ module Opam_install = struct
         $ opam_package_arg)
 end
 
-let onix_lock_file_name = "./onix-lock.nix"
-
 module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level ignore_file repo_url with_test with_doc
-      with_tools input_opam_files =
+  let run style_renderer log_level ignore_file lock_file_path repo_url with_test
+      with_doc with_tools input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
     let ignore_file =
@@ -183,10 +186,10 @@ module Lock = struct
       Onix.Solver.solve ~repo_url ~with_test ~with_doc ~with_tools
         input_opam_files
     in
-    Onix.Utils.Out_channel.with_open_text onix_lock_file_name (fun chan ->
+    Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
         Fmt.pf out "%a" (Onix.Lock_file.pp ~ignore_file) lock_file);
-    Logs.info (fun log -> log "Created a lock file at %S." onix_lock_file_name)
+    Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
 
@@ -197,6 +200,7 @@ module Lock = struct
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ignore_file_arg
+        $ lock_file_arg
         $ repo_url_arg
         $ with_test_arg ~absent:`root
         $ with_doc_arg ~absent:`root

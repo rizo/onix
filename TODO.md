@@ -29,11 +29,16 @@
 - [x] Changing project's opam file currently triggers full scope rebuild?
 - [x] Support gitignore.
 - api.lock could be a derivation.
-- [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
-- [ ] Make dev tools work: vscode/vim plugins.
-- [ ] Fix ocaml env vars propagation for shell.
-- [ ] Use nix-prefetch-url.
-- [ ] Remove empty libdir after install (should at least have opam!!)?
+- [x] Support dependency flags: with-build with-test with-doc with-dev/with-tools?
+  - Expose flags in the api module.
+- [x] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
+- [x] Read ONIX_REPO_URL.
+- [x] Allow setting dep flags for both the project and the deps. 
+- [x] Nix store path parsing does not work for `nix develop`: pass nv to actions.
+- [x] Ensure valid pkg names (exclude ~).
+- [x] Use two sets for depexts: nix * other instead of nix | other.
+- [x] Support zip unpacking (tezos?).
+- [x] Use builtins.foldl’.
 - [x] Handle .config files (like conf-binutils.config). Is this related to opam's `flag: conf`.
   - https://github.com/tweag/opam-nix/blob/8062dfe742f6636191017232ff504f6765a7f2d1/src/builder.nix#L358
   - Generated on build: https://github.com/ocaml/opam-repository/blob/00777c1a37b2eac5e802e10570a76c89bc5d221e/packages/conf-binutils/conf-binutils.0.3/opam#L9
@@ -44,16 +49,19 @@
     - This is because in some cases they will actually resolve to nix paths.
     - [x] An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Build_context from the saved `onix-propagated-opam-vars` file.
     - [x] Cache the `Dot_config` file as it's likely to be accessed multiple times.
+- [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
+- [ ] Make dev tools work: vscode/vim plugins.
+- [ ] Fix ocaml env vars propagation for shell.
+- [ ] Use nix-prefetch-url.
+- [ ] Remove empty libdir after install (should at least have opam!!)?
 - [ ] Document that opam vars can be set by defining OPAM_VAR_pkg_name.
 - [ ] Consider using opaline.
   - Or we could even intall ourselves with OpamFile.Dot_install.
   - https://docs.ocaml.pro/docs/LIBRARY.opam_format@opam-format.2.0.8/OpamFile/Dot_install/index.html
 - [ ] Implement onix shell.
 - [ ] Implement onix build.
-- [x] Use builtins.foldl’.
-- [ ] Add --lock-file argument to actions.
+- [x] Add --lock-file argument to actions.
 - [ ] Add a command similar to `opam var` to lookup package variables?
-- [x] Support zip unpacking (tezos?).
 - [ ] Improve error-handling.
 - [ ] Build any package without a project `onix build utop` or similar.
 - [ ] ~~Make depends/depexts optional fields.~~ No longer needed for new build context.
@@ -63,27 +71,20 @@
 - [ ] Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?
   - [ ] Pass package nv to opam actions. This will fix the develop $out issue.
 - [ ] Add an example with overrides.
-- [x] Use two sets for depexts: nix * other instead of nix | other.
 - [ ] Support static compilation.
 - [ ] Handle setenv and build-env.
 - [ ] Support cross-compilation.
-- [x] Support dependency flags: with-build with-test with-doc with-dev/with-tools?
-  - Expose flags in the api module.
 - [ ] Add flakes support.
-- [ ] Use strictDeps. This will require handling conf- packages in the lock file.
-- [x] Ensure valid pkg names (exclude ~).
+- [ ] ~~Use strictDeps. This will require handling conf- packages in the lock file.~~
+  - Added a build option.
 - [ ] Handle lock file without ocaml.
 - [ ] Version the lock file.
   - Add version, packages and repo fields.
 - [ ] Consider using joinSymlinks to create a build scope.
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
 - [ ] Consider using makeScope for the scope.
-- [ ] Read ONIX_REPO_URL.
-- [ ] Allow setting dep flags for both the project and the deps. 
 - [ ] Handle pkg:installed?enable:disable.
-- [ ] Nix store path parsing does not work for `nix develop`.
 - [ ] Stop using emptyPkg. Override the base compiler only?
-- [ ] Pass ignore file as a parameter: --ignore-file=(default=.gitignore).
 - [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
 - [ ] Handle enable-ocaml-beta-repository.
 - [ ] Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.
