@@ -1,3 +1,5 @@
+val resolve_repo : string -> OpamFilename.Dir.t * OpamUrl.t
+
 val solve :
   repo_url:string ->
   with_test:Opam_utils.dep_flag ->

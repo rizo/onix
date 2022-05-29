@@ -26,17 +26,19 @@ let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
 let is_opam_filename filename =
   String.equal (Filename.extension filename) ".opam"
 
-let opam_name_of_filename filename =
-  let basename = Filename.basename filename in
-  let name = Filename.remove_extension basename in
-  OpamPackage.Name.of_string name
-
 let dev_version = OpamPackage.Version.of_string "dev"
 let root_version = OpamPackage.Version.of_string "root"
 let is_pinned_version version = OpamPackage.Version.equal version dev_version
 let is_root_version version = OpamPackage.Version.equal version root_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)
 let is_root package = is_root_version (OpamPackage.version package)
+
+let opam_package_of_filename filename =
+  let basename = Filename.basename filename in
+  let opamname = Filename.remove_extension basename in
+  try OpamPackage.of_string opamname
+  with Failure _ ->
+    OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
 
 type dep_flag =
   [ `root
@@ -80,9 +82,8 @@ let find_root_packages input_opams =
   in
   opams
   |> Seq.map (fun filename ->
-         let opam_name = opam_name_of_filename filename in
+         let pkg = opam_package_of_filename filename in
          Logs.info (fun log -> log "Reading packages from %S..." filename);
          let opam = read_opam (OpamFilename.of_string filename) in
-         let version = root_version in
-         (opam_name, (version, opam)))
+         (OpamPackage.name pkg, (OpamPackage.version pkg, opam)))
   |> OpamPackage.Name.Map.of_seq
