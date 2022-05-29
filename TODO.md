@@ -93,3 +93,4 @@
 - [ ] Hanlde "sys-ocaml-version" var.
 - [ ] Group dep flags.
 - [ ] Setup the opamverse test.
+- [ ] notty: seems to have a missing propagated build dep.

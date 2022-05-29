@@ -86,14 +86,10 @@ let
       toolsPkgs = getLockPkgs "toolsDepends" lockPkg scope;
       depextsPkgs = lockPkg.depexts or [ ];
 
-      transitivePkgs = builtins.attrValues
-        (collectTransitivePkgs { } scope (lockPkg.depends or [ ]));
+      transitivePkgs = builtins.attrValues (collectTransitivePkgs { } scope
+        (lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ]));
       transitivePaths =
         collectPaths ocaml.version (transitivePkgs ++ buildPkgs);
-
-      # All but one package in opam follow this convention:
-      # $ opam list --all --has-flag=conf
-      isConfPkg = lib.strings.hasPrefix "conf-" lockPkg.name;
 
       src = lockPkg.src or null;
 
@@ -111,14 +107,14 @@ let
       dontStrip = true;
 
       # Propage direct dependencies and but not depexts for config packages.
-      propagatedBuildInputs = dependsPkgs ++ depextsPkgs;
-
-      # Onix calls opam-installer to install packages. Add direct build deps 
-      nativeBuildInputs = [ pkgs.opam-installer ] ++ buildPkgs
+      propagatedBuildInputs = dependsPkgs ++ depextsPkgs
         # Test depends
         ++ optionals (evalDepFlag lockPkg.version withTest) testPkgs
         # Doc depends
-        ++ optionals (evalDepFlag lockPkg.version withDoc) docPkgs
+        ++ optionals (evalDepFlag lockPkg.version withDoc) docPkgs;
+
+      # Onix calls opam-installer to install packages. Add direct build deps 
+      nativeBuildInputs = [ pkgs.opam-installer ] ++ buildPkgs
         # Tools depends
         ++ optionals (evalDepFlag lockPkg.version withTools) toolsPkgs;
 
