@@ -7,7 +7,7 @@ type src =
     }
   | Http of {
       url : OpamUrl.t;
-      hash : OpamHash.t;
+      hash : OpamHash.kind * string;
     }
 
 type t = {
@@ -72,12 +72,11 @@ let pp_version f version =
   let version = String.init (String.length version) set_valid_char in
   Fmt.pf f "%S" version
 
-let pp_hash f hash =
-  let kind = OpamHash.kind hash in
+let pp_hash f (kind, hash) =
   match kind with
-  | `SHA256 -> Fmt.pf f "sha256 = %S" (OpamHash.contents hash)
-  | `SHA512 -> Fmt.pf f "sha512 = %S" (OpamHash.contents hash)
-  | `MD5 -> Fmt.pf f "md5 = %S" (OpamHash.contents hash)
+  | `SHA256 -> Fmt.pf f "sha256 = %S" hash
+  | `SHA512 -> Fmt.pf f "sha512 = %S" hash
+  | `MD5 -> Fmt.pf f "md5 = %S" hash
 
 let pp_src ~ignore_file f t =
   if is_root t then
@@ -95,8 +94,9 @@ let pp_src ~ignore_file f t =
         "@ src = @[<v-4>builtins.fetchGit {@ url = %S;@ rev = %S;@ allRefs = \
          true;@]@ };"
         url rev
-    (* MD5 hashes are not supported by Nix fetchers. Fetch without hash. *)
-    | Some (Http { url; hash }) when OpamHash.kind hash = `MD5 ->
+    (* MD5 hashes are not supported by Nix fetchers. Fetch without hash.
+       This normally would not happen as we try to prefetch_src_if_md5. *)
+    | Some (Http { url; hash = `MD5, _ }) ->
       Logs.warn (fun log ->
           log "Ignoring hash for %a. MD5 hashes are not supported by nix."
             Opam_utils.pp_package t.package);
@@ -156,6 +156,18 @@ let pp ~ignore_file f t =
     (pp_depexts_sets "depexts")
     (t.depexts_nix, t.depexts_unknown)
 
+let prefetch_src_if_md5 ~package src =
+  match src with
+  | Http { url; hash = `MD5, _ } ->
+    Logs.debug (fun log ->
+        log "Package %a uses an md5 hash, prefetching to compute a sha256 hash."
+          Opam_utils.pp_package package);
+    let hash =
+      Nix_utils.prefetch_url ~hash_type:`sha256 (OpamUrl.to_string url)
+    in
+    Http { url; hash = (`SHA256, hash) }
+  | _ -> src
+
 let select_opam_hash hashes =
   let md5, sha256, sha512 =
     let rec loop ?md5 ?sha256 ?sha512 hashes =
@@ -170,9 +182,9 @@ let select_opam_hash hashes =
     loop hashes
   in
   match (md5, sha256, sha512) with
-  | _, Some hash, _ -> Ok hash
-  | _, _, Some hash -> Ok hash
-  | Some hash, _, _ -> Ok hash
+  | _, Some hash, _ -> Ok (`SHA256, OpamHash.contents hash)
+  | _, _, Some hash -> Ok (`SHA512, OpamHash.contents hash)
+  | Some hash, _, _ -> Ok (`MD5, OpamHash.contents hash)
   | _ -> Error (`Msg "No md5/sha256/sha512 hashes found")
 
 let src_of_opam_url opam_url =
@@ -283,6 +295,7 @@ let resolve ?(build = false) ?(test = false) ?(doc = false) ?(tools = false) pkg
 let of_opam ~with_test ~with_doc ~with_tools package opam =
   let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
+  let src = Option.map (prefetch_src_if_md5 ~package) src in
 
   let opam_depends = OpamFile.OPAM.depends opam in
   let opam_depopts = OpamFile.OPAM.depopts opam in

@@ -93,7 +93,7 @@ let prefetch_url_with_path ?hash_type ?hash url =
 let prefetch_url ?hash_type ?hash uri =
   let open Bos in
   prefetch_url_cmd ~print_path:false ?hash_type ?hash uri
-  |> OS.Cmd.run_out
+  |> OS.Cmd.run_out ~err:OS.Cmd.err_null
   |> OS.Cmd.to_string
   |> Utils.Result.force_with_msg
 

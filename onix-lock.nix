@@ -17,8 +17,9 @@
   astring = {
     name = "astring";
     version = "0.8.5";
-    src = builtins.fetchurl {
+    src = pkgs.fetchurl {
       url = "https://erratique.ch/software/astring/releases/astring-0.8.5.tbz";
+      sha256 = "1ykhg9gd3iy7zsgyiy2p9b1wkpqg9irw5pvcqs3sphq71iir4ml6";
     };
     opam = "${repo}/packages/astring/astring.0.8.5/opam";
     depends = with self; [ ocaml ];
@@ -227,8 +228,9 @@
   fpath = {
     name = "fpath";
     version = "0.7.3";
-    src = builtins.fetchurl {
+    src = pkgs.fetchurl {
       url = "https://erratique.ch/software/fpath/releases/fpath-0.7.3.tbz";
+      sha256 = "03z7mj0sqdz465rc4drj1gr88l9q3nfs374yssvdjdyhjbqqzc0j";
     };
     opam = "${repo}/packages/fpath/fpath.0.7.3/opam";
     depends = with self; [ astring ocaml ];
@@ -237,8 +239,9 @@
   logs = {
     name = "logs";
     version = "0.7.0";
-    src = builtins.fetchurl {
+    src = pkgs.fetchurl {
       url = "https://erratique.ch/software/logs/releases/logs-0.7.0.tbz";
+      sha256 = "1jnmd675wmsmdwyb5mx5b0ac66g4c6gpv5s4mrx2j6pb0wla1x46";
     };
     opam = "${repo}/packages/logs/logs.0.7.0/opam";
     depends = with self; [ ocaml (self.base-threads or null)
@@ -401,8 +404,9 @@
   octavius = {
     name = "octavius";
     version = "1.2.2";
-    src = builtins.fetchurl {
+    src = pkgs.fetchurl {
       url = "https://github.com/ocaml-doc/octavius/archive/v1.2.2.tar.gz";
+      sha256 = "1bg0fcm7haqxvx5wx2cci0mbbq0gf1vw9fa4kkd6jsriw1611jga";
     };
     opam = "${repo}/packages/octavius/octavius.1.2.2/opam";
     depends = with self; [ dune ocaml ];
@@ -434,8 +438,9 @@
   omd = {
     name = "omd";
     version = "1.3.1";
-    src = builtins.fetchurl {
+    src = pkgs.fetchurl {
       url = "https://github.com/Chris00/omd/releases/download/1.3.1/omd-1.3.1.tar.gz";
+      sha256 = "1sgdgzpx96br7npj8mh91cli5mqmzsjpngwm7x4212n3k1d0ivwa";
     };
     opam = "${repo}/packages/omd/omd.1.3.1/opam";
     depends = with self; [ base-bigarray base-bytes ocaml ];
@@ -566,8 +571,9 @@
   result = {
     name = "result";
     version = "1.5";
-    src = builtins.fetchurl {
+    src = pkgs.fetchurl {
       url = "https://github.com/janestreet/result/releases/download/1.5/result-1.5.tbz";
+      sha256 = "0cpfp35fdwnv3p30a06wd0py3805qxmq3jmcynjc3x2qhlimwfkw";
     };
     opam = "${repo}/packages/result/result.1.5/opam";
     depends = with self; [ dune ocaml ];
@@ -717,8 +723,9 @@
   yojson = {
     name = "yojson";
     version = "1.7.0";
-    src = builtins.fetchurl {
+    src = pkgs.fetchurl {
       url = "https://github.com/ocaml-community/yojson/releases/download/1.7.0/yojson-1.7.0.tbz";
+      sha256 = "1iich6323npvvs8r50lkr4pxxqm9mf6w67cnid7jg1j1g5gwcvv5";
     };
     opam = "${repo}/packages/yojson/yojson.1.7.0/opam";
     depends = with self; [ biniou dune easy-format ocaml ];
