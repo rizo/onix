@@ -91,3 +91,4 @@
 - [ ] Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.
 - [ ] Hanlde "sys-ocaml-version" var.
 - [ ] Group dep flags.
+- [ ] Setup the opamverse test.
