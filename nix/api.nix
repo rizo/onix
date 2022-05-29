@@ -111,12 +111,10 @@ let
       dontStrip = true;
 
       # Propage direct dependencies and but not depexts for config packages.
-      propagatedBuildInputs = dependsPkgs ++ optionals (!isConfPkg) depextsPkgs;
+      propagatedBuildInputs = dependsPkgs ++ depextsPkgs;
 
       # Onix calls opam-installer to install packages. Add direct build deps 
       nativeBuildInputs = [ pkgs.opam-installer ] ++ buildPkgs
-        # Depexts
-        ++ optionals isConfPkg depextsPkgs
         # Test depends
         ++ optionals (evalDepFlag lockPkg.version withTest) testPkgs
         # Doc depends
