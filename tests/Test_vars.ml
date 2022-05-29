@@ -18,7 +18,8 @@ let ocamlpath =
 let build_context =
   Onix.Build_context.make ~ocamlpath ~ocaml_version:"4.14.0"
     ~opam:"/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root"
+    ~path:"/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root"
+    "onix-example.root"
 
 let eq_pkg_name n1 n2 =
   let eq = OpamPackage.Name.equal n1 n2 in

@@ -139,7 +139,8 @@ let
         ${onix}/bin/onix opam-patch \
           --ocaml-version=${ocaml.version} \
           --opam=${lockPkg.opam} \
-          $out
+          --path=$out \
+          ${lockPkg.name}.${lockPkg.version}
       '';
 
       # OCAMLFIND_DESTDIR: for ocamlfind install.
@@ -164,7 +165,8 @@ let
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
           --with-tools=${builtins.toJSON withTools} \
-          $out
+          --path=$out \
+          ${lockPkg.name}.${lockPkg.version}
         runHook postBuild
       '';
 
@@ -181,7 +183,8 @@ let
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
           --with-tools=${builtins.toJSON withTools} \
-          $out
+          --path=$out \
+          ${lockPkg.name}.${lockPkg.version}
 
         if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
           echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"

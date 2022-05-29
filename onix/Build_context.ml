@@ -299,8 +299,9 @@ let package_of_nix_store_path ~libdir (store_path : Nix_utils.store_path) =
   }
 
 let make ?(ocamlpath = Sys.getenv_opt "OCAMLPATH" or "") ?(vars = Vars.base)
-    ~ocaml_version ~opam path =
+    ~ocaml_version ~opam ~path opam_pkg =
   Logs.debug (fun log -> log "Build_context.make: OCAMLPATH=%s" ocamlpath);
+  let opam_pkg = OpamPackage.of_string opam_pkg in
   let deps =
     if String.length ocamlpath = 0 then OpamPackage.Name.Map.empty
     else
@@ -316,13 +317,7 @@ let make ?(ocamlpath = Sys.getenv_opt "OCAMLPATH" or "") ?(vars = Vars.base)
   let self =
     let path = OpamFilename.Dir.of_string path in
     let opam = OpamFilename.of_string opam in
-    let store_path = Nix_utils.parse_store_path path in
-    {
-      name = store_path.package_name;
-      version = store_path.package_version;
-      path;
-      opam;
-    }
+    { name = opam_pkg.name; version = opam_pkg.version; path; opam }
   in
   let scope = OpamPackage.Name.Map.add self.name self deps in
   let ocaml_version = OpamPackage.Version.of_string ocaml_version in

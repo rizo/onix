@@ -54,7 +54,8 @@ val make :
   ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
   ocaml_version:string ->
   opam:string ->
+  path:string ->
   string ->
   t
-(* [make ?vars ~ocaml_version path] creates a build context for a package
-   located at a nix store path [path] with opam file located at [opam]. *)
+(* [make ?vars ~ocaml_version ~path opam_pkg] creates a build context for a
+   package located at a nix store path [path] with opam file located at [opam]. *)

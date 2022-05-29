@@ -13,6 +13,11 @@ let ocaml_version_arg =
 let path_arg =
   let doc = "Nix store path of the package (i.e. the out directory)." in
   let docv = "PATH" in
+  Arg.(info ["path"] ~docv ~doc |> opt (some string) None |> required)
+
+let opam_package_arg =
+  let doc = "The package information in the format `name.version'." in
+  let docv = "PATH" in
   Arg.(info [] ~docv ~doc |> pos 0 (some string) None |> required)
 
 let ignore_file_arg =
@@ -31,34 +36,34 @@ let opam_arg =
 let flag_scopes =
   [("true", `root); ("deps", `deps); ("all", `all); ("false", `none)]
 
-let with_test_arg =
+let with_test_arg ~absent =
   let doc =
     "Include {with-test} constrained packages. Applies to the root packages \
      only if passed without value. The possible values are: `true', `deps', \
      `all' or `false'"
   in
   Arg.info ["with-test"] ~doc ~docv:"VAL"
-  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) `none
+  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
 
-let with_doc_arg =
+let with_doc_arg ~absent =
   let doc =
     "Include {with-doc} constrained packages. Applies to the root packages \
      only if passed without value. The possible values are: `true', `deps', \
      `all' or `false'"
   in
   Arg.info ["with-doc"] ~doc ~docv:"VAL"
-  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) `none
+  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
 
-let with_tools_arg =
+let with_tools_arg ~absent =
   let doc =
     "Include {with-tools} constrained packages. Applies to the root packages \
      only if passed without value. The possible values are: `true', `deps', \
      `all' or `false'"
   in
   Arg.info ["with-tools"] ~doc ~docv:"VAL"
-  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) `none
+  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
 
 let repo_url_arg =
@@ -74,12 +79,12 @@ let repo_url_arg =
     |> value)
 
 module Opam_patch = struct
-  let run style_renderer log_level ocaml_version opam path =
+  let run style_renderer log_level ocaml_version opam path opam_pkg =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
-        log "opam-patch: Running... ocaml=%S path=%S opam=%S" ocaml_version path
-          opam);
-    Onix.Opam_actions.patch ~ocaml_version ~opam path;
+        log "opam-patch: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
+          ocaml_version path opam);
+    Onix.Opam_actions.patch ~ocaml_version ~opam ~path opam_pkg;
     Logs.info (fun log -> log "opam-patch: Done.")
 
   let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
@@ -92,18 +97,19 @@ module Opam_patch = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ocaml_version_arg
         $ opam_arg
-        $ path_arg)
+        $ path_arg
+        $ opam_package_arg)
 end
 
 module Opam_build = struct
   let run style_renderer log_level ocaml_version opam with_test with_doc
-      with_tools path =
+      with_tools path opam_pkg =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
-        log "opam-build: Running... ocaml=%S path=%S opam=%S" ocaml_version path
-          opam);
+        log "opam-build: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
+          ocaml_version path opam);
     Onix.Opam_actions.build ~ocaml_version ~opam ~with_test ~with_doc
-      ~with_tools path;
+      ~with_tools ~path opam_pkg;
     Logs.info (fun log -> log "opam-build: Done.")
 
   let info =
@@ -117,19 +123,20 @@ module Opam_build = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ocaml_version_arg
         $ opam_arg
-        $ with_test_arg
-        $ with_doc_arg
-        $ with_tools_arg
-        $ path_arg)
+        $ with_test_arg ~absent:`none
+        $ with_doc_arg ~absent:`none
+        $ with_tools_arg ~absent:`none
+        $ path_arg
+        $ opam_package_arg)
 end
 
 module Opam_install = struct
-  let run ocaml_version opam with_test with_doc with_tools path =
+  let run ocaml_version opam with_test with_doc with_tools path opam_pkg =
     Logs.info (fun log ->
-        log "opam-install: Running... ocaml=%S path=%S opam=%S" ocaml_version
-          path opam);
+        log "opam-install: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
+          ocaml_version path opam);
     Onix.Opam_actions.install ~ocaml_version ~opam ~with_test ~with_doc
-      ~with_tools path;
+      ~with_tools ~path opam_pkg;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =
@@ -142,10 +149,11 @@ module Opam_install = struct
         const run
         $ ocaml_version_arg
         $ opam_arg
-        $ with_test_arg
-        $ with_doc_arg
-        $ with_tools_arg
-        $ path_arg)
+        $ with_test_arg ~absent:`none
+        $ with_doc_arg ~absent:`none
+        $ with_tools_arg ~absent:`none
+        $ path_arg
+        $ opam_package_arg)
 end
 
 let onix_lock_file_name = "./onix-lock.nix"
@@ -190,9 +198,9 @@ module Lock = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ignore_file_arg
         $ repo_url_arg
-        $ with_test_arg
-        $ with_doc_arg
-        $ with_tools_arg
+        $ with_test_arg ~absent:`root
+        $ with_doc_arg ~absent:`root
+        $ with_tools_arg ~absent:`root
         $ input_opam_files_arg)
 end
 

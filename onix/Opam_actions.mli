@@ -1,4 +1,4 @@
-val patch : ocaml_version:string -> opam:string -> string -> unit
+val patch : ocaml_version:string -> opam:string -> path:string -> string -> unit
 
 val build :
   ocaml_version:string ->
@@ -6,6 +6,7 @@ val build :
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
   with_tools:Opam_utils.dep_flag ->
+  path:string ->
   string ->
   unit
 
@@ -15,5 +16,6 @@ val install :
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
   with_tools:Opam_utils.dep_flag ->
+  path:string ->
   string ->
   unit

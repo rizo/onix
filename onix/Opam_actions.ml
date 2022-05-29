@@ -158,8 +158,10 @@ module Patch = struct
 
   (* TODO: implement extra file fetching via lock-file?:
      - https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L455 *)
-  let run ~ocaml_version ~opam path =
-    let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
+  let run ~ocaml_version ~opam ~path opam_pkg =
+    let ctx : Build_context.t =
+      Build_context.make ~ocaml_version ~opam ~path opam_pkg
+    in
     let opam = Opam_utils.read_opam ctx.self.opam in
     let opamfile = ctx.self.opam in
     let () =
@@ -181,8 +183,10 @@ end
 
 let patch = Patch.run
 
-let build ~ocaml_version ~opam ~with_test ~with_doc ~with_tools path =
-  let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
+let build ~ocaml_version ~opam ~with_test ~with_doc ~with_tools ~path opam_pkg =
+  let ctx : Build_context.t =
+    Build_context.make ~ocaml_version ~opam ~path opam_pkg
+  in
   let version = ctx.self.version in
   let test = Opam_utils.eval_dep_flag ~version with_test in
   let doc = Opam_utils.eval_dep_flag ~version with_doc in
@@ -242,8 +246,10 @@ module Install = struct
             dst);
       OpamFilename.copy ~src ~dst)
 
-  let run ~ocaml_version ~opam ~with_test ~with_doc ~with_tools path =
-    let ctx : Build_context.t = Build_context.make ~ocaml_version ~opam path in
+  let run ~ocaml_version ~opam ~with_test ~with_doc ~with_tools ~path opam_pkg =
+    let ctx : Build_context.t =
+      Build_context.make ~ocaml_version ~opam ~path opam_pkg
+    in
     let version = ctx.self.version in
     let test = Opam_utils.eval_dep_flag ~version with_test in
     let doc = Opam_utils.eval_dep_flag ~version with_doc in
