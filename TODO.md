@@ -49,10 +49,11 @@
     - This is because in some cases they will actually resolve to nix paths.
     - [x] An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Build_context from the saved `onix-propagated-opam-vars` file.
     - [x] Cache the `Dot_config` file as it's likely to be accessed multiple times.
+- [x] Use nix-prefetch-url.
 - [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
 - [ ] Make dev tools work: vscode/vim plugins.
 - [ ] Fix ocaml env vars propagation for shell.
-- [ ] Use nix-prefetch-url.
+- [ ] Use nix-prefetch-git for pins.
 - [ ] Remove empty libdir after install (should at least have opam!!)?
 - [ ] Document that opam vars can be set by defining OPAM_VAR_pkg_name.
 - [ ] Consider using opaline.
