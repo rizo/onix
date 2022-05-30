@@ -31,8 +31,6 @@ let
     zarith = pkg:
       pkg.overrideAttrs (super: {
         prePatch = super.prePatch + ''
-          echo "yo"
-          false
           test -f ./z_pp.pl && patchShebangs ./z_pp.pl
         '';
       });
