@@ -96,3 +96,5 @@
 - [ ] Setup the opamverse test.
 - [ ] notty: seems to have a missing propagated build dep.
 - [ ] When adding nativeBuildInouts we need to include all transitive deps.
+- [ ] Run commands with shell?
+  - https://github.com/ocaml/opam-repository/blob/a6d8661d6cb4dcb9017dea68bad0f5b2dedb2f09/packages/bap-llvm/bap-llvm.2.4.0/opam#L11

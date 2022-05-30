@@ -26,15 +26,17 @@ let
           patchShebangs unix_pseudo_terminal/src/discover.sh
         '';
       });
-  };
 
-  # For versions < 1.12
-  zarith = pkg:
-    pkg.overrideAttrs (super: {
-      prePatch = super.prePatch + ''
-        test -f ./z_pp.pl && patchShebangs ./z_pp.pl
-      '';
-    });
+    # For versions < 1.12
+    zarith = pkg:
+      pkg.overrideAttrs (super: {
+        prePatch = super.prePatch + ''
+          echo "yo"
+          false
+          test -f ./z_pp.pl && patchShebangs ./z_pp.pl
+        '';
+      });
+  };
 
   darwin = {
     dune = pkg:
