@@ -22,6 +22,8 @@ let ocamlbuild_name = OpamPackage.Name.of_string "ocamlbuild"
 let topkg_name = OpamPackage.Name.of_string "ocamlfind"
 let cppo_name = OpamPackage.Name.of_string "cppo"
 let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
+let dune_configurator_name = OpamPackage.Name.of_string "dune-configurator"
+let menhir_name = OpamPackage.Name.of_string "menhir"
 
 let is_opam_filename filename =
   String.equal (Filename.extension filename) ".opam"

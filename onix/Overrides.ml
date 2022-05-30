@@ -16,7 +16,9 @@ let build_depends_names =
       ocaml_name;
       ocamlfind_name;
       dune_name;
+      dune_configurator_name;
       ocamlbuild_name;
       topkg_name;
       cppo_name;
+      menhir_name;
     ]

@@ -15,7 +15,8 @@ let
     # https://github.com/ocsigen/lwt/pull/946
     lwt_react = pkg:
       pkg.overrideAttrs (super: {
-        nativeBuildInputs = super.nativeBuildInputs ++ [ scope.cppo or null ];
+        nativeBuildInputs = super.nativeBuildInputs or [ ]
+          ++ [ scope.cppo or null ];
       });
 
     # https://github.com/pqwy/ocb-stubblr/blob/34dcbede6b51327172a0a3d83ebba02843aca249/src/ocb_stubblr.ml#L42

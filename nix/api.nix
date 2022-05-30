@@ -38,11 +38,12 @@ let
       if isNull lockPkg || builtins.hasAttr lockPkg.name acc then
         acc
       else
-        let pkg = getAttr lockPkg.name scope;
+        let
+          pkg = getAttr lockPkg.name scope;
+          deps = lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ];
         in acc // {
           ${lockPkg.name} = pkg;
-        } // collectTransitivePkgs acc scope (lockPkg.depends or [ ])) init
-    lockPkgs;
+        } // collectTransitivePkgs acc scope deps) init lockPkgs;
 
   # Get scope packages from a locked package.
   getLockPkgs = dependsName: lockPkg: scope:
@@ -74,7 +75,7 @@ let
         };
     in foldl' updatePath empty pkgs;
 
-  buildPkg = { scope, strictDeps, logLevel, withTest, withDoc, withTools }:
+  buildPkg = { scope, logLevel, withTest, withDoc, withTools }:
     name: lockPkg:
     let
       ocaml = scope.ocaml;
@@ -88,8 +89,7 @@ let
 
       transitivePkgs = builtins.attrValues (collectTransitivePkgs { } scope
         (lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ]));
-      transitivePaths =
-        collectPaths ocaml.version (transitivePkgs ++ buildPkgs);
+      transitivePaths = collectPaths ocaml.version (transitivePkgs);
 
       src = lockPkg.src or null;
 
@@ -102,20 +102,18 @@ let
 
       # Unfortunately many packages misclassify their dependencies so this
       # should be false for most packages.
-      inherit strictDeps;
+      # inherit strictDeps;
+      strictDeps = true;
 
       dontStrip = true;
 
-      # Propage direct dependencies and but not depexts for config packages.
-      propagatedBuildInputs = dependsPkgs ++ depextsPkgs
-        # Test depends
-        ++ optionals (evalDepFlag lockPkg.version withTest) testPkgs
-        # Doc depends
-        ++ optionals (evalDepFlag lockPkg.version withDoc) docPkgs;
+      checkInputs = optionals (evalDepFlag lockPkg.version withTest) testPkgs;
 
-      # Onix calls opam-installer to install packages. Add direct build deps 
-      nativeBuildInputs = [ pkgs.opam-installer ] ++ buildPkgs
-        # Tools depends
+      propagatedBuildInputs = dependsPkgs ++ depextsPkgs ++ buildPkgs;
+
+      propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
+        ++ depextsPkgs ++ buildPkgs
+        ++ optionals (evalDepFlag lockPkg.version withDoc) docPkgs
         ++ optionals (evalDepFlag lockPkg.version withTools) toolsPkgs;
 
       # Set environment variables for OCaml library lookup. This needs to use
@@ -189,9 +187,8 @@ let
     };
 
 in {
-  build = { ocaml ? defaultOCaml, lock, overrides ? { }, strictDeps ? false
-    , logLevel ? "debug", withTest ? false, withDoc ? false, withTools ? false
-    }:
+  build = { ocaml ? defaultOCaml, lock, overrides ? { }, logLevel ? "debug"
+    , withTest ? false, withDoc ? false, withTools ? false }:
 
     let
       onix-lock = import lock {
@@ -215,9 +212,9 @@ in {
       } // overrides;
 
       # The scope without overrides.
-      baseScope = mapAttrs (buildPkg {
-        inherit strictDeps scope logLevel withTest withDoc withTools;
-      }) onix-lock;
+      baseScope = mapAttrs
+        (buildPkg { inherit scope logLevel withTest withDoc withTools; })
+        onix-lock;
 
       # The final scope with all packages and applied overrides.
       scope = mapAttrs (name: pkg:

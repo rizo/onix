@@ -56,6 +56,7 @@
 - [ ] Fix ocaml env vars propagation for shell.
 - [ ] Use nix-prefetch-git for pins.
 - [ ] Remove empty libdir after install (should at least have opam!!)?
+  - [ ] Install repo's opam, the monads pkg does not install opam for example.
 - [ ] Document that opam vars can be set by defining OPAM_VAR_pkg_name.
 - [ ] Consider using opaline.
   - Or we could even intall ourselves with OpamFile.Dot_install.
