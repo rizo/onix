@@ -94,3 +94,4 @@
 - [ ] Group dep flags.
 - [ ] Setup the opamverse test.
 - [ ] notty: seems to have a missing propagated build dep.
+- [ ] When adding nativeBuildInouts we need to include all transitive deps.
