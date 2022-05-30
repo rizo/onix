@@ -28,6 +28,14 @@ let
       });
   };
 
+  # For versions < 1.12
+  zarith = pkg:
+    pkg.overrideAttrs (super: {
+      prePatch = super.prePatch + ''
+        test -f ./z_pp.pl && patchShebangs ./z_pp.pl
+      '';
+    });
+
   darwin = {
     dune = pkg:
       pkg.overrideAttrs (super: {
