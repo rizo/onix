@@ -1,4 +1,5 @@
-{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocamlPackages }:
+{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_4_14
+}:
 
 let
   onixPackages = import ./nix/onixPackages { inherit pkgs ocamlPackages; };
