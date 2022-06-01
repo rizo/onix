@@ -18,15 +18,11 @@ let eval ?(raw = true) ?(pure = true) expr =
 
 let fetch_git_expr ~rev url =
   Fmt.str
-    {|
-        let result = builtins.fetchGit {
-          url = %S;
-          rev = %S;
-          allRefs = true;
-        };
-        in
-        result.outPath
-      |}
+    {|let result = builtins.fetchGit {
+  url = %S;
+  rev = %S;
+  allRefs = true;
+}; in result.outPath|}
     url rev
 
 let fetch url =
@@ -38,13 +34,8 @@ let fetch url =
 
 let fetch_git_resolve_expr url =
   Fmt.str
-    {|
-        let result = builtins.fetchGit {
-          url = %S;
-        };
-        in
-        "${result.rev},${result.outPath}"
-      |}
+    {|let result = builtins.fetchGit { url = %S; }; in
+"${result.rev},${result.outPath}"|}
     url
 
 let fetch_resolve url =
@@ -96,6 +87,45 @@ let prefetch_url ?hash_type ?hash uri =
   |> OS.Cmd.run_out ~err:OS.Cmd.err_null
   |> OS.Cmd.to_string
   |> Utils.Result.force_with_msg
+
+let guess_git_rev rev =
+  match rev with
+  | Some "master" -> Bos.Cmd.(v "--rev" % "refs/heads/master")
+  | Some "main" -> Bos.Cmd.(v "--rev" % "refs/heads/master")
+  | Some tag_or_commit -> Bos.Cmd.(v "--rev" % tag_or_commit)
+  | None -> Bos.Cmd.empty
+
+let prefetch_git_cmd ?rev url =
+  let open Bos in
+  let rev_opt = guess_git_rev rev in
+  Cmd.(v "nix-prefetch-git" %% rev_opt % url)
+
+let prefetch_git_with_path url =
+  let url, rev =
+    match url with
+    | { OpamUrl.backend = `git; hash = rev; _ } -> (OpamUrl.base_url url, rev)
+    | { OpamUrl.backend = `http; hash = rev; _ } -> (OpamUrl.base_url url, rev)
+    | { OpamUrl.backend; _ } ->
+      Fmt.failwith "Unsupported backend in url: %s"
+        (OpamUrl.string_of_backend backend)
+  in
+  let open Bos in
+  let json =
+    prefetch_git_cmd ?rev url
+    |> OS.Cmd.run_out ~err:OS.Cmd.err_null
+    |> OS.Cmd.to_string
+    |> Utils.Result.force_with_msg
+    |> Yojson.Basic.from_string
+  in
+  let rev =
+    Yojson.Basic.Util.member "rev" json |> Yojson.Basic.Util.to_string
+  in
+  let path =
+    Yojson.Basic.Util.member "path" json
+    |> Yojson.Basic.Util.to_string
+    |> OpamFilename.Dir.of_string
+  in
+  (rev, path)
 
 type store_path = {
   hash : string;

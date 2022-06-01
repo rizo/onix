@@ -11,6 +11,10 @@ val prefetch_url_with_path :
 val prefetch_url :
   ?hash_type:[< `sha256 | `sha512 > `sha256] -> ?hash:string -> string -> string
 
+
+val prefetch_git_with_path :
+  OpamUrl.t -> string * OpamFilename.Dir.t
+
 type store_path = {
   hash : string;
   package_name : OpamPackage.Name.t;
