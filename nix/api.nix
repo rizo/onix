@@ -186,7 +186,7 @@ let
       '';
     };
 
-in {
+in rec {
   build = { ocaml ? defaultOCaml, lockFile, overrides ? { }, logLevel ? "debug"
     , withTest ? false, withDoc ? false, withTools ? false }:
 
@@ -236,4 +236,8 @@ in {
         exit $?
       '';
     };
+
+  shell = args:
+    let scope = build args;
+    in pkgs.mkShell { inputsFrom = builtins.attrValues scope; };
 }
