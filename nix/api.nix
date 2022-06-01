@@ -187,11 +187,11 @@ let
     };
 
 in {
-  build = { ocaml ? defaultOCaml, lock, overrides ? { }, logLevel ? "debug"
+  build = { ocaml ? defaultOCaml, lockFile, overrides ? { }, logLevel ? "debug"
     , withTest ? false, withDoc ? false, withTools ? false }:
 
     let
-      onix-lock = import lock {
+      onix-lock = import lockFile {
         inherit pkgs;
         self = onix-lock;
       };
@@ -224,14 +224,16 @@ in {
           pkg) baseScope;
     in scope;
 
-  lock = { repo ? null }:
-    pkgs.writeShellApplication {
-      name = "onix-lock";
-      text = if isNull repo then ''
-        ${onix}/bin/onix lock
-      '' else ''
-        ${onix}/bin/onix lock --repo=${repo}
+  lock = { repoUrl ? "https://github.com/ocaml/opam-repository.git"
+    , lockFile ? "./onix-lock.nix", logLevel ? "debug" }:
+    pkgs.mkShell {
+      buildInputs = [ onix ];
+      shellHook = ''
+        onix lock \
+          --repo-url=${repoUrl} \
+          --lock-file=${lockFile} \
+          --verbosity=${logLevel}
+        exit $?
       '';
-      runtimeInputs = [ pkgs.nix ];
     };
 }
