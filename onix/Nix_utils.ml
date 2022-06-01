@@ -3,7 +3,17 @@ open Utils
 let get_nix_build_jobs () =
   try Unix.getenv "NIX_BUILD_CORES" with Not_found -> "1"
 
-let eval ?(raw = true) ?(pure = true) expr =
+let eval expr =
+  let open Bos in
+  let output =
+    Cmd.(v "nix-instantiate" % "--eval" % "--expr" % expr)
+    |> OS.Cmd.run_out
+    |> OS.Cmd.to_string
+    |> Utils.Result.force_with_msg
+  in
+  String.sub output 1 (String.length output - 2)
+
+let eval' ?(raw = true) ?(pure = true) expr =
   let open Bos in
   Cmd.(
     v "nix"
@@ -41,7 +51,7 @@ let fetch_git_resolve_expr url =
 let fetch_resolve url =
   let nix_url = OpamUrl.base_url url in
   Logs.debug (fun log -> log "Fetching git repository: url=%S rev=None" nix_url);
-  let result = nix_url |> fetch_git_resolve_expr |> eval ~pure:false in
+  let result = nix_url |> fetch_git_resolve_expr |> eval in
   match String.split_on_char ',' result with
   | [rev; path] -> (rev, OpamFilename.Dir.of_string path)
   | _ -> Fmt.failwith "Could not fetch: %S, output=%S" nix_url result
