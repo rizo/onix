@@ -225,7 +225,13 @@ in {
     in scope;
 
   lock = { repo ? null }:
-    pkgs.runCommand "onix-lock" { } ''
-      ${onix}/bin/onix lock --repo=${repo}
-    '';
+    pkgs.writeShellApplication {
+      name = "onix-lock";
+      text = if isNull repo then ''
+        ${onix}/bin/onix lock
+      '' else ''
+        ${onix}/bin/onix lock --repo=${repo}
+      '';
+      runtimeInputs = [ pkgs.nix ];
+    };
 }
