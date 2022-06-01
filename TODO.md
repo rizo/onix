@@ -13,7 +13,7 @@
 - [x] Apply "with-test" var when extracting install.
 - [x] Use native nixpkgs to build onix itself.
 - [x] Use the same compiler for onix and project build.
-- [x] Drop fpath, use OpamFilename.
+- [x] Drop fpath, use OpamFilename.´
 - [x] Improve logging.
 - [x] Properly fix ocaml env var export for deps.
   - Using hooks seems is problematic due to multi-export (fails with "Argument list too long").
@@ -54,7 +54,7 @@
 - [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
 - [ ] Make dev tools work: vscode/vim plugins.
 - [ ] Fix ocaml env vars propagation for shell.
-- [ ] Use nix-prefetch-git for pins.
+- [ ] ~~Use nix-prefetch-git for pins.~~
 - [ ] Remove empty libdir after install (should at least have opam!!)?
   - [ ] Install repo's opam, the monads pkg does not install opam for example.
 - [ ] Document that opam vars can be set by defining OPAM_VAR_pkg_name.
@@ -78,7 +78,7 @@
 - [ ] Handle setenv and build-env.
 - [ ] Support cross-compilation.
 - [ ] Add flakes support.
-- [ ] ~~Use strictDeps. This will require handling conf- packages in the lock file.~~
+- [x] ~~Use strictDeps. This will require handling conf- packages in the lock file.~~
   - Added a build option.
 - [ ] Handle lock file without ocaml.
 - [ ] Version the lock file.
