@@ -100,3 +100,4 @@
   - https://github.com/ocaml/opam-repository/blob/a6d8661d6cb4dcb9017dea68bad0f5b2dedb2f09/packages/bap-llvm/bap-llvm.2.4.0/opam#L11
 - [ ] Filter out invalid nixpkgs names: "pkgs.devel/librdkafka"
 - [ ] Slacko base-no-ppx for lwt?
+- [ ] Support a vendoring/forking workflow (override src?).
