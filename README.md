@@ -2,6 +2,8 @@
 
 Build OCaml projects with Nix.
 
+> Note: this project is experimental. The core functionality is stable but the API may break before the official release.
+
 ## Quickstart
 
 1. Create the `./nix/onix.nix` file:
