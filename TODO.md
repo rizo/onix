@@ -101,3 +101,4 @@
 - [ ] Filter out invalid nixpkgs names: "pkgs.devel/librdkafka"
 - [ ] Slacko base-no-ppx for lwt?
 - [ ] Support a vendoring/forking workflow (override src?).
+- [ ] Opam-installer requires ocaml 4.13 by default. Use the same version as the rest of the build.
