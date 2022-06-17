@@ -182,10 +182,10 @@ let select_opam_hash hashes =
     loop hashes
   in
   match (md5, sha256, sha512) with
-  | _, Some hash, _ -> Ok (`SHA256, OpamHash.contents hash)
-  | _, _, Some hash -> Ok (`SHA512, OpamHash.contents hash)
-  | Some hash, _, _ -> Ok (`MD5, OpamHash.contents hash)
-  | _ -> Error (`Msg "No md5/sha256/sha512 hashes found")
+  | _, Some hash, _ -> Some (`SHA256, OpamHash.contents hash)
+  | _, _, Some hash -> Some (`SHA512, OpamHash.contents hash)
+  | Some hash, _, _ -> Some (`MD5, OpamHash.contents hash)
+  | _ -> None
 
 let src_of_opam_url opam_url =
   let url = OpamFile.URL.url opam_url in
@@ -194,11 +194,18 @@ let src_of_opam_url opam_url =
     match url.OpamUrl.hash with
     | Some rev -> Ok (Git { url = OpamUrl.base_url url; rev })
     | _ -> Error (`Msg ("Missing rev in git url: " ^ OpamUrl.to_string url)))
-  | `http -> (
+  | `http ->
     let hashes = OpamFile.URL.checksum opam_url in
-    match select_opam_hash hashes with
-    | Ok hash -> Ok (Http { url; hash })
-    | Error err -> Error err)
+    let hash =
+      match select_opam_hash hashes with
+      | Some hash -> hash
+      | None ->
+        Logs.warn (fun log ->
+            log "Prefetching url without hash: %a" Opam_utils.pp_url url);
+        ( `SHA256,
+          Nix_utils.prefetch_url ~hash_type:`sha256 (OpamUrl.to_string url) )
+    in
+    Ok (Http { url; hash })
   | _ -> Error (`Msg ("Unsupported url: " ^ OpamUrl.to_string url))
 
 let get_src ~package opam_url_opt =
@@ -283,13 +290,13 @@ let resolve ?(build = false) ?(test = false) ?(doc = false) ?(tools = false) pkg
       [
         Build_context.Vars.resolve_package pkg;
         Build_context.Vars.resolve_from_base;
-        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~tools;
+        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~tools ~post:true;
       ]
       v
   in
-  (* Opam_utils.debug_var *)
-  (*   ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg) *)
-  (*   v contents; *)
+  Opam_utils.debug_var
+    ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg)
+    v contents;
   contents
 
 let of_opam ~with_test ~with_doc ~with_tools package opam =

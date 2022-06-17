@@ -29,9 +29,11 @@ let solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files =
   in
 
   (* Packages to start solve with (roots + ocaml compiler). *)
-  let target_packages =
-    Opam_utils.base_ocaml_compiler_name
-    :: OpamPackage.Name.Map.keys root_packages
+  (* let target_packages = *)
+  (*   Opam_utils.base_ocaml_compiler_name *)
+  (*   :: OpamPackage.Name.Map.keys root_packages *)
+  (* in *)
+  let target_packages = OpamPackage.Name.Map.keys root_packages
   in
 
   let repo_path, repo_url = resolve_repo repo_url in

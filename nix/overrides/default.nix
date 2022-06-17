@@ -1,4 +1,4 @@
-{ pkgs, ocaml, scope }:
+{ pkgs, scope }:
 
 let
   common = {
