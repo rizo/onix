@@ -124,7 +124,7 @@ let filter_deps t pkg depends_formula =
         [
           Build_context.Vars.resolve_package pkg;
           Build_context.Vars.resolve_from_base;
-          Build_context.Vars.resolve_dep_flags ~test ~doc ~tools ~post:true;
+          Build_context.Vars.resolve_dep_flags ~test ~doc ~tools;
         ]
         var
     in

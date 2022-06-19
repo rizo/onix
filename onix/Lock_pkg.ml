@@ -290,13 +290,13 @@ let resolve ?(build = false) ?(test = false) ?(doc = false) ?(tools = false) pkg
       [
         Build_context.Vars.resolve_package pkg;
         Build_context.Vars.resolve_from_base;
-        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~tools ~post:true;
+        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~tools;
       ]
       v
   in
-  Opam_utils.debug_var
-    ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg)
-    v contents;
+  (* Opam_utils.debug_var *)
+  (*   ~scope:("lock.resolve/" ^ OpamPackage.to_string pkg) *)
+  (*   v contents; *)
   contents
 
 let of_opam ~with_test ~with_doc ~with_tools package opam =
