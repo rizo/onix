@@ -33,30 +33,16 @@ let
       throw "invalid dependency flag value: ${depFlag}";
 
   # Collect a recursive depends package set from a list of locked packages.
-  collectTransitivePkgs_ = init: scope: lockPkgs:
-    foldl' (acc: lockPkg:
-      if isNull lockPkg || builtins.hasAttr lockPkg.name acc then
-        acc
-      else
-        let
-          pkg = getAttr lockPkg.name scope;
-          deps = lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ];
-        in acc // {
-          ${lockPkg.name} = pkg;
-        } // collectTransitivePkgs_ acc scope deps) init lockPkgs;
-
-  collectTransitivePkgs = init: scope: parentName: lockDeps:
+  collectTransitivePkgs = init: scope: lockDeps:
     foldl' (acc: lockDep:
-      if isNull
-      (trace "${builtins.toJSON [ parentName (lockDep.name or "null") acc ]}"
-        lockDep) || builtins.hasAttr lockDep.name acc then
+      if isNull lockDep || builtins.hasAttr lockDep.name acc then
         acc
       else
         let
           pkg = getAttr lockDep.name scope;
           deps = lockDep.depends or [ ] ++ lockDep.buildDepends or [ ];
           acc' = acc // { ${lockDep.name} = pkg; };
-        in collectTransitivePkgs acc' scope lockDep.name deps) init lockDeps;
+        in collectTransitivePkgs acc' scope deps) init lockDeps;
 
   # Get scope packages from a locked package.
   getLockPkgs = dependsName: lockPkg: scope:
@@ -100,9 +86,8 @@ let
       toolsPkgs = getLockPkgs "toolsDepends" lockPkg scope;
       depextsPkgs = lockPkg.depexts or [ ];
 
-      transitivePkgs = builtins.attrValues
-        (collectTransitivePkgs { } scope (lockPkg.name+"-top")
-          (lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ]));
+      transitivePkgs = builtins.attrValues (collectTransitivePkgs { } scope
+        (lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ]));
       transitivePaths = collectPaths ocaml.version (transitivePkgs);
 
       src = lockPkg.src or null;
