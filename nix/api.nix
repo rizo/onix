@@ -33,16 +33,16 @@ let
       throw "invalid dependency flag value: ${depFlag}";
 
   # Collect a recursive depends package set from a list of locked packages.
-  collectTransitivePkgs = init: scope: lockDeps:
-    foldl' (acc: lockDep:
-      if isNull lockDep || builtins.hasAttr lockDep.name acc then
+  collectTransitivePkgs = init: scope: lockPkgs:
+    foldl' (acc: lockPkg:
+      if isNull lockPkg || builtins.hasAttr lockPkg.name acc then
         acc
       else
         let
-          pkg = getAttr lockDep.name scope;
-          deps = lockDep.depends or [ ] ++ lockDep.buildDepends or [ ];
-          acc' = acc // { ${lockDep.name} = pkg; };
-        in collectTransitivePkgs acc' scope deps) init lockDeps;
+          pkg = getAttr lockPkg.name scope;
+          deps = lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ];
+          acc' = acc // { ${lockPkg.name} = pkg; };
+        in collectTransitivePkgs acc' scope deps) init lockPkgs;
 
   # Get scope packages from a locked package.
   getLockPkgs = dependsName: lockPkg: scope:
