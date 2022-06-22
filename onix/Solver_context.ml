@@ -28,9 +28,15 @@ module Private = struct
       OpamFile.OPAM.read (OpamFile.make (OpamFilename.raw opam_path))
 
   (* Availability only seems to require os, ocaml-version, opam-version. *)
-  let resolve_available available =
-    let env = Build_context.Vars.resolve_from_base in
-    OpamFilter.eval_to_bool ~default:false env available
+  let resolve_available ~pkg available =
+    if
+      OpamPackage.Name.equal Opam_utils.ocaml_system_name (OpamPackage.name pkg)
+    then
+      OpamPackage.Version.Set.mem (OpamPackage.version pkg)
+        Nix_utils.available_ocaml_versions
+    else
+      let env = Build_context.Vars.resolve_from_base in
+      OpamFilter.eval_to_bool ~default:false env available
 end
 
 let make ?(prefer_oldest = false) ?(fixed_packages = OpamPackage.Name.Map.empty)
@@ -92,7 +98,7 @@ let candidates t name =
                    ~repo_packages_dir:t.repo_packages_dir pkg
                in
                let available = OpamFile.OPAM.available opam in
-               if Private.resolve_available available then (v, Ok opam)
+               if Private.resolve_available ~pkg available then (v, Ok opam)
                else (v, Error Unavailable))
     | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
       OpamConsole.log "opam-0install" "Package %S not found!"

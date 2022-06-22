@@ -184,3 +184,24 @@ let parse_store_path path =
     | (exception _) | _ ->
       Fmt.invalid_arg "Invalid hash and package name in path: %S" path)
   | _ -> Fmt.invalid_arg "Invalid nix store path: %S" path
+
+(* See: pkgs.ocaml-ng.ocamlPackages_4_XX.ocaml.version *)
+let available_ocaml_versions =
+  OpamPackage.Version.Set.of_list
+    [
+      OpamPackage.Version.of_string "4.08.1";
+      OpamPackage.Version.of_string "4.09.1";
+      OpamPackage.Version.of_string "4.10.2";
+      OpamPackage.Version.of_string "4.11.2";
+      OpamPackage.Version.of_string "4.12.1";
+      OpamPackage.Version.of_string "4.13.1";
+      OpamPackage.Version.of_string "4.14.0";
+    ]
+
+let make_ocaml_packages_path version =
+  let version = OpamPackage.Version.to_string version in
+  (* 4.XX.Y -> 4.XX *)
+  let version =
+    String.sub version 0 4 |> String.mapi (fun i x -> if i = 1 then '_' else x)
+  in
+  String.concat "" ["ocaml-ng.ocamlPackages_"; version; ".ocaml"]

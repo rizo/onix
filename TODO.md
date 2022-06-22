@@ -110,3 +110,9 @@
   - Support lock-file.
   - Support easy building of any package without nix lock.
   - Support offline mode.
+- [ ] Help debug nix paths (eg show opam repo path)
+- [ ] When the scope is built but there was a pkg override do we still build the pkg? Must not.
+- [ ] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.
+- [ ] Make sure that unsupported compiler combinations error out.
+  - compiler: base|system, options package (warn on pkg with compiler flag?)
+  - compiler: variants, no valid version in nix

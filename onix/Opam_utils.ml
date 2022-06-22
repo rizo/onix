@@ -22,6 +22,7 @@ let ocamlbuild_name = OpamPackage.Name.of_string "ocamlbuild"
 let topkg_name = OpamPackage.Name.of_string "ocamlfind"
 let cppo_name = OpamPackage.Name.of_string "cppo"
 let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
+let ocaml_system_name = OpamPackage.Name.of_string "ocaml-system"
 let dune_configurator_name = OpamPackage.Name.of_string "dune-configurator"
 let menhir_name = OpamPackage.Name.of_string "menhir"
 
@@ -41,6 +42,17 @@ let opam_package_of_filename filename =
   try OpamPackage.of_string opamname
   with Failure _ ->
     OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
+
+type compiler_type =
+  [ `ocaml_base_compiler
+  | `ocaml_system
+  | `ocaml_variants ]
+
+let name_of_compiler_type compiler_t =
+  match compiler_t with
+  | `ocaml_base_compiler -> OpamPackage.Name.of_string "ocaml-base-compiler"
+  | `ocaml_system -> OpamPackage.Name.of_string "ocaml-system"
+  | `ocaml_variants -> OpamPackage.Name.of_string "ocaml-variants"
 
 type dep_flag =
   [ `root

@@ -11,9 +11,7 @@ val prefetch_url_with_path :
 val prefetch_url :
   ?hash_type:[< `sha256 | `sha512 > `sha256] -> ?hash:string -> string -> string
 
-
-val prefetch_git_with_path :
-  OpamUrl.t -> string * OpamFilename.Dir.t
+val prefetch_git_with_path : OpamUrl.t -> string * OpamFilename.Dir.t
 
 type store_path = {
   hash : string;
@@ -25,3 +23,5 @@ type store_path = {
 
 val pp_store_path : Format.formatter -> store_path -> unit
 val parse_store_path : OpamFilename.Dir.t -> store_path
+val available_ocaml_versions : OpamPackage.Version.Set.t
+val make_ocaml_packages_path : OpamPackage.Version.t -> string

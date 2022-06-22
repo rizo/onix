@@ -13,7 +13,8 @@ let resolve_repo repo_url =
   Logs.info (fun log -> log "Using OPAM repository: %a" Opam_utils.pp_url url);
   (path, url)
 
-let solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files =
+let solve ~repo_url ~compiler ~with_test ~with_doc ~with_tools input_opam_files
+    =
   (* Packages with .opam files at the root of the project. *)
   let root_packages = Opam_utils.find_root_packages input_opam_files in
 
@@ -29,13 +30,10 @@ let solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files =
   in
 
   (* Packages to start solve with (roots + ocaml compiler). *)
-  (* let target_packages = *)
-  (*   Opam_utils.base_ocaml_compiler_name *)
-  (*   :: OpamPackage.Name.Map.keys root_packages *)
-  (* in *)
-  let target_packages = OpamPackage.Name.Map.keys root_packages
+  let target_packages =
+    Opam_utils.name_of_compiler_type compiler
+    :: OpamPackage.Name.Map.keys root_packages
   in
-
   let repo_path, repo_url = resolve_repo repo_url in
 
   let context =
@@ -47,6 +45,10 @@ let solve ~repo_url ~with_test ~with_doc ~with_tools input_opam_files =
       log "Solving dependencies... with-test=%a with-doc=%a with-tools=%a"
         Opam_utils.pp_dep_flag with_test Opam_utils.pp_dep_flag with_doc
         Opam_utils.pp_dep_flag with_tools);
+  Logs.info (fun log ->
+      log "Target packages: %a"
+        Fmt.(list ~sep:Fmt.sp Opam_utils.pp_package_name)
+        target_packages);
   match Solver.solve context target_packages with
   | Ok selections ->
     let packages = Solver.packages_of_result selections in
