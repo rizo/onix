@@ -2,7 +2,8 @@
 
 let
   inherit (builtins)
-    trace hasAttr getAttr setAttr mapAttrs concatMap pathExists foldl';
+    filter trace hasAttr getAttr setAttr attrNames attrValues mapAttrs concatMap
+    pathExists foldl';
   inherit (pkgs) lib stdenv;
   inherit (lib) optionalString;
   inherit (pkgs.lib.lists) optional optionals;
@@ -44,6 +45,41 @@ let
           acc' = acc // { ${lockPkg.name} = pkg; };
         in collectTransitivePkgs acc' scope deps) init lockPkgs;
 
+  collectTransitiveDeps = foldl' (acc: dep:
+    if isNull dep || hasAttr dep.name acc then
+      acc
+    else
+      let
+        deps = dep.depends or [ ] ++ dep.buildDepends or [ ];
+        depAcc = collectTransitiveDeps { } deps;
+      in acc // depAcc // { ${dep.name} = attrNames depAcc; });
+
+  getDeps = depType: dep:
+    if hasAttr depType dep then
+      filter (dep': (!isNull dep')) (getAttr depType dep)
+    else
+      [ ];
+
+  # pass dep flags?
+  processDeps = foldl' (acc: dep:
+    if hasAttr dep.name acc then
+      acc
+    else
+      let
+        depends = getDeps "depends" dep;
+        buildDepends = getDeps "buildDepends" dep;
+        testDepends = getDeps "testDepends" dep;
+        docDepends = getDeps "docDepends" dep;
+        toolsDepends = getDeps "toolsDepends" dep;
+        transitive = processDeps { } (depends ++ buildDepends);
+        depexts = dep.depexts or [ ];
+        dep' = dep // {
+          inherit depends buildDepends testDepends docDepends toolsDepends
+            depexts;
+          transitiveDepends = attrValues transitive;
+        };
+      in acc // transitive // { ${dep.name} = dep'; });
+
   # Get scope packages from a locked package.
   getLockPkgs = dependsName: lockPkg: scope:
     if hasAttr dependsName lockPkg then
@@ -73,6 +109,150 @@ let
           toplevel = acc.toplevel ++ toplevel;
         };
     in foldl' updatePath empty pkgs;
+
+  ocamlPkgForVersion = version:
+    with pkgs.ocaml-ng;
+    if version == "4.08.1" then
+      ocamlPackages_4_08.ocaml
+    else if version == "4.09.1" then
+      ocamlPackages_4_09.ocaml
+    else if version == "4.10.2" then
+      ocamlPackages_4_10.ocaml
+    else if version == "4.11.2" then
+      ocamlPackages_4_11.ocaml
+    else if version == "4.12.1" then
+      ocamlPackages_4_12.ocaml
+    else if version == "4.13.1" then
+      ocamlPackages_4_13.ocaml
+    else if version == "4.14.0" then
+      ocamlPackages_4_14.ocaml
+    else
+      abort "Unsupported version of ocaml-system: ${version}";
+
+  # apply overrides here to avoid computing pkgs if null in override.
+  resolveDeps = scope: overrides:
+    concatMap (dep:
+      let pkg = getAttr dep.name scope;
+      in if dep.name == "ocaml-system" then
+        [ (ocamlPkgForVersion dep.version) ]
+      else if hasAttr dep.name overrides then
+        let ovr = getAttr (trace "ovr: ${dep.name}" dep.name) overrides;
+        in if isNull ovr then
+          [ ]
+        else if builtins.isFunction ovr then
+          [ (ovr pkg) ]
+        else # todo: check if isDerivation
+          [ ovr ]
+      else
+         pkg ]);
+
+  buildDep = { scope, overrides, logLevel, withTest, withDoc, withTools }:
+    name: dep:
+    let
+      ocaml = scope.ocaml;
+
+      dependsPkgs = resolveDeps scope overrides dep.depends;
+      buildPkgs = resolveDeps scope overrides dep.buildDepends;
+      testPkgs = resolveDeps scope overrides dep.testDepends;
+      docPkgs = resolveDeps scope overrides dep.docDepends;
+      toolsPkgs = resolveDeps scope overrides dep.toolsDepends;
+      transitivePkgs = resolveDeps scope overrides dep.transitiveDepends;
+      transitivePaths = collectPaths ocaml.version transitivePkgs;
+
+      src = dep.src or null;
+
+    in stdenv.mkDerivation {
+      pname = name;
+      version = dep.version;
+
+      inherit src;
+      dontUnpack = isNull src;
+
+      # Unfortunately many packages misclassify their dependencies so this
+      # should be false for most packages.
+      # inherit strictDeps;
+      strictDeps = true;
+
+      dontStrip = true;
+
+      checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
+
+      propagatedBuildInputs = dependsPkgs ++ buildPkgs ++ dep.depexts;
+
+      propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
+        ++ dep.depexts ++ buildPkgs
+        ++ optionals (evalDepFlag dep.version withDoc) docPkgs
+        ++ optionals (evalDepFlag dep.version withTools) toolsPkgs;
+
+      # Set environment variables for OCaml library lookup. This needs to use
+      # transitive dependencies as dune requires the full dependency tree.
+      OCAMLPATH = lib.strings.concatStringsSep ":" transitivePaths.libdir;
+      CAML_LD_LIBRARY_PATH =
+        lib.strings.concatStringsSep ":" transitivePaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH =
+        lib.strings.concatStringsSep ":" transitivePaths.toplevel;
+
+      ONIX_LOG_LEVEL = logLevel;
+
+      prePatch = ''
+        echo "+ prePatch ${dep.name}-${dep.version}"
+        ${onix}/bin/onix opam-patch \
+          --ocaml-version=${ocaml.version} \
+          --opam=${dep.opam} \
+          --path=$out \
+          ${dep.name}.${dep.version}
+      '';
+
+      # OCAMLFIND_DESTDIR: for ocamlfind install.
+      # dune install is not flexible enough to provide libdir via env.
+      # Do we need export OPAM_SWITCH_PREFIX="$out"
+      configurePhase = ''
+        echo "+ configurePhase ${dep.name}-${dep.version}"
+        runHook preConfigure
+        ${optionalString pkgs.stdenv.cc.isClang ''
+          export NIX_CFLAGS_COMPILE="''${NIX_CFLAGS_COMPILE-} -Wno-error=unused-command-line-argument"''}
+        export DUNE_INSTALL_PREFIX=$out
+        export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
+        runHook postConfigure
+      '';
+
+      buildPhase = ''
+        echo "+ buildPhase ${dep.name}-${dep.version}"
+        runHook preBuild
+        ${onix}/bin/onix opam-build \
+          --ocaml-version=${ocaml.version} \
+          --opam=${dep.opam} \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
+          --path=$out \
+          ${dep.name}.${dep.version}
+        runHook postBuild
+      '';
+
+      # ocamlfind install requires the liddir to exist.
+      # move packages installed with dune.
+      installPhase = ''
+        echo "+ installPhase ${dep.name}-${dep.version}"
+        runHook preInstall
+        mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/${dep.name}
+
+        ${onix}/bin/onix opam-install \
+          --ocaml-version=${ocaml.version} \
+          --opam=${dep.opam} \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
+          --path=$out \
+          ${dep.name}.${dep.version}
+
+        if [[ -e "$out/lib/${dep.name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${dep.name}" ]]; then
+          echo "Moving $out/lib/${dep.name} to $OCAMLFIND_DESTDIR"
+          mv "$out/lib/${dep.name}" "$OCAMLFIND_DESTDIR"
+        fi
+        runHook postInstall
+      '';
+    };
 
   buildPkg = { scope, logLevel, withTest, withDoc, withTools }:
     name: lockPkg:
@@ -190,6 +370,8 @@ let
       };
 
 in rec {
+  private = { inherit processDeps; };
+
   build = { ocaml ? defaultOCaml, lockFile, overrides ? { }, logLevel ? "debug"
     , withTest ? true, withDoc ? true, withTools ? true }:
 
@@ -214,17 +396,22 @@ in rec {
         # ocaml-config = pkg: if isNull ocaml then pkg else emptyPkg;
       } // overrides;
 
+      deps = processDeps { } (attrValues onix-lock);
+
       # The scope without overrides.
-      baseScope = mapAttrs
-        (buildPkg { inherit scope logLevel withTest withDoc withTools; })
-        onix-lock;
+      baseScope = mapAttrs (buildDep {
+        inherit scope logLevel withTest withDoc withTools;
+        overrides = import ./overrides { inherit pkgs scope; } // overrides;
+      }) deps;
 
       # The final scope with all packages and applied overrides.
-      scope = mapAttrs (name: pkg:
-        if hasAttr name allOverrides then
-          (getAttr name allOverrides) pkg
-        else
-          pkg) baseScope;
+      # scope = mapAttrs (name: pkg:
+      #   if hasAttr name allOverrides then
+      #     (getAttr name allOverrides) pkg
+      #   else
+      #     pkg) baseScope;
+      scope = baseScope;
+
     in scope;
 
   lock = { repoUrl ? "https://github.com/ocaml/opam-repository.git"
