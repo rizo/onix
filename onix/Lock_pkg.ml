@@ -267,7 +267,9 @@ let get_opam_depexts ~env depexts =
 
 (* Try to: get nixos depexts, lookup [Depexts] and optionally add unzip for
    zip src unpacking. *)
-let get_depexts ~package_name ~is_zip_src ~env depexts =
+let get_depexts ~package ~is_zip_src ~env depexts =
+  let package_name = OpamPackage.name package in
+  let package_version = OpamPackage.version package in
   let opam_depexts = get_opam_depexts ~env depexts in
   let nix_depexts, unknown_depexts =
     match opam_depexts with
@@ -278,8 +280,18 @@ let get_depexts ~package_name ~is_zip_src ~env depexts =
       | Some nix_depexts -> (String_set.of_list nix_depexts, String_set.empty)
       | None -> (String_set.empty, unknown_depexts))
   in
+  (* Add unzip *)
   let nix_depexts =
     if is_zip_src then String_set.add "unzip" nix_depexts else nix_depexts
+  in
+  (* Add ocaml from nixpkgs. *)
+  let nix_depexts =
+    if OpamPackage.Name.equal package_name Opam_utils.ocaml_system_name then
+      let nix_ocaml_compiler =
+        Nix_utils.make_ocaml_packages_path package_version
+      in
+      String_set.add nix_ocaml_compiler nix_depexts
+    else nix_depexts
   in
   (nix_depexts, unknown_depexts)
 
@@ -355,8 +367,8 @@ let of_opam ~with_test ~with_doc ~with_tools package opam =
   let opam_depexts = OpamFile.OPAM.depexts opam in
   let depexts_nix, depexts_unknown =
     let is_zip_src = Option.map_default false check_is_zip_src src in
-    get_depexts ~is_zip_src ~package_name:(OpamPackage.name package)
-      ~env:Build_context.Vars.resolve_from_base opam_depexts
+    get_depexts ~is_zip_src ~package ~env:Build_context.Vars.resolve_from_base
+      opam_depexts
   in
 
   Some

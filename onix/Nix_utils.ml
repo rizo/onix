@@ -199,9 +199,12 @@ let available_ocaml_versions =
     ]
 
 let make_ocaml_packages_path version =
-  let version = OpamPackage.Version.to_string version in
+  let version_str = OpamPackage.Version.to_string version in
+  if not (OpamPackage.Version.Set.mem version available_ocaml_versions) then
+    raise (Failure ("Unsupported nixpkgs ocaml version: " ^ version_str));
   (* 4.XX.Y -> 4.XX *)
-  let version =
-    String.sub version 0 4 |> String.mapi (fun i x -> if i = 1 then '_' else x)
+  let version_str_short =
+    String.sub version_str 0 4
+    |> String.mapi (fun i x -> if i = 1 then '_' else x)
   in
-  String.concat "" ["ocaml-ng.ocamlPackages_"; version; ".ocaml"]
+  String.concat "" ["ocaml-ng.ocamlPackages_"; version_str_short; ".ocaml"]
