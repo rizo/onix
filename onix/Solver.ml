@@ -1,5 +1,3 @@
-let constraints = OpamPackage.Name.Map.empty
-
 module Solver = Opam_0install.Solver.Make (Solver_context)
 
 let resolve_repo repo_url =
@@ -13,8 +11,11 @@ let resolve_repo repo_url =
   Logs.info (fun log -> log "Using OPAM repository: %a" Opam_utils.pp_url url);
   (path, url)
 
-let solve ~repo_url ~compiler ~with_test ~with_doc ~with_tools input_opam_files
-    =
+let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
+    input_opam_files =
+  let resolutions = Resolutions.make resolutions in
+  Resolutions.debug resolutions;
+
   (* Packages with .opam files at the root of the project. *)
   let root_packages = Opam_utils.find_root_packages input_opam_files in
 
@@ -31,10 +32,14 @@ let solve ~repo_url ~compiler ~with_test ~with_doc ~with_tools input_opam_files
 
   (* Packages to start solve with (roots + ocaml compiler). *)
   let target_packages =
-    Opam_utils.name_of_compiler_type compiler
-    :: OpamPackage.Name.Map.keys root_packages
+    List.append
+      (Resolutions.all resolutions)
+      (OpamPackage.Name.Map.keys root_packages)
   in
+
   let repo_path, repo_url = resolve_repo repo_url in
+
+  let constraints = Resolutions.constraints resolutions in
 
   let context =
     Solver_context.make

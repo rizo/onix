@@ -6,8 +6,10 @@
   bos
   logs
   yojson
+  re
   opam-0install
   opam-format
+  opam-file-format
   opam-state
   opam-core))
 

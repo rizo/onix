@@ -51,22 +51,15 @@ let with_test_arg ~absent =
   |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
 
-let compiler_values =
-  [
-    ("ocaml-base-compiler", `ocaml_base_compiler);
-    ("ocaml-system", `ocaml_system);
-    ("ocaml-variants", `ocaml_variants);
-  ]
-
-let compiler =
-  let doc =
-    "Specifies what type of compiler to use: ocaml-base-compiler, ocaml-system \
-     or ocaml-variants. If ocaml-system is provided, the ocaml compiler will \
-     be selected from nixpkgs."
+let resolutions_arg =
+  let conv =
+    (Onix.Resolutions.parse_resolution, Onix.Resolutions.pp_resolution)
   in
-  Arg.info ["compiler"] ~doc
-  |> Arg.opt (Arg.enum compiler_values) `ocaml_system
-  |> Arg.value
+  let doc =
+    "Additional packages and version constraints to be used during dependency \
+     resolution."
+  in
+  Arg.info ["resolutions"] ~doc |> Arg.opt (Arg.list conv) [] |> Arg.value
 
 let with_doc_arg ~absent =
   let doc =
@@ -182,10 +175,11 @@ module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level ignore_file lock_file_path repo_url compiler
-      with_test with_doc with_tools input_opam_files =
+  let run style_renderer log_level ignore_file lock_file_path repo_url
+      resolutions with_test with_doc with_tools input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
+
     let ignore_file =
       if String.equal ignore_file "none" then None
       else if Sys.file_exists ignore_file then (
@@ -199,8 +193,9 @@ module Lock = struct
               ignore_file);
         None)
     in
+
     let lock_file =
-      Onix.Solver.solve ~repo_url ~compiler ~with_test ~with_doc ~with_tools
+      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc ~with_tools
         input_opam_files
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
@@ -219,7 +214,7 @@ module Lock = struct
         $ ignore_file_arg
         $ lock_file_arg
         $ repo_url_arg
-        $ compiler
+        $ resolutions_arg
         $ with_test_arg ~absent:`root
         $ with_doc_arg ~absent:`root
         $ with_tools_arg ~absent:`root
