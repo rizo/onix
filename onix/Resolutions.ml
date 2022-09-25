@@ -40,6 +40,7 @@ let all t =
   OpamPackage.Name.Map.fold
     (fun name _ acc -> OpamPackage.Name.Set.add name acc)
     t.with_constraint t.without_constraint
+  |> OpamPackage.Name.Set.add t.compiler
   |> OpamPackage.Name.Set.to_seq
   |> List.of_seq
 
