@@ -144,7 +144,7 @@ let
         else # todo: check if isDerivation
           [ ovr ]
       else
-         pkg ]);
+        [ pkg ]);
 
   buildDep = { scope, overrides, logLevel, withTest, withDoc, withTools }:
     name: dep:
@@ -369,6 +369,24 @@ let
         '';
       };
 
+  # Convert an attrset with resolutions to a cmdline argument.
+  mkResolutionsArg = resolutions:
+    lib.strings.concatStringsSep "," (lib.attrsets.mapAttrsToList (name: value:
+      # pkg = "*"
+      if value == "*" then
+        name
+      # pkg = ">X"
+      else if builtins.elem (builtins.substring 0 1 value) [
+        ">"
+        "<"
+        "="
+        "!"
+      ] then
+        name + value
+      # pkg = "X"
+      else
+        name + "=" + value) resolutions);
+
 in rec {
   private = { inherit processDeps; };
 
@@ -415,16 +433,21 @@ in rec {
     in scope;
 
   lock = { repoUrl ? "https://github.com/ocaml/opam-repository.git"
-    , compiler ? "ocaml-base-compiler", lockFile ? "./onix-lock.nix"
-    , logLevel ? "debug" }:
+    , resolutions ? null, lockFile ? "./onix-lock.nix", logLevel ? "debug" }:
     pkgs.mkShell {
       buildInputs = [ onix ];
-      shellHook = ''
+      shellHook = if isNull resolutions then ''
         onix lock \
-          --repo-url=${repoUrl} \
-          --compiler=${compiler} \
-          --lock-file=${lockFile} \
-          --verbosity=${logLevel}
+          --repo-url='${repoUrl}' \
+          --lock-file='${lockFile}' \
+          --verbosity='${logLevel}'
+        exit $?
+      '' else ''
+        onix lock \
+          --repo-url='${repoUrl}' \
+          --resolutions='${mkResolutionsArg resolutions}' \
+          --lock-file='${lockFile}' \
+          --verbosity='${logLevel}'
         exit $?
       '';
     };
