@@ -64,10 +64,33 @@ $ nix-shell -A shell
 ```
 
 
-### OCaml compilers
+## OCaml compilers
 
 
 - `ocaml-system` - use the compiler provided by nixpkgs;
 - `ocaml-variants` - build a custom opam compiler;
 - `ocaml-base-compiler` - build an opam compiler with vanilla options.
+
+
+## Reference
+
+### `onix.lock`
+
+- `withTest` - `true|false|"all`
+- `withDoc` - `true|false|"all`
+- `withTools` - `true|false|"all`
+- `constraints`: overrides the version selection from the opam file.
+
+**Examples**
+
+```nix
+onix.lock = {
+  withTest = true;
+  withDoc = "all";
+  withTools = true;
+  constraints = {
+    dune = "<3.3";
+  }
+}
+```
 
