@@ -8,17 +8,9 @@ let
   inherit (lib) optionalString;
   inherit (pkgs.lib.lists) optional optionals;
 
-  # Build the compiler from lock file from source by default.
-  defaultOCaml = null;
-
-  emptyPkg = stdenv.mkDerivation {
-    name = "empty";
-    phases = [ ];
-    dontUnpack = true;
-    configurePhase = "true";
-    buildPhase = "true";
-    installPhase = "${pkgs.coreutils}/bin/touch $out";
-  };
+  defaultRepoUrl = "https://github.com/ocaml/opam-repository.git";
+  defaultLockFile = "./onix-lock.nix";
+  defaultLogLevel = "debug";
 
   evalDepFlag = version: depFlag:
     let isRoot = version == "root";
@@ -110,32 +102,11 @@ let
         };
     in foldl' updatePath empty pkgs;
 
-  ocamlPkgForVersion = version:
-    with pkgs.ocaml-ng;
-    if version == "4.08.1" then
-      ocamlPackages_4_08.ocaml
-    else if version == "4.09.1" then
-      ocamlPackages_4_09.ocaml
-    else if version == "4.10.2" then
-      ocamlPackages_4_10.ocaml
-    else if version == "4.11.2" then
-      ocamlPackages_4_11.ocaml
-    else if version == "4.12.1" then
-      ocamlPackages_4_12.ocaml
-    else if version == "4.13.1" then
-      ocamlPackages_4_13.ocaml
-    else if version == "4.14.0" then
-      ocamlPackages_4_14.ocaml
-    else
-      abort "Unsupported version of ocaml-system: ${version}";
-
   # apply overrides here to avoid computing pkgs if null in override.
   resolveDeps = scope: overrides:
     concatMap (dep:
       let pkg = getAttr dep.name scope;
-      in if dep.name == "ocaml-system" then
-        [ (ocamlPkgForVersion dep.version) ]
-      else if hasAttr dep.name overrides then
+      in if hasAttr dep.name overrides then
         let ovr = getAttr (trace "ovr: ${dep.name}" dep.name) overrides;
         in if isNull ovr then
           [ ]
@@ -272,102 +243,98 @@ let
 
       src = lockPkg.src or null;
 
-    in if lockPkg.name == "ocaml-system" then
-      pkgs.ocaml-ng.ocamlPackages_4_14.ocaml
-    else
+    in stdenv.mkDerivation {
+      pname = name;
+      version = lockPkg.version;
 
-      stdenv.mkDerivation {
-        pname = name;
-        version = lockPkg.version;
+      inherit src;
+      dontUnpack = isNull src;
 
-        inherit src;
-        dontUnpack = isNull src;
+      # Unfortunately many packages misclassify their dependencies so this
+      # should be false for most packages.
+      # inherit strictDeps;
+      strictDeps = true;
 
-        # Unfortunately many packages misclassify their dependencies so this
-        # should be false for most packages.
-        # inherit strictDeps;
-        strictDeps = true;
+      dontStrip = true;
 
-        dontStrip = true;
+      checkInputs = optionals (evalDepFlag lockPkg.version withTest) testPkgs;
 
-        checkInputs = optionals (evalDepFlag lockPkg.version withTest) testPkgs;
+      propagatedBuildInputs = dependsPkgs ++ depextsPkgs ++ buildPkgs;
 
-        propagatedBuildInputs = dependsPkgs ++ depextsPkgs ++ buildPkgs;
+      propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
+        ++ depextsPkgs ++ buildPkgs
+        ++ optionals (evalDepFlag lockPkg.version withDoc) docPkgs
+        ++ optionals (evalDepFlag lockPkg.version withTools) toolsPkgs;
 
-        propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
-          ++ depextsPkgs ++ buildPkgs
-          ++ optionals (evalDepFlag lockPkg.version withDoc) docPkgs
-          ++ optionals (evalDepFlag lockPkg.version withTools) toolsPkgs;
+      # Set environment variables for OCaml library lookup. This needs to use
+      # transitive dependencies as dune requires the full dependency tree.
+      OCAMLPATH = lib.strings.concatStringsSep ":" transitivePaths.libdir;
+      CAML_LD_LIBRARY_PATH =
+        lib.strings.concatStringsSep ":" transitivePaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH =
+        lib.strings.concatStringsSep ":" transitivePaths.toplevel;
 
-        # Set environment variables for OCaml library lookup. This needs to use
-        # transitive dependencies as dune requires the full dependency tree.
-        OCAMLPATH = lib.strings.concatStringsSep ":" transitivePaths.libdir;
-        CAML_LD_LIBRARY_PATH =
-          lib.strings.concatStringsSep ":" transitivePaths.stublibs;
-        OCAMLTOP_INCLUDE_PATH =
-          lib.strings.concatStringsSep ":" transitivePaths.toplevel;
+      ONIX_LOG_LEVEL = logLevel;
 
-        ONIX_LOG_LEVEL = logLevel;
+      prePatch = ''
+        echo "+ prePatch ${lockPkg.name}-${lockPkg.version}"
+        ${onix}/bin/onix opam-patch \
+          --ocaml-version=${ocaml.version} \
+          --opam=${lockPkg.opam} \
+          --path=$out \
+          ${lockPkg.name}.${lockPkg.version}
+      '';
 
-        prePatch = ''
-          echo "+ prePatch ${lockPkg.name}-${lockPkg.version}"
-          ${onix}/bin/onix opam-patch \
-            --ocaml-version=${ocaml.version} \
-            --opam=${lockPkg.opam} \
-            --path=$out \
-            ${lockPkg.name}.${lockPkg.version}
-        '';
+      # OCAMLFIND_DESTDIR: for ocamlfind install.
+      # dune install is not flexible enough to provide libdir via env.
+      # Do we need export OPAM_SWITCH_PREFIX="$out"
+      configurePhase = ''
+        echo "+ configurePhase ${lockPkg.name}-${lockPkg.version}"
+        runHook preConfigure
+        ${optionalString pkgs.stdenv.cc.isClang ''
+          export NIX_CFLAGS_COMPILE="''${NIX_CFLAGS_COMPILE-} -Wno-error=unused-command-line-argument"''}
+        export DUNE_INSTALL_PREFIX=$out
+        export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
+        runHook postConfigure
+      '';
 
-        # OCAMLFIND_DESTDIR: for ocamlfind install.
-        # dune install is not flexible enough to provide libdir via env.
-        # Do we need export OPAM_SWITCH_PREFIX="$out"
-        configurePhase = ''
-          echo "+ configurePhase ${lockPkg.name}-${lockPkg.version}"
-          runHook preConfigure
-          ${optionalString pkgs.stdenv.cc.isClang ''
-            export NIX_CFLAGS_COMPILE="''${NIX_CFLAGS_COMPILE-} -Wno-error=unused-command-line-argument"''}
-          export DUNE_INSTALL_PREFIX=$out
-          export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
-          runHook postConfigure
-        '';
+      buildPhase = ''
+        echo "+ buildPhase ${lockPkg.name}-${lockPkg.version}"
+        runHook preBuild
+        ${onix}/bin/onix opam-build \
+          --ocaml-version=${ocaml.version} \
+          --opam=${lockPkg.opam} \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
+          --path=$out \
+          ${lockPkg.name}.${lockPkg.version}
+        runHook postBuild
+      '';
 
-        buildPhase = ''
-          echo "+ buildPhase ${lockPkg.name}-${lockPkg.version}"
-          runHook preBuild
-          ${onix}/bin/onix opam-build \
-            --ocaml-version=${ocaml.version} \
-            --opam=${lockPkg.opam} \
-            --with-test=${builtins.toJSON withTest} \
-            --with-doc=${builtins.toJSON withDoc} \
-            --with-tools=${builtins.toJSON withTools} \
-            --path=$out \
-            ${lockPkg.name}.${lockPkg.version}
-          runHook postBuild
-        '';
+      # ocamlfind install requires the liddir to exist.
+      # move packages installed with dune.
+      installPhase = ''
+        echo "+ installPhase ${lockPkg.name}-${lockPkg.version}"
+        runHook preInstall
+        mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/${name}
 
-        # ocamlfind install requires the liddir to exist.
-        # move packages installed with dune.
-        installPhase = ''
-          echo "+ installPhase ${lockPkg.name}-${lockPkg.version}"
-          runHook preInstall
-          mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/${name}
+        ${onix}/bin/onix opam-install \
+          --ocaml-version=${ocaml.version} \
+          --opam=${lockPkg.opam} \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
+          --path=$out \
+          ${lockPkg.name}.${lockPkg.version}
 
-          ${onix}/bin/onix opam-install \
-            --ocaml-version=${ocaml.version} \
-            --opam=${lockPkg.opam} \
-            --with-test=${builtins.toJSON withTest} \
-            --with-doc=${builtins.toJSON withDoc} \
-            --with-tools=${builtins.toJSON withTools} \
-            --path=$out \
-            ${lockPkg.name}.${lockPkg.version}
-
-          if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
-            echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"
-            mv "$out/lib/${name}" "$OCAMLFIND_DESTDIR"
-          fi
-          runHook postInstall
-        '';
-      };
+        if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
+          echo "Moving $out/lib/${name} to $OCAMLFIND_DESTDIR"
+          mv "$out/lib/${name}" "$OCAMLFIND_DESTDIR"
+        fi
+        runHook postInstall
+      '';
+    };
 
   # Convert an attrset with resolutions to a cmdline argument.
   mkResolutionsArg = resolutions:
@@ -375,7 +342,7 @@ let
       # pkg = "*"
       if value == "*" then
         name
-      # pkg = ">X"
+        # pkg = ">X"
       else if builtins.elem (builtins.substring 0 1 value) [
         ">"
         "<"
@@ -383,38 +350,25 @@ let
         "!"
       ] then
         name + value
-      # pkg = "X"
+        # pkg = "X"
       else
         name + "=" + value) resolutions);
 
 in rec {
   private = { inherit processDeps; };
 
-  build = { ocaml ? defaultOCaml, lockFile, overrides ? { }, logLevel ? "debug"
+  build = { lockFile, overrides ? { }, logLevel ? defaultLogLevel
     , withTest ? true, withDoc ? true, withTools ? true }:
 
     let
-      onix-lock = import lockFile {
+      onixLock = import lockFile {
         inherit pkgs;
-        self = onix-lock;
+        self = onixLock;
       };
 
-      allOverrides = import ./overrides { inherit pkgs scope; } // {
-        ocaml = pkg:
-          if isNull ocaml then
-            pkg
-          else if onix-lock.ocaml.version != ocaml.version then
-            throw
-            "Lock file uses ocaml ${onix-lock.ocaml.version} but ${ocaml.version} was provided."
-          else
-            ocaml;
+      allOverrides = import ./overrides { inherit pkgs scope; } // overrides;
 
-        # When a custom ocaml pkg is provided, these are not needed.
-        # ocaml-base-compiler = pkg: if isNull ocaml then pkg else emptyPkg;
-        # ocaml-config = pkg: if isNull ocaml then pkg else emptyPkg;
-      } // overrides;
-
-      deps = processDeps { } (attrValues onix-lock);
+      deps = processDeps { } (attrValues onixLock);
 
       # The scope without overrides.
       baseScope = mapAttrs (buildDep {
@@ -432,8 +386,8 @@ in rec {
 
     in scope;
 
-  lock = { repoUrl ? "https://github.com/ocaml/opam-repository.git"
-    , resolutions ? null, lockFile ? "./onix-lock.nix", logLevel ? "debug" }:
+  lock = { repoUrl ? defaultRepoUrl, resolutions ? null
+    , lockFile ? defaultLockFile, logLevel ? defaultLogLevel }:
     pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = if isNull resolutions then ''
