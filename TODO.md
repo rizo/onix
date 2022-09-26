@@ -73,7 +73,7 @@
 - [ ] Always patch shebangs?
 - [ ] Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?
   - [ ] Pass package nv to opam actions. This will fix the develop $out issue.
-- [ ] Add an example with overrides.
+- [x] Add an example with overrides.
 - [ ] Support static compilation.
 - [ ] Handle setenv and build-env.
 - [ ] Support cross-compilation.
@@ -87,11 +87,11 @@
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
 - [ ] Consider using makeScope for the scope.
 - [ ] Handle pkg:installed?enable:disable.
-- [ ] Stop using emptyPkg. Override the base compiler only?
+- [x] Stop using emptyPkg. Override the base compiler only?
 - [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
 - [ ] Handle enable-ocaml-beta-repository.
 - [ ] Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.
-- [ ] Hanlde "sys-ocaml-version" var.
+- [x] Hanlde "sys-ocaml-version" var.
 - [ ] Group dep flags.
 - [ ] Setup the opamverse test.
 - [ ] notty: seems to have a missing propagated build dep.
@@ -112,7 +112,7 @@
   - Support offline mode.
 - [ ] Help debug nix paths (eg show opam repo path)
 - [ ] When the scope is built but there was a pkg override do we still build the pkg? Must not.
-- [ ] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.
+- [x] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.
 - [ ] Make sure that unsupported compiler combinations error out.
   - compiler: base|system, options package (warn on pkg with compiler flag?)
   - compiler: variants, no valid version in nix
