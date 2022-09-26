@@ -1,16 +1,17 @@
 { pkgs ? import <nixpkgs> { }, onix }:
 
 let
+  defaultRepoUrl = "https://github.com/ocaml/opam-repository.git";
+  defaultLockFile = "./onix-lock.nix";
+  defaultLogLevel = "debug";
+  defaultOverlay = import ./overlays/default.nix pkgs;
+
   inherit (builtins)
     filter trace hasAttr getAttr setAttr attrNames attrValues mapAttrs concatMap
     pathExists foldl';
   inherit (pkgs) lib stdenv;
   inherit (lib) optionalString;
   inherit (pkgs.lib.lists) optional optionals;
-
-  defaultRepoUrl = "https://github.com/ocaml/opam-repository.git";
-  defaultLockFile = "./onix-lock.nix";
-  defaultLogLevel = "debug";
 
   evalDepFlag = version: depFlag:
     let isRoot = version == "root";
@@ -25,34 +26,14 @@ let
     else
       throw "invalid dependency flag value: ${depFlag}";
 
-  # Collect a recursive depends package set from a list of locked packages.
-  collectTransitivePkgs = init: scope: lockPkgs:
-    foldl' (acc: lockPkg:
-      if isNull lockPkg || builtins.hasAttr lockPkg.name acc then
-        acc
-      else
-        let
-          pkg = getAttr lockPkg.name scope;
-          deps = lockPkg.depends or [ ] ++ lockPkg.buildDepends or [ ];
-          acc' = acc // { ${lockPkg.name} = pkg; };
-        in collectTransitivePkgs acc' scope deps) init lockPkgs;
-
-  collectTransitiveDeps = foldl' (acc: dep:
-    if isNull dep || hasAttr dep.name acc then
-      acc
-    else
-      let
-        deps = dep.depends or [ ] ++ dep.buildDepends or [ ];
-        depAcc = collectTransitiveDeps { } deps;
-      in acc // depAcc // { ${dep.name} = attrNames depAcc; });
-
   getDeps = depType: dep:
     if hasAttr depType dep then
       filter (dep': (!isNull dep')) (getAttr depType dep)
     else
       [ ];
 
-  # pass dep flags?
+  # Process the lock deps to obtain a the full dependency tree.
+  # TODO: pass dep flags.
   processDeps = foldl' (acc: dep:
     if hasAttr dep.name acc then
       acc
@@ -71,15 +52,6 @@ let
           transitiveDepends = attrValues transitive;
         };
       in acc // transitive // { ${dep.name} = dep'; });
-
-  # Get scope packages from a locked package.
-  getLockPkgs = dependsName: lockPkg: scope:
-    if hasAttr dependsName lockPkg then
-      concatMap
-      (lockDep: optional (!isNull lockDep) (getAttr lockDep.name scope))
-      (getAttr dependsName lockPkg)
-    else
-      [ ];
 
   # Collect OCaml paths from a set of pkgs.
   collectPaths = ocamlVersion: pkgs:
@@ -102,54 +74,29 @@ let
         };
     in foldl' updatePath empty pkgs;
 
-  # apply overrides here to avoid computing pkgs if null in override.
-  resolveDeps = scope: overrides:
-    concatMap (dep:
-      let pkg = getAttr dep.name scope;
-      in if hasAttr dep.name overrides then
-        let ovr = getAttr (trace "ovr: ${dep.name}" dep.name) overrides;
-        in if isNull ovr then
-          [ ]
-        else if builtins.isFunction ovr then
-          [ (ovr pkg) ]
-        else # todo: check if isDerivation
-          [ ovr ]
-      else
-        [ pkg ]);
-
-  buildDep = { scope, overrides, logLevel, withTest, withDoc, withTools }:
+  # Build a package from a lock dependency.
+  buildPkg = { scope, withTest, withDoc, withTools }:
     name: dep:
     let
       ocaml = scope.ocaml;
-
-      dependsPkgs = resolveDeps scope overrides dep.depends;
-      buildPkgs = resolveDeps scope overrides dep.buildDepends;
-      testPkgs = resolveDeps scope overrides dep.testDepends;
-      docPkgs = resolveDeps scope overrides dep.docDepends;
-      toolsPkgs = resolveDeps scope overrides dep.toolsDepends;
-      transitivePkgs = resolveDeps scope overrides dep.transitiveDepends;
+      dependsPkgs = map (dep: getAttr dep.name scope) dep.depends;
+      buildPkgs = map (dep: getAttr dep.name scope) dep.buildDepends;
+      testPkgs = map (dep: getAttr dep.name scope) dep.testDepends;
+      docPkgs = map (dep: getAttr dep.name scope) dep.docDepends;
+      toolsPkgs = map (dep: getAttr dep.name scope) dep.toolsDepends;
+      transitivePkgs = map (dep: getAttr dep.name scope) dep.transitiveDepends;
       transitivePaths = collectPaths ocaml.version transitivePkgs;
-
       src = dep.src or null;
-
     in stdenv.mkDerivation {
+      inherit src;
       pname = name;
       version = dep.version;
-
-      inherit src;
       dontUnpack = isNull src;
-
-      # Unfortunately many packages misclassify their dependencies so this
-      # should be false for most packages.
-      # inherit strictDeps;
       strictDeps = true;
-
       dontStrip = true;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
-
       propagatedBuildInputs = dependsPkgs ++ buildPkgs ++ dep.depexts;
-
       propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
         ++ dep.depexts ++ buildPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
@@ -162,8 +109,7 @@ let
         lib.strings.concatStringsSep ":" transitivePaths.stublibs;
       OCAMLTOP_INCLUDE_PATH =
         lib.strings.concatStringsSep ":" transitivePaths.toplevel;
-
-      ONIX_LOG_LEVEL = logLevel;
+      ONIX_LOG_LEVEL = defaultLogLevel;
 
       prePatch = ''
         echo "+ prePatch ${dep.name}-${dep.version}"
@@ -243,34 +189,50 @@ let
       # pkg = "X"
         name + "=" + value) resolutions);
 
+  # Build a package scope from the locked deps.
+  buildScope = { withTest, withDoc, withTools }:
+    deps:
+    pkgs.lib.makeScope pkgs.newScope (self:
+      (mapAttrs (buildPkg {
+        inherit withTest withDoc withTools;
+        scope = self;
+      }) deps));
+
+  # Apply default and user-provided overrides to the scope.
+  applyOverrides = scope: overrides:
+    let
+      overlay = if isNull overrides then
+        defaultOverlay
+      else
+        self: super: defaultOverlay self super // overrides self super;
+    in scope.overrideScope' overlay;
+
 in rec {
   private = { inherit processDeps; };
 
-  build = { lockFile, overrides ? { }, logLevel ? defaultLogLevel
-    , withTest ? true, withDoc ? true, withTools ? true }:
-
+  build = { lockFile, overrides ? null, logLevel ? defaultLogLevel
+    , withTest ? false, withDoc ? false, withTools ? false }:
     let
       onixLock = import lockFile {
         inherit pkgs;
         self = onixLock;
       };
-
       deps = processDeps { } (attrValues onixLock);
-
-      scope = mapAttrs (buildDep {
-        inherit scope logLevel withTest withDoc withTools;
-        overrides = import ./overrides { inherit pkgs scope; } // overrides;
-      }) deps;
-    in scope;
+      scope = buildScope { inherit withTest withDoc withTools; } deps;
+    in applyOverrides scope overrides;
 
   lock = { repoUrl ? defaultRepoUrl, resolutions ? null
-    , lockFile ? defaultLockFile, logLevel ? defaultLogLevel }:
+    , lockFile ? defaultLockFile, logLevel ? defaultLogLevel, withTest ? false
+    , withDoc ? false, withTools ? false }:
     pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = if isNull resolutions then ''
         onix lock \
           --repo-url='${repoUrl}' \
           --lock-file='${lockFile}' \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
           --verbosity='${logLevel}'
         exit $?
       '' else ''
@@ -278,6 +240,9 @@ in rec {
           --repo-url='${repoUrl}' \
           --resolutions='${mkResolutionsArg resolutions}' \
           --lock-file='${lockFile}' \
+          --with-test=${builtins.toJSON withTest} \
+          --with-doc=${builtins.toJSON withDoc} \
+          --with-tools=${builtins.toJSON withTools} \
           --verbosity='${logLevel}'
         exit $?
       '';
