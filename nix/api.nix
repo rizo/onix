@@ -248,7 +248,7 @@ in rec {
       '';
     };
 
-  shell = pgk:
+  shell = pkg:
     pkgs.mkShell {
       OCAMLPATH = pkg.OCAMLPATH;
       inputsFrom = [ pkg ];
