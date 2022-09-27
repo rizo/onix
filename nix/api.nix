@@ -248,7 +248,9 @@ in rec {
       '';
     };
 
-  shell = args:
-    let scope = build args;
-    in pkgs.mkShell { inputsFrom = builtins.attrValues scope; };
+  shell = pgk:
+    pkgs.mkShell {
+      OCAMLPATH = pkg.OCAMLPATH;
+      inputsFrom = [ pkg ];
+    };
 }
