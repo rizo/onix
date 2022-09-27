@@ -1,13 +1,22 @@
 nixpkgs: self: super:
 
 let
+  inherit (nixpkgs) lib;
+
   common = {
-    ocamlfind = super.ocamlfind.overrideAttrs (_oldAttrs: {
-      patches = [ ./ocamlfind/ldconf.patch ./ocamlfind/install_topfind.patch ];
+    ocamlfind = super.ocamlfind.overrideAttrs (oldAttrs: {
+      patches = lib.optional (lib.versionOlder oldAttrs.version "1.9.3")
+        ./ocamlfind/onix_install_topfind_192.patch
+        ++ lib.optional (oldAttrs.version == "1.9.3")
+        ./ocamlfind/onix_install_topfind_193.patch
+        ++ lib.optional (oldAttrs.version == "1.9.4")
+        ./ocamlfind/onix_install_topfind_194.patch
+        ++ lib.optional (lib.versionAtLeast oldAttrs.version "1.9.5")
+        ./ocamlfind/onix_install_topfind_195.patch;
     });
 
     ocb-stubblr = super.ocb-stubblr.overrideAttrs
-      (_oldAttrs: { patches = [ ./ocb-stubblr/disable-opam.patch ]; });
+      (_oldAttrs: { patches = [ ./ocb-stubblr/onix_disable_opam.patch ]; });
 
     # https://github.com/ocsigen/lwt/pull/946
     lwt_react = super.lwt_react.overrideAttrs (oldAttrs: {
