@@ -1,0 +1,1 @@
+nix --offline -L build -f default.nix scope.hello-with-test-doc-tools
