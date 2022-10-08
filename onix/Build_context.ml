@@ -305,14 +305,15 @@ let make ?(onix_path = Sys.getenv_opt "ONIXPATH" or "") ?(vars = Vars.base)
   let deps =
     if String.length onix_path = 0 then OpamPackage.Name.Map.empty
     else
-      let ocaml_libdirs = String.split_on_char ':' onix_path in
+      let onix_path_dir = String.split_on_char ':' onix_path in
       List.fold_left
         (fun acc libdir ->
+          (* FIXME: how is this a libdir? *)
           let libdir = OpamFilename.Dir.of_string libdir in
           let store_path = Nix_utils.parse_store_path libdir in
           let pkg = package_of_nix_store_path ~libdir store_path in
           OpamPackage.Name.Map.add store_path.package_name pkg acc)
-        OpamPackage.Name.Map.empty ocaml_libdirs
+        OpamPackage.Name.Map.empty onix_path_dir
   in
   let self =
     let path = OpamFilename.Dir.of_string path in
