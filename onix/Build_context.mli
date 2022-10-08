@@ -50,7 +50,7 @@ val basic_resolve :
 (** Resolve without build context for local, env and static vars. *)
 
 val make :
-  ?ocamlpath:string ->
+  ?onix_path:string ->
   ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
   ocaml_version:string ->
   opam:string ->

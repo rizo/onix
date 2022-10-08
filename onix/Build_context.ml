@@ -298,14 +298,14 @@ let package_of_nix_store_path ~libdir (store_path : Nix_utils.store_path) =
     opam = OpamFilename.Op.(libdir / package_name // "opam");
   }
 
-let make ?(ocamlpath = Sys.getenv_opt "OCAMLPATH" or "") ?(vars = Vars.base)
+let make ?(onix_path = Sys.getenv_opt "ONIXPATH" or "") ?(vars = Vars.base)
     ~ocaml_version ~opam ~path opam_pkg =
-  Logs.debug (fun log -> log "Build_context.make: OCAMLPATH=%s" ocamlpath);
+  Logs.debug (fun log -> log "Build_context.make: ONIXPATH=%s" onix_path);
   let opam_pkg = OpamPackage.of_string opam_pkg in
   let deps =
-    if String.length ocamlpath = 0 then OpamPackage.Name.Map.empty
+    if String.length onix_path = 0 then OpamPackage.Name.Map.empty
     else
-      let ocaml_libdirs = String.split_on_char ':' ocamlpath in
+      let ocaml_libdirs = String.split_on_char ':' onix_path in
       List.fold_left
         (fun acc libdir ->
           let libdir = OpamFilename.Dir.of_string libdir in

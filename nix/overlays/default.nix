@@ -13,6 +13,18 @@ let
         ./ocamlfind/onix_install_topfind_194.patch
         ++ lib.optional (lib.versionAtLeast oldAttrs.version "1.9.5")
         ./ocamlfind/onix_install_topfind_195.patch;
+      setupHook = nixpkgs.writeText "onix-ocamlfind-setup-hook.sh" ''
+        [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
+
+        addOCamlPath () {
+          addToSearchPath "OCAMLPATH" "$1/lib/ocaml/${super.ocaml.version}/site-lib"
+          addToSearchPath "CAML_LD_LIBRARY_PATH" "$1/lib/ocaml/${super.ocaml.version}/site-lib/stublibs"
+          addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$1/lib/ocaml/${super.ocaml.version}/site-lib/toplevel"
+        }
+
+        # run for every buildInput to update paths
+        addEnvHooks "$targetOffset" addOCamlPath
+      '';
     });
 
     ocb-stubblr = super.ocb-stubblr.overrideAttrs

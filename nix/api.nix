@@ -104,12 +104,14 @@ let
 
       # Set environment variables for OCaml library lookup. This needs to use
       # transitive dependencies as dune requires the full dependency tree.
-      OCAMLPATH = lib.strings.concatStringsSep ":" transitivePaths.libdir;
-      CAML_LD_LIBRARY_PATH =
-        lib.strings.concatStringsSep ":" transitivePaths.stublibs;
-      OCAMLTOP_INCLUDE_PATH =
-        lib.strings.concatStringsSep ":" transitivePaths.toplevel;
+      # OCAMLPATH = lib.strings.concatStringsSep ":" transitivePaths.libdir;
+      # CAML_LD_LIBRARY_PATH =
+      #   lib.strings.concatStringsSep ":" transitivePaths.stublibs;
+      # OCAMLTOP_INCLUDE_PATH =
+      #   lib.strings.concatStringsSep ":" transitivePaths.toplevel;
+
       ONIX_LOG_LEVEL = defaultLogLevel;
+      ONIXPATH = lib.strings.concatStringsSep ":" (dependsPkgs ++ buildPkgs);
 
       prePatch = ''
         echo "+ prePatch ${dep.name}-${dep.version}"
@@ -128,13 +130,17 @@ let
         runHook preConfigure
         ${optionalString pkgs.stdenv.cc.isClang ''
           export NIX_CFLAGS_COMPILE="''${NIX_CFLAGS_COMPILE-} -Wno-error=unused-command-line-argument"''}
-        export DUNE_INSTALL_PREFIX=$out
         export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
+        export DUNE_INSTALL_PREFIX=$out
         runHook postConfigure
       '';
 
       buildPhase = ''
         echo "+ buildPhase ${dep.name}-${dep.version}"
+        echo "+ OCAMLPATH=$OCAMLPATH"
+        echo "+ CAML_LD_LIBRARY_PATH=$CAML_LD_LIBRARY_PATH"
+        echo "+ OCAMLTOP_INCLUDE_PATH=$OCAMLTOP_INCLUDE_PATH"
+
         runHook preBuild
         ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
@@ -147,12 +153,15 @@ let
         runHook postBuild
       '';
 
-      # ocamlfind install requires the liddir to exist.
-      # move packages installed with dune.
+      # - create OCAMLFIND_DESTDIR/pkg: ocamlfind install requires the liddir to exist.
+      # - move $out/lib to OCAMLFIND_DESTDIR (installed with dune, see DUNE_INSTALL_PREFIX)
+      # - attempt to remove OCAMLFIND_DESTDIR/pkg if empty
       installPhase = ''
         echo "+ installPhase ${dep.name}-${dep.version}"
         runHook preInstall
-        mkdir -p $out/lib/ocaml/${ocaml.version}/site-lib/${dep.name}
+
+        echo "+ Creating $OCAMLFIND_DESTDIR/${dep.name}"
+        mkdir -p "$OCAMLFIND_DESTDIR/${dep.name}"
 
         ${onix}/bin/onix opam-install \
           --ocaml-version=${ocaml.version} \
@@ -164,9 +173,20 @@ let
           ${dep.name}.${dep.version}
 
         if [[ -e "$out/lib/${dep.name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${dep.name}" ]]; then
-          echo "Moving $out/lib/${dep.name} to $OCAMLFIND_DESTDIR"
+          echo "+ Moving $out/lib/${dep.name} to $OCAMLFIND_DESTDIR"
           mv "$out/lib/${dep.name}" "$OCAMLFIND_DESTDIR"
         fi
+
+        # Remove OCAMLFIND_DESTDIR/pkg tree if empty.
+        echo "+ Removing empty $OCAMLFIND_DESTDIR/${dep.name} tree..."
+        rmdir -v \
+          "$out/lib/ocaml/${ocaml.version}/site-lib/${dep.name}" \
+          "$out/lib/ocaml/${ocaml.version}/site-lib" \
+          "$out/lib/ocaml/${ocaml.version}" \
+          "$out/lib/ocaml" \
+          "$out/lib" \
+          || true
+
         runHook postInstall
       '';
     };
