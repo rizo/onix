@@ -1,22 +1,22 @@
-let ocamlpath =
+let onix_path =
   String.concat ":"
     [
-      "/nix/store/j49d3wydfm41n5mb4hlhkx3iv2fy92zd-ocaml-config-2/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/ad91sfjyk923k4z67b0sl3s5wl9xf18f-ocaml-base-compiler-4.14.0/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/0f8xjcgi3611n74hxp7sd0bpn4zl4vcl-cmdliner-1.1.1/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/i26f26cqb43wb0kvk7syv8sknai0cp54-dune-3.1.1/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/76l042jhbmp4pavfj91fc3q5835zd1s2-easy-format-1.3.2/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/rvfm6288jihfm78z4gpcdgxqkidl41f8-fpath-0.7.3/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/graxs35pqmmmli4jf65jzc0drnwdz5kv-ocaml-4.14.0/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/f91m283sqzh3g0hzcxh3fw7yc7piadlc-opam-0install-0.4.3/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/vwaav64li06cmrgjvrg0w8r6xmbrv8hx-uri-4.2.0/lib/ocaml/4.14.0/site-lib";
-      "/nix/store/i7hmg44cvnfq0xa0f9dm1hx2262j9vyf-yojson-1.7.0/lib/ocaml/4.14.0/site-lib";
+      "/nix/store/j49d3wydfm41n5mb4hlhkx3iv2fy92zd-ocaml-config-2";
+      "/nix/store/ad91sfjyk923k4z67b0sl3s5wl9xf18f-ocaml-base-compiler-4.14.0";
+      "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1";
+      "/nix/store/0f8xjcgi3611n74hxp7sd0bpn4zl4vcl-cmdliner-1.1.1";
+      "/nix/store/i26f26cqb43wb0kvk7syv8sknai0cp54-dune-3.1.1";
+      "/nix/store/76l042jhbmp4pavfj91fc3q5835zd1s2-easy-format-1.3.2";
+      "/nix/store/rvfm6288jihfm78z4gpcdgxqkidl41f8-fpath-0.7.3";
+      "/nix/store/graxs35pqmmmli4jf65jzc0drnwdz5kv-ocaml-4.14.0";
+      "/nix/store/f91m283sqzh3g0hzcxh3fw7yc7piadlc-opam-0install-0.4.3";
+      "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev";
+      "/nix/store/vwaav64li06cmrgjvrg0w8r6xmbrv8hx-uri-4.2.0";
+      "/nix/store/i7hmg44cvnfq0xa0f9dm1hx2262j9vyf-yojson-1.7.0";
     ]
 
 let build_context =
-  Onix.Build_context.make ~ocamlpath ~ocaml_version:"4.14.0"
+  Onix.Build_context.make ~onix_path ~ocaml_version:"4.14.0"
     ~opam:"/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam"
     ~path:"/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root"
     "onix-example.root"

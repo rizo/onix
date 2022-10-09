@@ -288,14 +288,23 @@ let resolve ?(local = OpamVariable.Map.empty) t full_var =
   Opam_utils.debug_var ~scope:"resolve" full_var contents;
   contents
 
-let package_of_nix_store_path ~libdir (store_path : Nix_utils.store_path) =
+let package_of_nix_store_path ~ocaml_version ~onix_pkg_dir
+    (store_path : Nix_utils.store_path) =
   let package_name = OpamPackage.Name.to_string store_path.package_name in
   {
     name = store_path.package_name;
     version = store_path.package_version;
     path = store_path.prefix;
     (* FIXME: This is not the opam file from the repo. *)
-    opam = OpamFilename.Op.(libdir / package_name // "opam");
+    opam =
+      OpamFilename.Op.(
+        onix_pkg_dir
+        / "lib"
+        / "ocaml"
+        / ocaml_version
+        / "site-lib"
+        / package_name
+        // "opam");
   }
 
 let make ?(onix_path = Sys.getenv_opt "ONIXPATH" or "") ?(vars = Vars.base)
@@ -305,15 +314,16 @@ let make ?(onix_path = Sys.getenv_opt "ONIXPATH" or "") ?(vars = Vars.base)
   let deps =
     if String.length onix_path = 0 then OpamPackage.Name.Map.empty
     else
-      let onix_path_dir = String.split_on_char ':' onix_path in
+      let onix_pkg_dirs = String.split_on_char ':' onix_path in
       List.fold_left
-        (fun acc libdir ->
-          (* FIXME: how is this a libdir? *)
-          let libdir = OpamFilename.Dir.of_string libdir in
-          let store_path = Nix_utils.parse_store_path libdir in
-          let pkg = package_of_nix_store_path ~libdir store_path in
+        (fun acc onix_pkg_dir ->
+          let onix_pkg_dir = OpamFilename.Dir.of_string onix_pkg_dir in
+          let store_path = Nix_utils.parse_store_path onix_pkg_dir in
+          let pkg =
+            package_of_nix_store_path ~ocaml_version ~onix_pkg_dir store_path
+          in
           OpamPackage.Name.Map.add store_path.package_name pkg acc)
-        OpamPackage.Name.Map.empty onix_path_dir
+        OpamPackage.Name.Map.empty onix_pkg_dirs
   in
   let self =
     let path = OpamFilename.Dir.of_string path in
