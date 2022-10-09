@@ -116,3 +116,6 @@
 - [ ] Make sure that unsupported compiler combinations error out.
   - compiler: base|system, options package (warn on pkg with compiler flag?)
   - compiler: variants, no valid version in nix
+- [ ] Add self pkg to OPAMPATH[0]
+- [ ] Use rec in lock.
+- [x] Do not include opt deps in lock.

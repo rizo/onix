@@ -84,11 +84,14 @@ let eq ~actual ~expected =
     Fmt.pr "--- EXPECTED ---\n%s\n\n--- ACTUAL ---\n%s@." expected actual;
     raise Exit)
 
+let installed _ = true
+
 let mk_lock ~name str =
   let pkg = OpamPackage.of_string name in
   str
   |> OpamFile.OPAM.read_from_string
-  |> Onix.Lock_pkg.of_opam ~with_tools:`all ~with_test:`all ~with_doc:`all pkg
+  |> Onix.Lock_pkg.of_opam ~installed ~with_tools:`all ~with_test:`all
+       ~with_doc:`all pkg
   |> Option.get
 
 let test_complex_opam () =

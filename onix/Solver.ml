@@ -1,4 +1,4 @@
-module Solver = Opam_0install.Solver.Make (Solver_context)
+module Opam_0install_solver = Opam_0install.Solver.Make (Solver_context)
 
 let resolve_repo repo_url =
   let path, url =
@@ -54,21 +54,35 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
       log "Target packages: %a"
         Fmt.(list ~sep:Fmt.sp Opam_utils.pp_package_name)
         target_packages);
-  match Solver.solve context target_packages with
+  match Opam_0install_solver.solve context target_packages with
   | Ok selections ->
-    let packages = Solver.packages_of_result selections in
-    Fmt.pr "Resolved %d packages:@." (List.length packages);
-    List.iter (Fmt.pr "- %a@." Opam_utils.pp_package) packages;
+    let packages =
+      selections
+      |> Opam_0install_solver.packages_of_result
+      |> List.fold_left
+           (fun acc pkg ->
+             OpamPackage.Name.Map.add (OpamPackage.name pkg) pkg acc)
+           OpamPackage.Name.Map.empty
+    in
+    Fmt.pr "Resolved %d packages:@." (OpamPackage.Name.Map.cardinal packages);
+    OpamPackage.Name.Map.iter
+      (fun _ -> Fmt.pr "- %a@." Opam_utils.pp_package)
+      packages;
+    let installed name = OpamPackage.Name.Map.mem name packages in
     packages
-    |> List.filter_map (fun pkg ->
+    |> OpamPackage.Name.Map.filter_map (fun _ pkg ->
            let opam = Solver_context.get_opam_file context pkg in
-           match Lock_pkg.of_opam ~with_test ~with_doc ~with_tools pkg opam with
+           match
+             Lock_pkg.of_opam ~installed ~with_test ~with_doc ~with_tools pkg
+               opam
+           with
            | None ->
              Logs.warn (fun log ->
                  log "Missing url for %a, ignoring..." Opam_utils.pp_package pkg);
              None
            | some -> some)
+    |> OpamPackage.Name.Map.values
     |> Lock_file.make ~repo_url
   | Error err ->
-    prerr_endline (Solver.diagnostics err);
+    prerr_endline (Opam_0install_solver.diagnostics err);
     exit 2
