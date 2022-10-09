@@ -52,8 +52,8 @@
 - [x] Use nix-prefetch-url.
 - [x] Use nix-prefetch-git for repo fetching.
 - [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
-- [ ] Make dev tools work: vscode/vim plugins.
-- [ ] Fix ocaml env vars propagation for shell.
+- [x] Make dev tools work: vscode/vim plugins.
+- [x] Fix ocaml env vars propagation for shell.
 - [ ] ~~Use nix-prefetch-git for pins.~~
 - [ ] Remove empty libdir after install (should at least have opam!!)?
   - [ ] Install repo's opam, the monads pkg does not install opam for example.
@@ -71,7 +71,7 @@
 - [ ] Handle empty lock file.
 - [ ] Fetch opam extra-source files.
 - [ ] Always patch shebangs?
-- [ ] Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?
+- [ ] ~~Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?~~
   - [ ] Pass package nv to opam actions. This will fix the develop $out issue.
 - [x] Add an example with overrides.
 - [ ] Support static compilation.
@@ -85,7 +85,7 @@
   - Add version, packages and repo fields.
 - [ ] Consider using joinSymlinks to create a build scope.
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
-- [ ] Consider using makeScope for the scope.
+- [x] Consider using makeScope for the scope.
 - [ ] Handle pkg:installed?enable:disable.
 - [x] Stop using emptyPkg. Override the base compiler only?
 - [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
@@ -111,7 +111,7 @@
   - Support easy building of any package without nix lock.
   - Support offline mode.
 - [ ] Help debug nix paths (eg show opam repo path)
-- [ ] When the scope is built but there was a pkg override do we still build the pkg? Must not.
+- [x] When the scope is built but there was a pkg override do we still build the pkg? Must not.
 - [x] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.
 - [ ] Make sure that unsupported compiler combinations error out.
   - compiler: base|system, options package (warn on pkg with compiler flag?)
