@@ -89,15 +89,15 @@ let
       src = dep.src or null;
 
       # Adds an env hook for "targetOffset", i.e., all runtime deps to add OCaml paths.
-      onixPathHook = pkgs.makeSetupHook { name = "onix-path-hooks"; }
-        (pkgs.writeText "onix-path-hooks" ''
+      onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
+        (pkgs.writeText "onix-path-hook" ''
           [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
 
           addOCamlPath () {
             local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
 
             if [[ -d "$libdir" ]]; then
-              echo "+ onix-path-hooks: adding $libdir"
+              echo "+ onix-path-hook: adding $libdir"
             else
               return 0
             fi
