@@ -38,19 +38,19 @@ let opam_path_for_locked_package t =
   let ( </> ) = Filename.concat in
   let name = OpamPackage.name_to_string pkg in
   (* FIXME: might be just "./opam" for pinned? *)
-  if is_pinned t || is_root t then "${src}" </> name ^ ".opam"
+  if is_pinned t || is_root t then Fmt.str "${%s.src}" name </> name ^ ".opam"
   else
     let name_with_version = OpamPackage.to_string pkg in
     "${repo}/packages/" </> name </> name_with_version </> "opam"
 
-let pp_name_string f name =
-  if Utils.String.starts_with_number name then Fmt.Dump.string f name
-  else Fmt.string f name
-
-let pp_name f name =
+let pp_name_escape_with_enderscore formatter name =
   let name = OpamPackage.Name.to_string name in
-  if Utils.String.starts_with_number name then Fmt.Dump.string f name
-  else Fmt.string f name
+  if Utils.String.starts_with_number name then Fmt.string formatter ("_" ^ name)
+  else Fmt.string formatter name
+
+let pp_string_escape_quotted formatter str =
+  if Utils.String.starts_with_number str then Fmt.Dump.string formatter str
+  else Fmt.string formatter str
 
 let pp_version f version =
   let version = OpamPackage.Version.to_string version in
@@ -106,27 +106,22 @@ let pp_src ~ignore_file f t =
 let pp_depends_sets name f req =
   let pp_req f =
     Name_set.iter (fun dep ->
-        if Utils.String.starts_with_number (OpamPackage.Name.to_string dep) then
-          Fmt.pf f "@ self.%a" pp_name dep
-        else Fmt.pf f "@ %a" pp_name dep)
+        Fmt.pf f "@ %a" pp_name_escape_with_enderscore dep)
   in
   if Name_set.is_empty req then ()
-  else Fmt.pf f "@ %s = with self; [@[<hov1>%a@ @]];" name pp_req req
+  else Fmt.pf f "@ %s = [@[<hov1>%a@ @]];" name pp_req req
 
 let pp_depexts_sets name f (req, opt) =
   let pp_req f =
     String_set.iter (fun dep ->
-        if Utils.String.starts_with_number dep then
-          Fmt.pf f "@ pkgs.%a" pp_name_string dep
-        else Fmt.pf f "@ %a" pp_name_string dep)
+        Fmt.pf f "@ pkgs.%a" pp_string_escape_quotted dep)
   in
   let pp_opt f =
     String_set.iter (fun dep ->
-        Fmt.pf f "@ (pkgs.%a or null)" pp_name_string dep)
+        Fmt.pf f "@ (pkgs.%a or null)" pp_string_escape_quotted dep)
   in
   if String_set.is_empty req && String_set.is_empty opt then ()
-  else
-    Fmt.pf f "@ %s = with pkgs; [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
+  else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
 
 let pp ~ignore_file f t =
   let name = OpamPackage.name_to_string t.package in

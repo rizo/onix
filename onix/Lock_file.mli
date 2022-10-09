@@ -1,7 +1,4 @@
-type t = {
-  repo_url : OpamUrl.t;
-  packages : Lock_pkg.t list;
-}
+type t
 
 val make : repo_url:OpamUrl.t -> Lock_pkg.t list -> t
 

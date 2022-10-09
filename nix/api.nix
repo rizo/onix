@@ -268,11 +268,8 @@ in rec {
   build = { lockFile, overrides ? null, logLevel ? defaultLogLevel
     , withTest ? false, withDoc ? false, withTools ? false }:
     let
-      onixLock = import lockFile {
-        inherit pkgs;
-        self = onixLock;
-      };
-      deps = processDeps { } (attrValues onixLock);
+      onixLock = import lockFile { inherit pkgs; };
+      deps = processDeps { } (attrValues onixLock.scope);
       scope = buildScope { inherit withTest withDoc withTools; } deps;
     in applyOverrides scope overrides;
 
