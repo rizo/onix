@@ -102,6 +102,7 @@
 - [ ] Slacko base-no-ppx for lwt?
 - [ ] Support a vendoring/forking workflow (override src?).
 - [ ] Opam-installer requires ocaml 4.13 by default. Use the same version as the rest of the build.
+- [ ] Consider adding opam-installer to lock file to avoid pulling pkgs.opam-installer.
 - [ ] Document diffs:
   - Support compiler option packages.
   - Support dev tools, test, doc.
@@ -117,5 +118,7 @@
   - compiler: base|system, options package (warn on pkg with compiler flag?)
   - compiler: variants, no valid version in nix
 - [ ] Add self pkg to OPAMPATH[0]
-- [ ] Use rec in lock.
+- [x] Use rec in lock.
 - [x] Do not include opt deps in lock.
+- [ ] Include expanded patch/build/install commands in lock file.
+  - This is not easy because substs need to happen during patch phase, which requires var lookup.
