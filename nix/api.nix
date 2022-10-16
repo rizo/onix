@@ -49,30 +49,8 @@ let
         dep' = dep // {
           inherit depends buildDepends testDepends docDepends toolsDepends
             depexts;
-          transitiveDepends = attrValues transitive;
         };
       in acc // transitive // { ${dep.name} = dep'; });
-
-  # Collect OCaml paths from a set of pkgs.
-  collectPaths = ocamlVersion: pkgs:
-    let
-      path = dir: optional (pathExists dir) dir;
-      empty = {
-        libdir = [ ];
-        stublibs = [ ];
-        toplevel = [ ];
-      };
-      updatePath = acc: pkg:
-        let
-          libdir = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib";
-          stublibs = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/stublibs";
-          toplevel = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/toplevel";
-        in {
-          libdir = acc.libdir ++ libdir;
-          stublibs = acc.stublibs ++ stublibs;
-          toplevel = acc.toplevel ++ toplevel;
-        };
-    in foldl' updatePath empty pkgs;
 
   # Build a package from a lock dependency.
   buildPkg = { scope, withTest, withDoc, withTools }:
@@ -84,8 +62,6 @@ let
       testPkgs = map (dep: getAttr dep.name scope) dep.testDepends;
       docPkgs = map (dep: getAttr dep.name scope) dep.docDepends;
       toolsPkgs = map (dep: getAttr dep.name scope) dep.toolsDepends;
-      transitivePkgs = map (dep: getAttr dep.name scope) dep.transitiveDepends;
-      transitivePaths = collectPaths ocaml.version transitivePkgs;
       src = dep.src or null;
 
       # Adds an env hook for "targetOffset", i.e., all runtime deps to add OCaml paths.
@@ -103,7 +79,7 @@ let
             fi
 
             addToSearchPath "OCAMLPATH" "$libdir"
-            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
+            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/${dep.name}/stublibs"
             addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$libdir/toplevel"
           }
 
@@ -119,6 +95,7 @@ let
       dontStrip = true;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
+
       propagatedBuildInputs = dependsPkgs ++ buildPkgs ++ dep.depexts
         ++ [ onixPathHook ];
       propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
