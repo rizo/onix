@@ -85,13 +85,14 @@ let eq ~actual ~expected =
     raise Exit)
 
 let installed _ = true
+let get_opam_file_type _ = `pkg_opam
 
 let mk_lock ~name str =
   let pkg = OpamPackage.of_string name in
   str
   |> OpamFile.OPAM.read_from_string
-  |> Onix.Lock_pkg.of_opam ~installed ~with_tools:`all ~with_test:`all
-       ~with_doc:`all pkg
+  |> Onix.Lock_pkg.of_opam ~installed ~get_opam_file_type ~with_tools:`all
+       ~with_test:`all ~with_doc:`all pkg
   |> Option.get
 
 let test_complex_opam () =

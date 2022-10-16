@@ -30,6 +30,18 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
       root_packages pins
   in
 
+  (* Was the package added with ./pkg.opam or ./opam.
+     Note that this only applies to roots/pins as other packages are looked up
+     from the repo. *)
+  let get_opam_file_type pkg_name =
+    try
+      let _version, opam_file_type, _opam =
+        OpamPackage.Name.Map.find pkg_name fixed_packages
+      in
+      opam_file_type
+    with Not_found -> `opam
+  in
+
   (* Packages to start solve with (roots + ocaml compiler). *)
   let target_packages =
     List.append
@@ -73,8 +85,8 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
     |> OpamPackage.Name.Map.filter_map (fun _ pkg ->
            let opam = Solver_context.get_opam_file context pkg in
            match
-             Lock_pkg.of_opam ~installed ~with_test ~with_doc ~with_tools pkg
-               opam
+             Lock_pkg.of_opam ~installed ~get_opam_file_type ~with_test
+               ~with_doc ~with_tools pkg opam
            with
            | None ->
              Logs.warn (fun log ->

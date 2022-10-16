@@ -2,7 +2,9 @@ type t
 
 val make :
   ?prefer_oldest:bool ->
-  ?fixed_packages:(OpamTypes.version * OpamFile.OPAM.t) OpamTypes.name_map ->
+  ?fixed_packages:
+    (OpamTypes.version * Opam_utils.opam_file_type * OpamFile.OPAM.t)
+    OpamTypes.name_map ->
   constraints:OpamFormula.version_constraint OpamTypes.name_map ->
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
