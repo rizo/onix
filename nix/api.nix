@@ -79,7 +79,7 @@ let
             fi
 
             addToSearchPath "OCAMLPATH" "$libdir"
-            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/${dep.name}/stublibs"
+            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
             addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$libdir/toplevel"
           }
 
