@@ -122,3 +122,4 @@
 - [x] Do not include opt deps in lock.
 - [ ] Include expanded patch/build/install commands in lock file.
   - This is not easy because substs need to happen during patch phase, which requires var lookup.
+- [ ] Ensure that strings, not paths, are passed to build/opamFiles.

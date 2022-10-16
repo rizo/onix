@@ -82,8 +82,10 @@ let pp_src ~ignore_file f t =
   if is_root t then
     let path =
       match t.opam_details.Opam_utils.path with
-      | None -> "./."
-      | Some opam_path -> OpamFilename.(Dir.to_string (dirname opam_path))
+      | Some opam_path ->
+        let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
+        if String.equal path "." then "./." else path
+      | None -> failwith "BUG: Root packages must have an opam path."
     in
     match ignore_file with
     | Some ".gitignore" ->
