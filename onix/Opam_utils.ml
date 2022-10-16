@@ -1,5 +1,19 @@
 open Utils
 
+type opam_file_type =
+  [ `opam
+  | `pkg_opam ]
+
+(* path:
+   - pkg.opam
+   - vendor/pkg/pkg.opam
+   - vendor/pkg/opam *)
+type opam_details = {
+  package : OpamTypes.package;
+  path : OpamFilename.t option; (* None for repo paths. *)
+  opam : OpamFile.OPAM.t;
+}
+
 let opam_name = OpamFile.OPAM.name
 let pp_package = Fmt.using OpamPackage.to_string Fmt.string
 let pp_package_version = Fmt.using OpamPackage.Version.to_string Fmt.string
@@ -34,6 +48,7 @@ let is_ocaml_compiler_name name =
 
 let is_opam_filename filename =
   String.equal (Filename.extension filename) ".opam"
+  || String.equal (Filename.basename filename) "opam"
 
 let dev_version = OpamPackage.Version.of_string "dev"
 let root_version = OpamPackage.Version.of_string "root"
@@ -44,10 +59,20 @@ let is_root package = is_root_version (OpamPackage.version package)
 
 let opam_package_of_filename filename =
   let basename = Filename.basename filename in
-  let opamname = Filename.remove_extension basename in
-  try OpamPackage.of_string opamname
-  with Failure _ ->
-    OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
+  if String.equal basename "opam" then
+    let dirname = Filename.dirname filename in
+    match List.rev (String.split_on_char '/' dirname) with
+    | pkg_dir :: _ ->
+      OpamPackage.create (OpamPackage.Name.of_string pkg_dir) root_version
+    | _ ->
+      invalid_arg
+        ("Could not extract package name from path (must be pkg/opam): "
+        ^ filename)
+  else
+    let opamname = Filename.remove_extension basename in
+    try OpamPackage.of_string opamname
+    with Failure _ ->
+      OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
 
 type dep_flag =
   [ `root
@@ -81,18 +106,20 @@ let debug_var ?(scope = "unknown") var contents =
            (Fmt.using OpamVariable.string_of_variable_contents Fmt.Dump.string))
         contents scope)
 
-let find_root_packages input_opams =
-  let opams =
-    match input_opams with
+let find_root_packages input_opam_paths =
+  let root_opam_paths =
+    match input_opam_paths with
     | [] ->
       let contents = Utils.Filesystem.list_dir "." in
       contents |> List.to_seq |> Seq.filter is_opam_filename
-    | _ -> input_opams |> List.to_seq
+    | _ -> input_opam_paths |> List.to_seq
   in
-  opams
-  |> Seq.map (fun filename ->
-         let pkg = opam_package_of_filename filename in
-         Logs.info (fun log -> log "Reading packages from %S..." filename);
-         let opam = read_opam (OpamFilename.of_string filename) in
-         (OpamPackage.name pkg, (OpamPackage.version pkg, opam)))
+  root_opam_paths
+  |> Seq.map (fun opam_path ->
+         let package = opam_package_of_filename opam_path in
+         Logs.info (fun log -> log "Reading packages from %S..." opam_path);
+         let opam_path = OpamFilename.raw opam_path in
+         let opam = read_opam opam_path in
+         let details = { opam; package; path = Some opam_path } in
+         (OpamPackage.name package, details))
   |> OpamPackage.Name.Map.of_seq

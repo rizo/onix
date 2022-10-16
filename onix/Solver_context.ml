@@ -7,9 +7,7 @@ type t = {
   with_doc : Opam_utils.dep_flag;
   with_tools : Opam_utils.dep_flag;
   repo_packages_dir : string;
-  fixed_packages :
-    (OpamPackage.Version.t * Opam_utils.opam_file_type * OpamFile.OPAM.t)
-    OpamPackage.Name.Map.t;
+  fixed_packages : Opam_utils.opam_details OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;
   prefer_oldest : bool;
 }
@@ -18,7 +16,7 @@ module Private = struct
   let load_opam ~fixed_packages ~repo_packages_dir pkg =
     let { OpamPackage.name; version = _ } = pkg in
     match OpamPackage.Name.Map.find_opt name fixed_packages with
-    | Some (_, _, opam) -> opam
+    | Some { Opam_utils.opam; _ } -> opam
     | None ->
       let opam_path =
         repo_packages_dir
@@ -71,7 +69,8 @@ let user_restrictions t name = OpamPackage.Name.Map.find_opt name t.constraints
 
 let candidates t name =
   match OpamPackage.Name.Map.find_opt name t.fixed_packages with
-  | Some (version, _opam_file_type, opam) -> [(version, Ok opam)]
+  | Some { Opam_utils.package; opam; _ } ->
+    [(OpamPackage.version package, Ok opam)]
   | None -> (
     let versions_dir =
       t.repo_packages_dir </> OpamPackage.Name.to_string name

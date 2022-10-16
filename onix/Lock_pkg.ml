@@ -13,6 +13,7 @@ type src =
 type t = {
   package : OpamPackage.t;
   src : src option;
+  opam_details : Opam_utils.opam_details;
   depends : Name_set.t;
   depends_build : Name_set.t;
   depends_test : Name_set.t;
@@ -37,8 +38,12 @@ let opam_path_for_locked_package t =
   let pkg = t.package in
   let ( </> ) = Filename.concat in
   let name = OpamPackage.name_to_string pkg in
-  (* FIXME: might be just "./opam" for pinned? *)
-  if is_pinned t || is_root t then Fmt.str "${%s.src}" name </> name ^ ".opam"
+  if is_pinned t || is_root t then
+    match t.opam_details.path with
+    | Some path when OpamFilename.ends_with ".opam" path ->
+      Fmt.str "${%s.src}" name </> name ^ ".opam"
+    | Some _ -> Fmt.str "${%s.src}" name </> "opam"
+    | None -> failwith "BUG: pinned and root packages must have an opam path."
   else
     let name_with_version = OpamPackage.to_string pkg in
     "${repo}/packages/" </> name </> name_with_version </> "opam"
@@ -75,11 +80,17 @@ let pp_hash f (kind, hash) =
 
 let pp_src ~ignore_file f t =
   if is_root t then
+    let path =
+      match t.opam_details.Opam_utils.path with
+      | None -> "./."
+      | Some opam_path -> OpamFilename.(Dir.to_string (dirname opam_path))
+    in
     match ignore_file with
     | Some ".gitignore" ->
-      Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSource [] ./.;"
+      Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSource [] %s;" path
     | Some custom ->
-      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] ./.;" custom
+      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] %s;" custom
+        path
     | None -> Fmt.pf f "@ src = ./.;"
   else
     match t.src with
@@ -304,7 +315,10 @@ let only_installed ~installed req opt =
   let opt_installed = Name_set.filter installed opt in
   Name_set.union req opt_installed
 
-let of_opam ~installed ~with_test ~with_doc ~with_tools package opam =
+let of_opam ~installed ~with_test ~with_doc ~with_tools opam_details =
+  let package = opam_details.Opam_utils.package in
+  let opam = opam_details.Opam_utils.opam in
+
   let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
   let src = Option.map (prefetch_src_if_md5 ~package) src in
@@ -371,6 +385,7 @@ let of_opam ~installed ~with_test ~with_doc ~with_tools package opam =
     {
       package;
       src;
+      opam_details;
       depends = only_installed ~installed depends depopts;
       depends_build = only_installed ~installed depends_build depopts_build;
       depends_test = only_installed ~installed depends_test depopts_test;

@@ -12,10 +12,8 @@ val of_opam :
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
   with_tools:Opam_utils.dep_flag ->
-  OpamPackage.t ->
-  OpamFile.OPAM.t ->
+  Opam_utils.opam_details ->
   t option
 (** Create a lock package from an opam representation.
 
     [installed] is used to filter out optional dependencies not installed in the scope. *)
-

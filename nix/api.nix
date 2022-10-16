@@ -252,8 +252,9 @@ in rec {
 
   lock = { repoUrl ? defaultRepoUrl, resolutions ? null
     , lockFile ? defaultLockFile, logLevel ? defaultLogLevel, withTest ? false
-    , withDoc ? false, withTools ? false }:
-    pkgs.mkShell {
+    , withDoc ? false, withTools ? false, opamFiles ? [ ] }:
+    let opamFilesStr = lib.strings.concatStrings (map (f: " " + f) opamFiles);
+    in pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = if isNull resolutions then ''
         onix lock \
@@ -262,7 +263,7 @@ in rec {
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
           --with-tools=${builtins.toJSON withTools} \
-          --verbosity='${logLevel}'
+          --verbosity='${logLevel}'${opamFilesStr}
         exit $?
       '' else ''
         onix lock \
@@ -272,7 +273,7 @@ in rec {
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
           --with-tools=${builtins.toJSON withTools} \
-          --verbosity='${logLevel}'
+          --verbosity='${logLevel}'${opamFilesStr}
         exit $?
       '';
     };
