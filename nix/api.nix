@@ -43,17 +43,17 @@ let
         buildDepends = getDeps "buildDepends" dep;
         testDepends = getDeps "testDepends" dep;
         docDepends = getDeps "docDepends" dep;
-        toolsDepends = getDeps "toolsDepends" dep;
+        devSetupDepends = getDeps "devSetupDepends" dep;
         transitive = processDeps { } (depends ++ buildDepends);
         depexts = dep.depexts or [ ];
         dep' = dep // {
-          inherit depends buildDepends testDepends docDepends toolsDepends
+          inherit depends buildDepends testDepends docDepends devSetupDepends
             depexts;
         };
       in acc // transitive // { ${dep.name} = dep'; });
 
   # Build a package from a lock dependency.
-  buildPkg = { scope, withTest, withDoc, withTools }:
+  buildPkg = { scope, withTest, withDoc, withDevSetup }:
     name: dep:
     let
       ocaml = scope.ocaml;
@@ -61,7 +61,7 @@ let
       buildPkgs = map (dep: getAttr dep.name scope) dep.buildDepends;
       testPkgs = map (dep: getAttr dep.name scope) dep.testDepends;
       docPkgs = map (dep: getAttr dep.name scope) dep.docDepends;
-      toolsPkgs = map (dep: getAttr dep.name scope) dep.toolsDepends;
+      devSetupPkgs = map (dep: getAttr dep.name scope) dep.devSetupDepends;
       src = dep.src or null;
 
       # Adds an env hook for "targetOffset", i.e., all runtime deps to add OCaml paths.
@@ -101,7 +101,7 @@ let
       propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
         ++ dep.depexts ++ buildPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
-        ++ optionals (evalDepFlag dep.version withTools) toolsPkgs;
+        ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
 
       ONIX_LOG_LEVEL = defaultLogLevel;
       ONIXPATH = lib.strings.concatStringsSep ":" (dependsPkgs ++ buildPkgs);
@@ -153,7 +153,7 @@ let
           --opam=${dep.opam} \
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
-          --with-tools=${builtins.toJSON withTools} \
+          --with-dev-setup=${builtins.toJSON withDevSetup} \
           --path=$out \
           ${dep.name}.${dep.version}
 
@@ -181,7 +181,7 @@ let
           --opam=${dep.opam} \
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
-          --with-tools=${builtins.toJSON withTools} \
+          --with-dev-setup=${builtins.toJSON withDevSetup} \
           --path=$out \
           ${dep.name}.${dep.version}
 
@@ -222,11 +222,11 @@ let
         name + "=" + value) resolutions);
 
   # Build a package scope from the locked deps.
-  buildScope = { withTest, withDoc, withTools }:
+  buildScope = { withTest, withDoc, withDevSetup }:
     deps:
     pkgs.lib.makeScope pkgs.newScope (self:
       (mapAttrs (buildPkg {
-        inherit withTest withDoc withTools;
+        inherit withTest withDoc withDevSetup;
         scope = self;
       }) deps));
 
@@ -243,16 +243,16 @@ in rec {
   private = { inherit processDeps; };
 
   build = { lockFile, overrides ? null, logLevel ? defaultLogLevel
-    , withTest ? false, withDoc ? false, withTools ? false }:
+    , withTest ? false, withDoc ? false, withDevSetup ? false }:
     let
       onixLock = import lockFile { inherit pkgs; };
       deps = processDeps { } (attrValues onixLock.scope);
-      scope = buildScope { inherit withTest withDoc withTools; } deps;
+      scope = buildScope { inherit withTest withDoc withDevSetup; } deps;
     in applyOverrides scope overrides;
 
   lock = { repoUrl ? defaultRepoUrl, resolutions ? null
     , lockFile ? defaultLockFile, logLevel ? defaultLogLevel, withTest ? false
-    , withDoc ? false, withTools ? false, opamFiles ? [ ] }:
+    , withDoc ? false, withDevSetup ? false, opamFiles ? [ ] }:
     let opamFilesStr = lib.strings.concatStrings (map (f: " " + f) opamFiles);
     in pkgs.mkShell {
       buildInputs = [ onix ];
@@ -262,7 +262,7 @@ in rec {
           --lock-file='${lockFile}' \
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
-          --with-tools=${builtins.toJSON withTools} \
+          --with-dev-setup=${builtins.toJSON withDevSetup} \
           --verbosity='${logLevel}'${opamFilesStr}
         exit $?
       '' else ''
@@ -272,7 +272,7 @@ in rec {
           --lock-file='${lockFile}' \
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
-          --with-tools=${builtins.toJSON withTools} \
+          --with-dev-setup=${builtins.toJSON withDevSetup} \
           --verbosity='${logLevel}'${opamFilesStr}
         exit $?
       '';

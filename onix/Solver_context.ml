@@ -5,7 +5,7 @@ let ( </> ) = Filename.concat
 type t = {
   with_test : Opam_utils.dep_flag;
   with_doc : Opam_utils.dep_flag;
-  with_tools : Opam_utils.dep_flag;
+  with_dev_setup : Opam_utils.dep_flag;
   repo_packages_dir : string;
   fixed_packages : Opam_utils.opam_details OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;
@@ -39,12 +39,12 @@ module Private = struct
 end
 
 let make ?(prefer_oldest = false) ?(fixed_packages = OpamPackage.Name.Map.empty)
-    ~constraints ~with_test ~with_doc ~with_tools repo_packages_dir =
+    ~constraints ~with_test ~with_doc ~with_dev_setup repo_packages_dir =
   let repo_packages_dir = OpamFilename.Dir.to_string repo_packages_dir in
   {
     with_test;
     with_doc;
-    with_tools;
+    with_dev_setup;
     repo_packages_dir;
     fixed_packages;
     constraints;
@@ -118,19 +118,19 @@ let candidates t name =
     672  version
     224  with-doc
    2339  with-test
-     12  with-tools *)
+     12  with-dev-setup *)
 let filter_deps t pkg depends_formula =
   let version = OpamPackage.version pkg in
   let test = Opam_utils.eval_dep_flag ~version t.with_test in
   let doc = Opam_utils.eval_dep_flag ~version t.with_doc in
-  let tools = Opam_utils.eval_dep_flag ~version t.with_tools in
+  let dev_setup = Opam_utils.eval_dep_flag ~version t.with_dev_setup in
   let env var =
     let contents =
       Build_context.Vars.try_resolvers
         [
           Build_context.Vars.resolve_package pkg;
           Build_context.Vars.resolve_from_base;
-          Build_context.Vars.resolve_dep_flags ~test ~doc ~tools;
+          Build_context.Vars.resolve_dep_flags ~test ~doc ~dev_setup;
         ]
         var
     in

@@ -55,8 +55,8 @@ depends: [
   "dep-test-2" {with-test}
   "dep-doc-1" {with-doc}
   "dep-doc-2" {with-doc}
-  "dep-tool-1" {with-tools}
-  "dep-tool-2" {with-tools}
+  "dep-tool-1" {with-dev-setup}
+  "dep-tool-2" {with-dev-setup}
   "dep-test-o-doc-1" {with-test | with-doc}
   "dep-test-n-doc-1" {with-test & with-doc}
 ]
@@ -69,8 +69,8 @@ depopts: [
   "opt-test-2" {with-test}
   "opt-doc-1" {with-doc}
   "opt-doc-2" {with-doc}
-  "opt-tool-1" {with-tools}
-  "opt-tool-2" {with-tools}
+  "opt-tool-1" {with-dev-setup}
+  "opt-tool-2" {with-dev-setup}
   "opt-test-o-doc-1" {with-test | with-doc}
   "opt-test-n-doc-1" {with-test & with-doc}
 ]
@@ -90,7 +90,7 @@ let mk_lock ~name str =
   let package = OpamPackage.of_string name in
   let opam = OpamFile.OPAM.read_from_string str in
   let opam_details = { Onix.Opam_utils.package; opam; path = None } in
-  Onix.Lock_pkg.of_opam ~installed ~with_tools:`all ~with_test:`all
+  Onix.Lock_pkg.of_opam ~installed ~with_dev_setup:`all ~with_test:`all
     ~with_doc:`all opam_details
   |> Option.get
 
@@ -152,7 +152,7 @@ testDepends = with self; [ dep-test-1 dep-test-2 dep-test-o-doc-1
 docDepends = with self; [ dep-doc-1 dep-doc-2 dep-test-o-doc-1
                           (self.opt-doc-1 or null) (self.opt-doc-2 or null)
                           (self.opt-test-o-doc-1 or null) ];
-toolsDepends = with self; [ dep-tool-1 dep-tool-2 (self.opt-tool-1 or null)
+devSetupDepends = with self; [ dep-tool-1 dep-tool-2 (self.opt-tool-1 or null)
                             (self.opt-tool-2 or null) ];
 depexts = with pkgs; [ (pkgs.opt-ext-1 or null) (pkgs.opt-ext-2 or null)
                        (pkgs.opt-ext-3 or null) ];

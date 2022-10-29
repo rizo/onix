@@ -37,17 +37,17 @@ $ ls ./result
 For more examples of usage see the https://github.com/odis-labs/onix-examples repository.
 
 
-## Using development tools
+## Development setup dependencies
 
-Development tools can be added to your opam files using the [`{with-tools}`](https://opam.ocaml.org/doc/Manual.html#pkgvar-with-tools) flag.
+Development setup dependencies can be added to your opam files using the [`{with-dev-setup}`](https://opam.ocaml.org/doc/Manual.html#pkgvar-with-dev-setup) flag.
 
-### 1. Add your tools packages:
+### 1. Add your development setup packages:
 
 ```opam
 depends: [
   ...
-  "ocaml-lsp-server" {with-tools}
-  "ocamlformat" {with-tools}
+  "ocaml-lsp-server" {with-dev-setup}
+  "ocamlformat" {with-dev-setup}
 ]
 ```
 
@@ -78,7 +78,7 @@ $ nix-shell -A shell
 
 - `withTest` - `true|false|"all`
 - `withDoc` - `true|false|"all`
-- `withTools` - `true|false|"all`
+- `withDevSetup` - `true|false|"all`
 - `constraints`: overrides the version selection from the opam file.
 
 **Examples**
@@ -87,7 +87,7 @@ $ nix-shell -A shell
 onix.lock = {
   withTest = true;
   withDoc = "all";
-  withTools = true;
+  withDevSetup = true;
   constraints = {
     dune = "<3.3";
   }

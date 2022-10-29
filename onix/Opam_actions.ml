@@ -1,11 +1,11 @@
 open Utils
 
-let local_vars ~test ~doc ~tools =
+let local_vars ~test ~doc ~dev_setup =
   OpamVariable.Map.of_list
     [
       (OpamVariable.of_string "with-test", Some (OpamVariable.B test));
       (OpamVariable.of_string "with-doc", Some (OpamVariable.B doc));
-      (OpamVariable.of_string "with-tools", Some (OpamVariable.B tools));
+      (OpamVariable.of_string "with-dev-setup", Some (OpamVariable.B dev_setup));
     ]
 
 module Patch = struct
@@ -183,18 +183,18 @@ end
 
 let patch = Patch.run
 
-let build ~ocaml_version ~opam ~with_test ~with_doc ~with_tools ~path opam_pkg =
+let build ~ocaml_version ~opam ~with_test ~with_doc ~with_dev_setup ~path opam_pkg =
   let ctx : Build_context.t =
     Build_context.make ~ocaml_version ~opam ~path opam_pkg
   in
   let version = ctx.self.version in
   let test = Opam_utils.eval_dep_flag ~version with_test in
   let doc = Opam_utils.eval_dep_flag ~version with_doc in
-  let tools = Opam_utils.eval_dep_flag ~version with_tools in
+  let dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
   let opam = Opam_utils.read_opam ctx.self.opam in
   let commands =
     (OpamFilter.commands
-       (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~tools))
+       (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~dev_setup))
        (OpamFile.OPAM.build opam)
     @ (if test then
        OpamFilter.commands
@@ -246,18 +246,18 @@ module Install = struct
             dst);
       OpamFilename.copy ~src ~dst)
 
-  let run ~ocaml_version ~opam ~with_test ~with_doc ~with_tools ~path opam_pkg =
+  let run ~ocaml_version ~opam ~with_test ~with_doc ~with_dev_setup ~path opam_pkg =
     let ctx : Build_context.t =
       Build_context.make ~ocaml_version ~opam ~path opam_pkg
     in
     let version = ctx.self.version in
     let test = Opam_utils.eval_dep_flag ~version with_test in
     let doc = Opam_utils.eval_dep_flag ~version with_doc in
-    let tools = Opam_utils.eval_dep_flag ~version with_tools in
+    let dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
     let opam = Opam_utils.read_opam ctx.self.opam in
     let commands =
       OpamFilter.commands
-        (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~tools))
+        (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~dev_setup))
         (OpamFile.OPAM.install opam)
       @ [make_opam_install_commands ~path ctx]
       |> List.filter List.is_not_empty

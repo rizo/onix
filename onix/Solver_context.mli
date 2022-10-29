@@ -6,7 +6,7 @@ val make :
   constraints:OpamFormula.version_constraint OpamTypes.name_map ->
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
-  with_tools:Opam_utils.dep_flag ->
+  with_dev_setup:Opam_utils.dep_flag ->
   OpamTypes.dirname ->
   t
 

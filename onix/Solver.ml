@@ -11,7 +11,7 @@ let resolve_repo repo_url =
   Logs.info (fun log -> log "Using OPAM repository: %a" Opam_utils.pp_url url);
   (path, url)
 
-let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
+let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_dev_setup
     input_opam_files =
   let resolutions = Resolutions.make resolutions in
   Resolutions.debug resolutions;
@@ -44,7 +44,7 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
   let context =
     Solver_context.make
       OpamFilename.Op.(repo_path / "packages")
-      ~fixed_packages ~constraints ~with_test ~with_doc ~with_tools
+      ~fixed_packages ~constraints ~with_test ~with_doc ~with_dev_setup
   in
 
   let get_opam_details package =
@@ -56,9 +56,9 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
   in
 
   Logs.info (fun log ->
-      log "Solving dependencies... with-test=%a with-doc=%a with-tools=%a"
+      log "Solving dependencies... with-test=%a with-doc=%a with-dev-setup=%a"
         Opam_utils.pp_dep_flag with_test Opam_utils.pp_dep_flag with_doc
-        Opam_utils.pp_dep_flag with_tools);
+        Opam_utils.pp_dep_flag with_dev_setup);
   Logs.info (fun log ->
       log "Target packages: %a"
         Fmt.(list ~sep:Fmt.sp Opam_utils.pp_package_name)
@@ -82,7 +82,7 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_tools
     |> OpamPackage.Name.Map.filter_map (fun _ pkg ->
            match
              let opam_details = get_opam_details pkg in
-             Lock_pkg.of_opam ~installed ~with_test ~with_doc ~with_tools
+             Lock_pkg.of_opam ~installed ~with_test ~with_doc ~with_dev_setup
                opam_details
            with
            | None ->

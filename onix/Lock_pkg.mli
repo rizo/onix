@@ -11,7 +11,7 @@ val of_opam :
   installed:(OpamPackage.Name.t -> bool) ->
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
-  with_tools:Opam_utils.dep_flag ->
+  with_dev_setup:Opam_utils.dep_flag ->
   Opam_utils.opam_details ->
   t option
 (** Create a lock package from an opam representation.

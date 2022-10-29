@@ -5,7 +5,7 @@ val build :
   opam:string ->
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
-  with_tools:Opam_utils.dep_flag ->
+  with_dev_setup:Opam_utils.dep_flag ->
   path:string ->
   string ->
   unit
@@ -15,7 +15,7 @@ val install :
   opam:string ->
   with_test:Opam_utils.dep_flag ->
   with_doc:Opam_utils.dep_flag ->
-  with_tools:Opam_utils.dep_flag ->
+  with_dev_setup:Opam_utils.dep_flag ->
   path:string ->
   string ->
   unit

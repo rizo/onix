@@ -18,7 +18,7 @@ type t = {
   depends_build : Name_set.t;
   depends_test : Name_set.t;
   depends_doc : Name_set.t;
-  depends_tools : Name_set.t;
+  depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
 }
@@ -150,8 +150,8 @@ let pp ~ignore_file f t =
     t.depends_test
     (pp_depends_sets "docDepends")
     t.depends_doc
-    (pp_depends_sets "toolsDepends")
-    t.depends_tools
+    (pp_depends_sets "devSetupDepends")
+    t.depends_dev_setup
     (pp_depexts_sets "depexts")
     (t.depexts_nix, t.depexts_unknown)
 
@@ -294,14 +294,14 @@ let get_depexts ~package ~is_zip_src ~env depexts =
   in
   (nix_depexts, unknown_depexts)
 
-let resolve ?(build = false) ?(test = false) ?(doc = false) ?(tools = false) pkg
+let resolve ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false) pkg
     v =
   let contents =
     Build_context.Vars.try_resolvers
       [
         Build_context.Vars.resolve_package pkg;
         Build_context.Vars.resolve_from_base;
-        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~tools;
+        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~dev_setup;
       ]
       v
   in
@@ -317,7 +317,7 @@ let only_installed ~installed req opt =
   let opt_installed = Name_set.filter installed opt in
   Name_set.union req opt_installed
 
-let of_opam ~installed ~with_test ~with_doc ~with_tools opam_details =
+let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let package = opam_details.Opam_utils.package in
   let opam = opam_details.Opam_utils.opam in
 
@@ -331,9 +331,9 @@ let of_opam ~installed ~with_test ~with_doc ~with_tools opam_details =
   (* Precise extraction of dependencies using dep flags.
      The flag selection is too general so [~depends] and [~depopts] are used to
      select deps exclusively from a particular group. *)
-  let get_deps ?build ?test ?doc ?tools ?(depends = Name_set.empty)
+  let get_deps ?build ?test ?doc ?dev_setup ?(depends = Name_set.empty)
       ?(depopts = Name_set.empty) () =
-    let env = resolve ?build ?test ?doc ?tools package in
+    let env = resolve ?build ?test ?doc ?dev_setup package in
     let _req, opt = filter_deps ~env ~required:false opam_depopts in
     assert (Name_set.is_empty _req);
     let req, opt = filter_deps ~env ~required:true ~opt opam_depends in
@@ -342,7 +342,7 @@ let of_opam ~installed ~with_test ~with_doc ~with_tools opam_details =
 
   let test = Opam_utils.eval_dep_flag ~version with_test in
   let doc = Opam_utils.eval_dep_flag ~version with_doc in
-  let tools = Opam_utils.eval_dep_flag ~version with_tools in
+  let dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
 
   let depends, depopts = get_deps () in
   let depends_build, depopts_build =
@@ -356,8 +356,8 @@ let of_opam ~installed ~with_test ~with_doc ~with_tools opam_details =
     if doc then get_deps ~doc ~depends ~depopts ()
     else (Name_set.empty, Name_set.empty)
   in
-  let depends_tools, depopts_tools =
-    if tools then get_deps ~tools ~depends ~depopts ()
+  let depends_dev_setup, depopts_dev_setup =
+    if dev_setup then get_deps ~dev_setup ~depends ~depopts ()
     else (Name_set.empty, Name_set.empty)
   in
 
@@ -392,7 +392,7 @@ let of_opam ~installed ~with_test ~with_doc ~with_tools opam_details =
       depends_build = only_installed ~installed depends_build depopts_build;
       depends_test = only_installed ~installed depends_test depopts_test;
       depends_doc = only_installed ~installed depends_doc depopts_doc;
-      depends_tools = only_installed ~installed depends_tools depopts_tools;
+      depends_dev_setup = only_installed ~installed depends_dev_setup depopts_dev_setup;
       depexts_nix;
       depexts_unknown;
     }

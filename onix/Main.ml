@@ -71,13 +71,13 @@ let with_doc_arg ~absent =
   |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
 
-let with_tools_arg ~absent =
+let with_dev_setup_arg ~absent =
   let doc =
-    "Include {with-tools} constrained packages. Applies to the root packages \
+    "Include {with-dev-setup} constrained packages. Applies to the root packages \
      only if passed without value. The possible values are: `true', `deps', \
      `all' or `false'"
   in
-  Arg.info ["with-tools"] ~doc ~docv:"VAL"
+  Arg.info ["with-dev-setup"] ~doc ~docv:"VAL"
   |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
 
@@ -118,13 +118,13 @@ end
 
 module Opam_build = struct
   let run style_renderer log_level ocaml_version opam with_test with_doc
-      with_tools path opam_pkg =
+      with_dev_setup path opam_pkg =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
         log "opam-build: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
           ocaml_version path opam);
     Onix.Opam_actions.build ~ocaml_version ~opam ~with_test ~with_doc
-      ~with_tools ~path opam_pkg;
+      ~with_dev_setup ~path opam_pkg;
     Logs.info (fun log -> log "opam-build: Done.")
 
   let info =
@@ -140,18 +140,18 @@ module Opam_build = struct
         $ opam_arg
         $ with_test_arg ~absent:`none
         $ with_doc_arg ~absent:`none
-        $ with_tools_arg ~absent:`none
+        $ with_dev_setup_arg ~absent:`none
         $ path_arg
         $ opam_package_arg)
 end
 
 module Opam_install = struct
-  let run ocaml_version opam with_test with_doc with_tools path opam_pkg =
+  let run ocaml_version opam with_test with_doc with_dev_setup path opam_pkg =
     Logs.info (fun log ->
         log "opam-install: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
           ocaml_version path opam);
     Onix.Opam_actions.install ~ocaml_version ~opam ~with_test ~with_doc
-      ~with_tools ~path opam_pkg;
+      ~with_dev_setup ~path opam_pkg;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =
@@ -166,7 +166,7 @@ module Opam_install = struct
         $ opam_arg
         $ with_test_arg ~absent:`none
         $ with_doc_arg ~absent:`none
-        $ with_tools_arg ~absent:`none
+        $ with_dev_setup_arg ~absent:`none
         $ path_arg
         $ opam_package_arg)
 end
@@ -176,7 +176,7 @@ module Lock = struct
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
   let run style_renderer log_level ignore_file lock_file_path repo_url
-      resolutions with_test with_doc with_tools input_opam_files =
+      resolutions with_test with_doc with_dev_setup input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
 
@@ -195,7 +195,7 @@ module Lock = struct
     in
 
     let lock_file =
-      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc ~with_tools
+      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc ~with_dev_setup
         input_opam_files
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
@@ -217,7 +217,7 @@ module Lock = struct
         $ resolutions_arg
         $ with_test_arg ~absent:`root
         $ with_doc_arg ~absent:`root
-        $ with_tools_arg ~absent:`root
+        $ with_dev_setup_arg ~absent:`root
         $ input_opam_files_arg)
 end
 

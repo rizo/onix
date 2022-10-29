@@ -78,14 +78,14 @@ module Vars = struct
     |> add_nixos_vars
 
   let resolve_dep_flags ?(build = true) ?(post = false) ?(test = false)
-      ?(doc = false) ?(tools = false) var =
+      ?(doc = false) ?(dev_setup = false) var =
     let bool x = Some (OpamVariable.bool x) in
     match OpamVariable.Full.to_string var with
     | "build" -> bool build
     | "post" -> bool post
     | "with-test" -> bool test
     | "with-doc" -> bool doc
-    | "with-tools" -> bool tools
+    | "with-dev-setup" -> bool dev_setup
     | _ -> None
 
   let resolve_package pkg v =

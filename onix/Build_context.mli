@@ -24,7 +24,7 @@ module Vars : sig
     ?post:bool ->
     ?test:bool ->
     ?doc:bool ->
-    ?tools:bool ->
+    ?dev_setup:bool ->
     OpamFilter.env
   (** The opam filter env for resolving dependencies based on flags. *)
 
