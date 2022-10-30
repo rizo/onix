@@ -136,7 +136,7 @@ let pp_depexts_sets name f (req, opt) =
   if String_set.is_empty req && String_set.is_empty opt then ()
   else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
 
-let pp ~ignore_file f t =
+let pp_nix ~ignore_file f t =
   let name = OpamPackage.name_to_string t.package in
   let version = OpamPackage.version t.package in
   Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a" name
@@ -294,8 +294,8 @@ let get_depexts ~package ~is_zip_src ~env depexts =
   in
   (nix_depexts, unknown_depexts)
 
-let resolve ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false) pkg
-    v =
+let resolve ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false)
+    pkg v =
   let contents =
     Build_context.Vars.try_resolvers
       [
@@ -392,7 +392,8 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
       depends_build = only_installed ~installed depends_build depopts_build;
       depends_test = only_installed ~installed depends_test depopts_test;
       depends_doc = only_installed ~installed depends_doc depopts_doc;
-      depends_dev_setup = only_installed ~installed depends_dev_setup depopts_dev_setup;
+      depends_dev_setup =
+        only_installed ~installed depends_dev_setup depopts_dev_setup;
       depexts_nix;
       depexts_unknown;
     }

@@ -73,9 +73,9 @@ let with_doc_arg ~absent =
 
 let with_dev_setup_arg ~absent =
   let doc =
-    "Include {with-dev-setup} constrained packages. Applies to the root packages \
-     only if passed without value. The possible values are: `true', `deps', \
-     `all' or `false'"
+    "Include {with-dev-setup} constrained packages. Applies to the root \
+     packages only if passed without value. The possible values are: `true', \
+     `deps', `all' or `false'"
   in
   Arg.info ["with-dev-setup"] ~doc ~docv:"VAL"
   |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
@@ -195,12 +195,12 @@ module Lock = struct
     in
 
     let lock_file =
-      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc ~with_dev_setup
-        input_opam_files
+      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc
+        ~with_dev_setup input_opam_files
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" (Onix.Lock_file.pp ~ignore_file) lock_file);
+        Fmt.pf out "%a" (Onix.Lock_file.pp_nix ~ignore_file) lock_file);
     Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."

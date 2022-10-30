@@ -49,8 +49,30 @@ let
         dep' = dep // {
           inherit depends buildDepends testDepends docDepends devSetupDepends
             depexts;
+          transitiveDepends = attrValues transitive;
         };
       in acc // transitive // { ${dep.name} = dep'; });
+
+  # Collect OCaml paths from a set of pkgs.
+  collectPaths = ocamlVersion: pkgs:
+    let
+      path = dir: optional (pathExists dir) dir;
+      empty = {
+        libdir = [ ];
+        stublibs = [ ];
+        toplevel = [ ];
+      };
+      updatePath = acc: pkg:
+        let
+          libdir = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib";
+          stublibs = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/stublibs";
+          toplevel = path "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/toplevel";
+        in {
+          libdir = acc.libdir ++ libdir;
+          stublibs = acc.stublibs ++ stublibs;
+          toplevel = acc.toplevel ++ toplevel;
+        };
+    in foldl' updatePath empty pkgs;
 
   # Build a package from a lock dependency.
   buildPkg = { scope, withTest, withDoc, withDevSetup }:
@@ -62,29 +84,11 @@ let
       testPkgs = map (dep: getAttr dep.name scope) dep.testDepends;
       docPkgs = map (dep: getAttr dep.name scope) dep.docDepends;
       devSetupPkgs = map (dep: getAttr dep.name scope) dep.devSetupDepends;
+      transitivePkgs = map (dep: getAttr dep.name scope) dep.transitiveDepends;
+
+      transitivePaths = collectPaths ocaml.version transitivePkgs;
+
       src = dep.src or null;
-
-      # Adds an env hook for "targetOffset", i.e., all runtime deps to add OCaml paths.
-      onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
-        (pkgs.writeText "onix-path-hook" ''
-          [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
-
-          addOCamlPath () {
-            local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
-
-            if [[ -d "$libdir" ]]; then
-              echo "+ onix-path-hook: adding $libdir"
-            else
-              return 0
-            fi
-
-            addToSearchPath "OCAMLPATH" "$libdir"
-            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
-            addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$libdir/toplevel"
-          }
-
-          addEnvHooks "$targetOffset" addOCamlPath
-        '');
 
     in stdenv.mkDerivation {
       inherit src;
@@ -92,19 +96,26 @@ let
       version = dep.version;
       dontUnpack = isNull src;
       strictDeps = true;
-      dontStrip = true;
+      # dontStrip = true;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
-
-      propagatedBuildInputs = dependsPkgs ++ buildPkgs ++ dep.depexts
-        ++ [ onixPathHook ];
+      propagatedBuildInputs = dependsPkgs ++ buildPkgs ++ dep.depexts;
       propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
         ++ dep.depexts ++ buildPkgs
+        ++ optionals (evalDepFlag dep.version withTest) testPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
         ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
 
       ONIX_LOG_LEVEL = defaultLogLevel;
       ONIXPATH = lib.strings.concatStringsSep ":" (dependsPkgs ++ buildPkgs);
+
+      # Set environment variables for OCaml library lookup. This needs to use
+      # transitive dependencies as dune requires the full dependency tree.
+      OCAMLPATH = lib.strings.concatStringsSep ":" transitivePaths.libdir;
+      CAML_LD_LIBRARY_PATH =
+        lib.strings.concatStringsSep ":" transitivePaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH =
+        lib.strings.concatStringsSep ":" transitivePaths.toplevel;
 
       prePatch = ''
         echo "+ prePatch: ${dep.name}-${dep.version}"
@@ -200,6 +211,19 @@ let
           || true
 
         runHook postInstall
+      '';
+
+      shellHook = ''
+        echo "======== Running shell hook for ${dep.name}..."
+        export OCAMLPATH=${
+          lib.strings.concatStringsSep ":" transitivePaths.libdir
+        }
+        export CAML_LD_LIBRARY_PATH=${
+          lib.strings.concatStringsSep ":" transitivePaths.stublibs
+        }
+        export OCAMLTOP_INCLUDE_PATH =${
+          lib.strings.concatStringsSep ":" transitivePaths.toplevel
+        }
       '';
     };
 

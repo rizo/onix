@@ -96,7 +96,9 @@ let mk_lock ~name str =
 
 let test_complex_opam () =
   let lock_pkg = mk_lock ~name:"complex.root" complex_opam in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
+  let actual =
+    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+  in
   let expected =
     {|name = "complex"; version = "root"; src = ./.; opam = "${src}/complex.opam";
 depends = with self; [ bos cmdliner dune easy-format fmt fpath logs ocaml
@@ -109,7 +111,9 @@ depexts = with pkgs; [ libogg ];
 
 let test_dev_opam () =
   let lock_pkg = mk_lock ~name:"dev.dev" dev_opam in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
+  let actual =
+    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+  in
   let expected =
     {|name = "dev"; version = "dev";
 src = builtins.fetchGit {
@@ -123,7 +127,9 @@ opam = "${src}/dev.opam";
 
 let test_zip_src_opam () =
   let lock_pkg = mk_lock ~name:"zip.1.0.2" zip_src_opam in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
+  let actual =
+    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+  in
   let expected =
     {|name = "zip"; version = "1.0.2";
 src = pkgs.fetchurl {
@@ -137,7 +143,9 @@ depexts = with pkgs; [ unzip ];
 
 let test_other_deps_opam () =
   let lock_pkg = mk_lock ~name:"other-deps.1.0.1" other_deps_opam in
-  let actual = Fmt.str "%a@." (Onix.Lock_pkg.pp ~ignore_file:None) lock_pkg in
+  let actual =
+    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+  in
   let expected =
     {|name = "other-deps"; version = "1.0.1";
 opam = "${repo}/packages/other-deps/other-deps.1.0.1/opam";
