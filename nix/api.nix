@@ -221,7 +221,7 @@ let
         export CAML_LD_LIBRARY_PATH=${
           lib.strings.concatStringsSep ":" transitivePaths.stublibs
         }
-        export OCAMLTOP_INCLUDE_PATH =${
+        export OCAMLTOP_INCLUDE_PATH=${
           lib.strings.concatStringsSep ":" transitivePaths.toplevel
         }
       '';
@@ -300,11 +300,5 @@ in rec {
           --verbosity='${logLevel}'${opamFilesStr}
         exit $?
       '';
-    };
-
-  shell = pkg:
-    pkgs.mkShell {
-      OCAMLPATH = pkg.OCAMLPATH;
-      inputsFrom = [ pkg ];
     };
 }
