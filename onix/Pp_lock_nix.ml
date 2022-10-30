@@ -3,7 +3,7 @@ open Utils
 (* Lock pkg printers *)
 
 let opam_path_for_locked_package (t : Lock_pkg.t) =
-  let pkg = t.package in
+  let pkg = t.opam_details.package in
   let ( </> ) = Filename.concat in
   let name = OpamPackage.name_to_string pkg in
   if Lock_pkg.is_pinned t || Lock_pkg.is_root t then
@@ -75,7 +75,7 @@ let pp_src ~ignore_file f (t : Lock_pkg.t) =
     | Some (Http { url; hash = `MD5, _ }) ->
       Logs.warn (fun log ->
           log "Ignoring hash for %a. MD5 hashes are not supported by nix."
-            Opam_utils.pp_package t.package);
+            Opam_utils.pp_package t.opam_details.package);
       Fmt.pf f "@ src = @[<v-4>builtins.fetchurl {@ url = %a;@]@ };"
         (Fmt.quote Opam_utils.pp_url)
         url
@@ -105,8 +105,8 @@ let pp_depexts_sets name f (req, opt) =
   else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
 
 let pp_pkg ~ignore_file f (t : Lock_pkg.t) =
-  let name = OpamPackage.name_to_string t.package in
-  let version = OpamPackage.version t.package in
+  let name = OpamPackage.name_to_string t.opam_details.package in
+  let version = OpamPackage.version t.opam_details.package in
   Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a" name
     pp_version version (pp_src ~ignore_file) t
     (opam_path_for_locked_package t)
@@ -147,4 +147,4 @@ let pp_scope ~ignore_file f deps =
 
 let pp ~ignore_file fmt (t : Lock_file.t) =
   Fmt.pf fmt {|{ pkgs ? import <nixpkgs> {} }:@.@[<v2>rec {@,%a@,%a@,%a@,}@.|}
-    pp_version Lib.version pp_repo_uri t.repo (pp_scope ~ignore_file) t.scope
+    pp_version Lib.version pp_repo_uri t.repo (pp_scope ~ignore_file) t.packages

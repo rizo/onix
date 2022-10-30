@@ -11,7 +11,6 @@ type src =
     }
 
 type t = {
-  package : OpamPackage.t;
   src : src option;
   opam_details : Opam_utils.opam_details;
   depends : Name_set.t;
@@ -29,9 +28,9 @@ val is_root : t -> bool
 
 val of_opam :
   installed:(OpamPackage.Name.t -> bool) ->
-  with_test:Opam_utils.dep_flag ->
-  with_doc:Opam_utils.dep_flag ->
-  with_dev_setup:Opam_utils.dep_flag ->
+  with_test:Opam_utils.dep_flag_scope ->
+  with_doc:Opam_utils.dep_flag_scope ->
+  with_dev_setup:Opam_utils.dep_flag_scope ->
   Opam_utils.opam_details ->
   t option
 (** Create a lock package from an opam representation.

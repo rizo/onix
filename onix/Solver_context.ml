@@ -3,9 +3,9 @@
 let ( </> ) = Filename.concat
 
 type t = {
-  with_test : Opam_utils.dep_flag;
-  with_doc : Opam_utils.dep_flag;
-  with_dev_setup : Opam_utils.dep_flag;
+  with_test : Opam_utils.dep_flag_scope;
+  with_doc : Opam_utils.dep_flag_scope;
+  with_dev_setup : Opam_utils.dep_flag_scope;
   repo_packages_dir : string;
   fixed_packages : Opam_utils.opam_details OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;

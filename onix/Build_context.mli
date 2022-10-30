@@ -1,8 +1,8 @@
 type package = {
   name : OpamTypes.name;
   version : OpamTypes.version;
-  opam : OpamFilename.t;
-  path : OpamTypes.dirname;
+  opamfile : string;
+  prefix : string;
 }
 
 type t = {
@@ -49,13 +49,12 @@ val basic_resolve :
   OpamFilter.env
 (** Resolve without build context for local, env and static vars. *)
 
+val dependencies_of_onix_path :
+  ocaml_version:string -> string -> package OpamPackage.Name.Map.t
+
 val make :
-  ?onix_path:string ->
+  dependencies:package OpamPackage.Name.Map.t ->
   ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
   ocaml_version:string ->
-  opam:string ->
-  path:string ->
-  string ->
+  package ->
   t
-(* [make ?vars ~ocaml_version ~path opam_pkg] creates a build context for a
-   package located at a nix store path [path] with opam file located at [opam]. *)

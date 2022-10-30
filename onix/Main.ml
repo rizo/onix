@@ -1,3 +1,8 @@
+let ( or ) opt default =
+  match opt with
+  | Some x -> x
+  | None -> default
+
 let setup_logs style_renderer log_level =
   Fmt_tty.setup_std_outputs ?style_renderer ();
   Logs.set_level log_level;
@@ -10,8 +15,8 @@ let ocaml_version_arg =
   let docv = "VERSION" in
   Arg.(info ["ocaml-version"] ~docv ~doc |> opt (some string) None |> required)
 
-let path_arg =
-  let doc = "Nix store path of the package (i.e. the out directory)." in
+let package_prefix_arg =
+  let doc = "Nix store prefix path of the package (i.e. the $out directory)." in
   let docv = "PATH" in
   Arg.(info ["path"] ~docv ~doc |> opt (some string) None |> required)
 
@@ -93,13 +98,32 @@ let repo_url_arg =
     |> opt string "https://github.com/ocaml/opam-repository.git"
     |> value)
 
+let mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
+  let onix_path = Sys.getenv_opt "ONIXPATH" or "" in
+  let dependencies =
+    Onix.Build_context.dependencies_of_onix_path ~ocaml_version onix_path
+  in
+  let opam_pkg = OpamPackage.of_string opam_pkg in
+  let self =
+    {
+      Onix.Build_context.name = opam_pkg.name;
+      version = opam_pkg.version;
+      prefix;
+      opamfile;
+    }
+  in
+  Onix.Build_context.make ~dependencies ~ocaml_version self
+
 module Opam_patch = struct
-  let run style_renderer log_level ocaml_version opam path opam_pkg =
+  let run style_renderer log_level ocaml_version opamfile prefix opam_pkg =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
-        log "opam-patch: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
-          ocaml_version path opam);
-    Onix.Opam_actions.patch ~ocaml_version ~opam ~path opam_pkg;
+        log "opam-patch: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
+          ocaml_version prefix opamfile);
+    let build_context =
+      mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg ()
+    in
+    Onix.Opam_actions.patch build_context;
     Logs.info (fun log -> log "opam-patch: Done.")
 
   let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
@@ -112,19 +136,22 @@ module Opam_patch = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ocaml_version_arg
         $ opam_arg
-        $ path_arg
+        $ package_prefix_arg
         $ opam_package_arg)
 end
 
 module Opam_build = struct
-  let run style_renderer log_level ocaml_version opam with_test with_doc
-      with_dev_setup path opam_pkg =
+  let run style_renderer log_level ocaml_version opamfile with_test with_doc
+      with_dev_setup prefix opam_pkg =
     setup_logs style_renderer log_level;
     Logs.info (fun log ->
-        log "opam-build: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
-          ocaml_version path opam);
-    Onix.Opam_actions.build ~ocaml_version ~opam ~with_test ~with_doc
-      ~with_dev_setup ~path opam_pkg;
+        log "opam-build: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
+          ocaml_version prefix opamfile);
+    let build_context =
+      mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg ()
+    in
+    Onix.Opam_actions.build ~with_test ~with_doc ~with_dev_setup build_context
+    |> List.iter Onix.Utils.Os.run_command;
     Logs.info (fun log -> log "opam-build: Done.")
 
   let info =
@@ -141,17 +168,20 @@ module Opam_build = struct
         $ with_test_arg ~absent:`none
         $ with_doc_arg ~absent:`none
         $ with_dev_setup_arg ~absent:`none
-        $ path_arg
+        $ package_prefix_arg
         $ opam_package_arg)
 end
 
 module Opam_install = struct
-  let run ocaml_version opam with_test with_doc with_dev_setup path opam_pkg =
+  let run ocaml_version opamfile with_test with_doc with_dev_setup prefix
+      opam_pkg =
     Logs.info (fun log ->
-        log "opam-install: Running... pkg=%S ocaml=%S path=%S opam=%S" opam_pkg
-          ocaml_version path opam);
-    Onix.Opam_actions.install ~ocaml_version ~opam ~with_test ~with_doc
-      ~with_dev_setup ~path opam_pkg;
+        log "opam-install: Running... pkg=%S ocaml=%S prefix=%S opam=%S"
+          opam_pkg ocaml_version prefix opamfile);
+    let build_context =
+      mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg ()
+    in
+    Onix.Opam_actions.install ~with_test ~with_doc ~with_dev_setup build_context;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =
@@ -167,7 +197,7 @@ module Opam_install = struct
         $ with_test_arg ~absent:`none
         $ with_doc_arg ~absent:`none
         $ with_dev_setup_arg ~absent:`none
-        $ path_arg
+        $ package_prefix_arg
         $ opam_package_arg)
 end
 
@@ -221,6 +251,38 @@ module Lock = struct
         $ input_opam_files_arg)
 end
 
+module Gen = struct
+  let input_opam_files_arg =
+    Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
+
+  let run style_renderer log_level ignore_file lock_file_path repo_url
+      resolutions with_test with_doc with_dev_setup input_opam_files =
+    setup_logs style_renderer log_level;
+    Logs.info (fun log -> log "gen: Running... repo_url=%S" repo_url);
+    let lock_file =
+      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc
+        ~with_dev_setup input_opam_files
+    in
+    Onix.Gen_nix_pkg_tree.gen lock_file
+
+  let info = Cmd.info "gen" ~doc:"Generate nix modules."
+
+  let cmd =
+    Cmd.v info
+      Term.(
+        const run
+        $ Fmt_cli.style_renderer ()
+        $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
+        $ ignore_file_arg
+        $ lock_file_arg
+        $ repo_url_arg
+        $ resolutions_arg
+        $ with_test_arg ~absent:`root
+        $ with_doc_arg ~absent:`root
+        $ with_dev_setup_arg ~absent:`root
+        $ input_opam_files_arg)
+end
+
 module Build = struct
   let run () = Logs.info (fun log -> log "build: Running...")
   let info = Cmd.info "build" ~doc:"Build the project from a lock file."
@@ -238,7 +300,7 @@ let () =
     let run () = `Help (`Pager, None) in
     Term.(ret (const run $ const ()))
   in
-  [Lock.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
+  [Lock.cmd; Gen.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
   |> Cmdliner.Cmd.group info ~default
   |> Cmdliner.Cmd.eval
   |> Stdlib.exit

@@ -11,7 +11,6 @@ type src =
     }
 
 type t = {
-  package : OpamPackage.t;
   src : src option;
   opam_details : Opam_utils.opam_details;
   depends : Name_set.t;
@@ -30,9 +29,9 @@ let check_is_zip_src src =
     let basename = OpamUrl.basename url in
     Filename.extension basename = ".zip"
 
-let name t = OpamPackage.name t.package
-let is_pinned t = Opam_utils.is_pinned t.package
-let is_root t = Opam_utils.is_root t.package
+let name t = OpamPackage.name t.opam_details.package
+let is_pinned t = Opam_utils.is_pinned t.opam_details.package
+let is_root t = Opam_utils.is_root t.opam_details.package
 
 let prefetch_src_if_md5 ~package src =
   match src with
@@ -264,7 +263,6 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
 
   Some
     {
-      package;
       src;
       opam_details;
       depends = only_installed ~installed depends depopts;

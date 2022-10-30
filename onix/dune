@@ -18,4 +18,14 @@
  (package onix)
  (public_name onix)
  (modules Main)
- (libraries fpath logs logs.fmt logs.cli fmt fmt.cli fmt.tty cmdliner onix))
+ (libraries
+  fpath
+  logs
+  logs.fmt
+  logs.cli
+  fmt
+  fmt.cli
+  fmt.tty
+  cmdliner
+  onix
+  opam-format))

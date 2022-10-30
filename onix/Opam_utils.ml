@@ -14,6 +14,12 @@ type opam_details = {
   opam : OpamFile.OPAM.t;
 }
 
+type dep_flags = {
+  with_test : bool;
+  with_doc : bool;
+  with_dev_setup : bool;
+}
+
 let opam_name = OpamFile.OPAM.name
 let pp_package = Fmt.using OpamPackage.to_string Fmt.string
 let pp_package_version = Fmt.using OpamPackage.Version.to_string Fmt.string
@@ -74,7 +80,7 @@ let opam_package_of_filename filename =
     with Failure _ ->
       OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
 
-type dep_flag =
+type dep_flag_scope =
   [ `root
   | `deps
   | `none
@@ -123,3 +129,8 @@ let find_root_packages input_opam_paths =
          let details = { opam; package; path = Some opam_path } in
          (OpamPackage.name package, details))
   |> OpamPackage.Name.Map.of_seq
+
+let mk_repo_opamfile ~(repo_dir : OpamFilename.Dir.t) opam_package =
+  let name = OpamPackage.name_to_string opam_package in
+  let name_with_version = OpamPackage.to_string opam_package in
+  OpamFilename.Op.(repo_dir / name / name_with_version // "opam")

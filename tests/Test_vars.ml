@@ -15,11 +15,19 @@ let onix_path =
       "/nix/store/i7hmg44cvnfq0xa0f9dm1hx2262j9vyf-yojson-1.7.0";
     ]
 
+let dependencies =
+  Onix.Build_context.dependencies_of_onix_path ~ocaml_version:"4.14.0" onix_path
+
+let self =
+  {
+    Onix.Build_context.name = OpamPackage.Name.of_string "onix-example";
+    version = OpamPackage.Version.of_string "root";
+    prefix = "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
+    opamfile = "/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam";
+  }
+
 let build_context =
-  Onix.Build_context.make ~onix_path ~ocaml_version:"4.14.0"
-    ~opam:"/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam"
-    ~path:"/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root"
-    "onix-example.root"
+  Onix.Build_context.make ~dependencies ~ocaml_version:"4.14.0" self
 
 let eq_pkg_name n1 n2 =
   let eq = OpamPackage.Name.equal n1 n2 in

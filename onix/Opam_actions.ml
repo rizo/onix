@@ -1,11 +1,12 @@
 open Utils
 
-let local_vars ~test ~doc ~dev_setup =
-  OpamVariable.Map.of_list
+let local_vars ~with_test ~with_doc ~with_dev_setup =
+  let open OpamVariable in
+  Map.of_list
     [
-      (OpamVariable.of_string "with-test", Some (OpamVariable.B test));
-      (OpamVariable.of_string "with-doc", Some (OpamVariable.B doc));
-      (OpamVariable.of_string "with-dev-setup", Some (OpamVariable.B dev_setup));
+      (of_string "with-test", Some (B with_test));
+      (of_string "with-doc", Some (B with_doc));
+      (of_string "with-dev-setup", Some (B with_dev_setup));
     ]
 
 module Patch = struct
@@ -158,12 +159,9 @@ module Patch = struct
 
   (* TODO: implement extra file fetching via lock-file?:
      - https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L455 *)
-  let run ~ocaml_version ~opam ~path opam_pkg =
-    let ctx : Build_context.t =
-      Build_context.make ~ocaml_version ~opam ~path opam_pkg
-    in
-    let opam = Opam_utils.read_opam ctx.self.opam in
-    let opamfile = ctx.self.opam in
+  let run (ctx : Build_context.t) =
+    let opamfile = OpamFilename.of_string ctx.self.opamfile in
+    let opam = Opam_utils.read_opam opamfile in
     let () =
       let build_dir = OpamFilename.Dir.of_string (Sys.getcwd ()) in
       match OpamFile.OPAM.extra_files opam with
@@ -183,50 +181,52 @@ end
 
 let patch = Patch.run
 
-let build ~ocaml_version ~opam ~with_test ~with_doc ~with_dev_setup ~path opam_pkg =
-  let ctx : Build_context.t =
-    Build_context.make ~ocaml_version ~opam ~path opam_pkg
-  in
+let build ~with_test ~with_doc ~with_dev_setup (ctx : Build_context.t) =
   let version = ctx.self.version in
-  let test = Opam_utils.eval_dep_flag ~version with_test in
-  let doc = Opam_utils.eval_dep_flag ~version with_doc in
-  let dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
-  let opam = Opam_utils.read_opam ctx.self.opam in
+  let with_test = Opam_utils.eval_dep_flag ~version with_test in
+  let with_doc = Opam_utils.eval_dep_flag ~version with_doc in
+  let with_dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
+  let opam = Opam_utils.read_opam (OpamFilename.of_string ctx.self.opamfile) in
   let commands =
     (OpamFilter.commands
-       (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~dev_setup))
+       (Build_context.resolve ctx
+          ~local:(local_vars ~with_test ~with_doc ~with_dev_setup))
        (OpamFile.OPAM.build opam)
-    @ (if test then
+    @ (if with_test then
        OpamFilter.commands
          (Build_context.resolve ctx)
          (OpamFile.OPAM.run_test opam)
       else [])
     @
-    if doc then
+    if with_doc then
       OpamFilter.commands
         (Build_context.resolve ctx)
         (OpamFile.OPAM.deprecated_build_doc opam)
     else [])
     |> List.filter List.is_not_empty
   in
-  List.iter Utils.Os.run_command commands
+  commands
 
 module Install = struct
   let make_path_lib ~ocaml_version (pkg : Build_context.package) =
-    let prefix = OpamFilename.Dir.to_string pkg.path in
     String.concat "/"
       [
-        prefix;
+        pkg.prefix;
         "lib/ocaml";
         OpamPackage.Version.to_string ocaml_version;
         "site-lib";
       ]
 
-  let make_opam_install_commands ~path (ctx : Build_context.t) =
+  let make_opam_install_commands (ctx : Build_context.t) =
     let install_file = OpamPackage.Name.to_string ctx.self.name ^ ".install" in
     let libdir = make_path_lib ~ocaml_version:ctx.ocaml_version ctx.self in
     if Sys.file_exists install_file then
-      ["opam-installer"; "--prefix=" ^ path; "--libdir=" ^ libdir; install_file]
+      [
+        "opam-installer";
+        "--prefix=" ^ ctx.self.prefix;
+        "--libdir=" ^ libdir;
+        install_file;
+      ]
     else (
       Logs.warn (fun log ->
           log "Warning: no %S file: cwd=%S" install_file (Sys.getcwd ()));
@@ -239,27 +239,31 @@ module Install = struct
         (OpamPackage.Name.to_string self.name ^ ".config")
     in
     let src = OpamFilename.(create (cwd ()) base) in
-    let dst = OpamFilename.create (self.path </> "etc") base in
+    let dst =
+      OpamFilename.create
+        (OpamFilename.Dir.of_string self.prefix </> "etc")
+        base
+    in
     if OpamFilename.exists src then (
       Logs.debug (fun log ->
           log "Opam_actions.install_config_file: %a..." Opam_utils.pp_filename
             dst);
       OpamFilename.copy ~src ~dst)
 
-  let run ~ocaml_version ~opam ~with_test ~with_doc ~with_dev_setup ~path opam_pkg =
-    let ctx : Build_context.t =
-      Build_context.make ~ocaml_version ~opam ~path opam_pkg
-    in
+  let run ~with_test ~with_doc ~with_dev_setup (ctx : Build_context.t) =
     let version = ctx.self.version in
-    let test = Opam_utils.eval_dep_flag ~version with_test in
-    let doc = Opam_utils.eval_dep_flag ~version with_doc in
-    let dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
-    let opam = Opam_utils.read_opam ctx.self.opam in
+    let with_test = Opam_utils.eval_dep_flag ~version with_test in
+    let with_doc = Opam_utils.eval_dep_flag ~version with_doc in
+    let with_dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
+    let opam =
+      Opam_utils.read_opam (OpamFilename.of_string ctx.self.opamfile)
+    in
     let commands =
       OpamFilter.commands
-        (Build_context.resolve ctx ~local:(local_vars ~test ~doc ~dev_setup))
+        (Build_context.resolve ctx
+           ~local:(local_vars ~with_test ~with_doc ~with_dev_setup))
         (OpamFile.OPAM.install opam)
-      @ [make_opam_install_commands ~path ctx]
+      @ [make_opam_install_commands ctx]
       |> List.filter List.is_not_empty
     in
     List.iter Utils.Os.run_command commands;
