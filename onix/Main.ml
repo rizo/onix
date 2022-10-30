@@ -200,7 +200,7 @@ module Lock = struct
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" (Onix.Lock_file.pp_nix ~ignore_file) lock_file);
+        Fmt.pf out "%a" (Onix.Pp_lock_nix.pp ~ignore_file) lock_file);
     Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."

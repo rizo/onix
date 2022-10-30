@@ -97,7 +97,7 @@ let mk_lock ~name str =
 let test_complex_opam () =
   let lock_pkg = mk_lock ~name:"complex.root" complex_opam in
   let actual =
-    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+    Fmt.str "%a@." (Onix.Pp_lock_nix.pp_pkg ~ignore_file:None) lock_pkg
   in
   let expected =
     {|name = "complex"; version = "root"; src = ./.; opam = "${src}/complex.opam";
@@ -112,7 +112,7 @@ depexts = with pkgs; [ libogg ];
 let test_dev_opam () =
   let lock_pkg = mk_lock ~name:"dev.dev" dev_opam in
   let actual =
-    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+    Fmt.str "%a@." (Onix.Pp_lock_nix.pp_pkg ~ignore_file:None) lock_pkg
   in
   let expected =
     {|name = "dev"; version = "dev";
@@ -128,7 +128,7 @@ opam = "${src}/dev.opam";
 let test_zip_src_opam () =
   let lock_pkg = mk_lock ~name:"zip.1.0.2" zip_src_opam in
   let actual =
-    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+    Fmt.str "%a@." (Onix.Pp_lock_nix.pp_pkg ~ignore_file:None) lock_pkg
   in
   let expected =
     {|name = "zip"; version = "1.0.2";
@@ -144,7 +144,7 @@ depexts = with pkgs; [ unzip ];
 let test_other_deps_opam () =
   let lock_pkg = mk_lock ~name:"other-deps.1.0.1" other_deps_opam in
   let actual =
-    Fmt.str "%a@." (Onix.Lock_pkg.pp_nix ~ignore_file:None) lock_pkg
+    Fmt.str "%a@." (Onix.Pp_lock_nix.pp_pkg ~ignore_file:None) lock_pkg
   in
   let expected =
     {|name = "other-deps"; version = "1.0.1";
