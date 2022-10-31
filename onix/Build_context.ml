@@ -26,6 +26,22 @@ let pp_package formatter package =
        ])
     package
 
+let pp formatter t =
+  let field = Fmt.Dump.field in
+  Fmt.pf formatter "%a"
+    (Fmt.Dump.record
+       [
+         field "self" (fun r -> r.self) pp_package;
+         field "ocaml_version"
+           (fun r -> r.ocaml_version)
+           Opam_utils.pp_package_version;
+         field "scope"
+           (fun r -> OpamPackage.Name.Map.to_seq r.scope)
+           (Fmt.Dump.seq (Fmt.pair Opam_utils.pp_package_name pp_package));
+         field "vars" (fun _r -> "$vars") Fmt.Dump.string;
+       ])
+    t
+
 module Vars = struct
   let add_native_system_vars vars =
     let system_variables = OpamSysPoll.variables in

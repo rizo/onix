@@ -13,6 +13,7 @@ type t = {
 }
 
 val pp_package : Format.formatter -> package -> unit
+val pp : Format.formatter -> t -> unit
 
 module Vars : sig
   val base : OpamVariable.variable_contents OpamVariable.Full.Map.t
