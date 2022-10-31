@@ -10,6 +10,11 @@ type src =
       hash : OpamHash.kind * string;
     }
 
+type extra_file_status =
+  | Undeclared
+  | Ok_hash
+  | Bad_hash
+
 type t = {
   src : src option;
   opam_details : Opam_utils.opam_details;
@@ -20,6 +25,9 @@ type t = {
   depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
+  build_commands : string list list;
+  install_commands : string list list;
+  extra_files : (OpamFilename.t * extra_file_status) list;
 }
 
 val name : t -> OpamTypes.name

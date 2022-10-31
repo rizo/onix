@@ -10,6 +10,11 @@ type src =
       hash : OpamHash.kind * string;
     }
 
+type extra_file_status =
+  | Undeclared
+  | Ok_hash
+  | Bad_hash
+
 type t = {
   src : src option;
   opam_details : Opam_utils.opam_details;
@@ -20,6 +25,9 @@ type t = {
   depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
+  build_commands : string list list;
+  install_commands : string list list;
+  extra_files : (OpamFilename.t * extra_file_status) list;
 }
 
 let check_is_zip_src src =
@@ -195,10 +203,101 @@ let only_installed ~installed req opt =
   let opt_installed = Name_set.filter installed opt in
   Name_set.union req opt_installed
 
+(* Can the "basename" be a folder path? *)
+let get_extra_files (opam_details : Opam_utils.opam_details) =
+  (* We only want this for repo packages. *)
+  if
+    Opam_utils.is_pinned opam_details.package
+    || Opam_utils.is_root opam_details.package
+  then []
+  else
+    let opamfile = opam_details.path in
+    match OpamFile.OPAM.extra_files opam_details.opam with
+    | Some extra_files ->
+      List.map
+        (fun (basename, hash) ->
+          let file = Opam_utils.make_opam_files_path ~opamfile basename in
+          if OpamHash.check_file (OpamFilename.to_string file) hash then
+            (file, Ok_hash)
+          else (
+            Logs.warn (fun log ->
+                log "Bad hash for extra file: %a" Opam_utils.pp_filename file);
+            (file, Bad_hash)))
+        extra_files
+    | None ->
+      let ( </> ) = OpamFilename.Op.( / ) in
+      let files_dir = OpamFilename.(dirname opamfile </> "files") in
+      List.map
+        (fun file ->
+          Logs.warn (fun log ->
+              log "Found undeclared extra file: %a" Opam_utils.pp_filename file);
+          (file, Undeclared))
+        (OpamFilename.files files_dir)
+
+module Subst_and_patch = struct
+  let print_subst ~nv basename =
+    let file = OpamFilename.Base.to_string basename in
+    let file_in = file ^ ".in" in
+    Logs.debug (fun log ->
+        log "%s: expanding opam variables in %s, generating %s."
+          (OpamPackage.name_to_string nv)
+          file_in file)
+
+  let run_substs ~env ~out_dir (opam_details : Opam_utils.opam_details) =
+    let patches = OpamFile.OPAM.patches opam_details.opam in
+    let substs = OpamFile.OPAM.substs opam_details.opam in
+    let subst_patches, subst_others =
+      List.partition (fun f -> List.mem_assoc f patches) substs
+    in
+    Logs.debug (fun log ->
+        log "Found %d substs; patches=%d others=%d..." (List.length substs)
+          (List.length subst_patches)
+          (List.length subst_others));
+
+    (* Expand opam variables in subst_patches. *)
+    let subst_errs =
+      OpamFilename.in_dir out_dir (fun () ->
+          List.fold_left
+            (fun errs f ->
+              try
+                print_subst ~nv:opam_details.package f;
+                OpamFilter.expand_interpolations_in_file env f;
+                errs
+              with e -> (f, e) :: errs)
+            [] subst_patches)
+    in
+
+    (* Substitute the configuration files. We should be in the right
+       directory to get the correct absolute path for the
+       substitution files (see [OpamFilter.expand_interpolations_in_file] and
+       [OpamFilename.of_basename]. *)
+    let subst_errs =
+      OpamFilename.in_dir out_dir @@ fun () ->
+      List.fold_left
+        (fun errs f ->
+          try
+            print_subst ~nv:opam_details.package f;
+            OpamFilter.expand_interpolations_in_file env f;
+            errs
+          with e -> (f, e) :: errs)
+        subst_errs subst_others
+    in
+    if subst_errs <> [] then
+      Logs.err (fun log ->
+          log "String expansion failed for these files:@.%s"
+            (OpamStd.Format.itemize
+               (fun (b, err) ->
+                 Printf.sprintf "%s.in: %s"
+                   (OpamFilename.Base.to_string b)
+                   (Printexc.to_string err))
+               subst_errs))
+end
+
 let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let package = opam_details.Opam_utils.package in
   let opam = opam_details.Opam_utils.opam in
 
+  let name = OpamPackage.name package in
   let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
   let src = Option.map (prefetch_src_if_md5 ~package) src in
@@ -261,6 +360,56 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
       opam_depexts
   in
 
+  let build_context =
+    let dependencies =
+      Name_set.fold
+        (fun name acc ->
+          let build_pkg =
+            {
+              Build_context.name;
+              version = OpamPackage.Version.of_string "version_todo";
+              opamfile = "FIXME_OPAMFILE";
+              prefix =
+                String.concat "" ["${"; OpamPackage.Name.to_string name; "}"];
+            }
+          in
+          Name_map.add name build_pkg acc)
+        (Name_set.union depends depends_build)
+        Name_map.empty
+    in
+    let self =
+      {
+        Build_context.name;
+        version;
+        opamfile = OpamFilename.to_string opam_details.path;
+        prefix = "$out";
+      }
+    in
+    Build_context.make ~dependencies ~ocaml_version:"4.14.0" self
+  in
+  let build_commands =
+    Opam_actions.build ~with_test ~with_doc ~with_dev_setup build_context
+  in
+
+  let install_commands =
+    Opam_actions.install ~with_test ~with_doc ~with_dev_setup build_context
+  in
+
+  let extra_files = get_extra_files opam_details in
+  let out_dir =
+    OpamFilename.Dir.of_string
+      ("/tmp/onix-test/" ^ OpamPackage.Name.to_string name)
+  in
+  OpamFilename.mkdir out_dir;
+  List.iter
+    (fun (f, _) ->
+      let base = OpamFilename.basename f in
+      OpamFilename.copy ~src:f ~dst:(OpamFilename.create out_dir base))
+    extra_files;
+
+  let lookup_env = Build_context.resolve build_context in
+  Subst_and_patch.run_substs ~env:lookup_env ~out_dir opam_details;
+
   Some
     {
       src;
@@ -273,4 +422,7 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
         only_installed ~installed depends_dev_setup depopts_dev_setup;
       depexts_nix;
       depexts_unknown;
+      build_commands;
+      install_commands;
+      extra_files;
     }
