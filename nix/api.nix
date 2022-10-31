@@ -184,6 +184,22 @@ let
         echo "+ installPhase: ${dep.name}-${dep.version}"
         runHook preInstall
 
+        # .install files
+        if [[ -e "./${dep.name}.install" ]]; then
+          echo "+ installPhase: running opam-installer with ./${dep.name}.install..."
+          ${pkgs.opam-installer}/bin/opam-installer \
+            --prefix="$out" \
+            --libdir="$out/lib/ocaml/${ocaml.version}/site-lib" \
+            ./${dep.name}.install
+        fi
+
+        # .config files
+        if [[ -e "./${dep.name}.config" ]]; then
+          echo "+ installPhase: copying ./${dep.name}.config to $out/etc/${dep.name}.config..."
+          mkdir -p "$out/etc"
+          cp "./${dep.name}.config" "$out/etc/${dep.name}.config"
+        fi
+
         echo "+ installPhase: Creating $OCAMLFIND_DESTDIR/${dep.name}"
         mkdir -p "$OCAMLFIND_DESTDIR/${dep.name}"
 

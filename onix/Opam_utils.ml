@@ -134,3 +134,8 @@ let mk_repo_opamfile ~(repo_dir : OpamFilename.Dir.t) opam_package =
   let name = OpamPackage.name_to_string opam_package in
   let name_with_version = OpamPackage.to_string opam_package in
   OpamFilename.Op.(repo_dir / name / name_with_version // "opam")
+let make_opam_files_path ~opamfile file =
+  let opam_dir = OpamFilename.dirname opamfile in
+  let file = OpamFilename.Base.to_string file in
+  let base = OpamFilename.Base.of_string ("files/" ^ file) in
+  OpamFilename.create opam_dir base

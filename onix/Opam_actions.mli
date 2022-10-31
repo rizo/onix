@@ -12,4 +12,4 @@ val install :
   with_doc:Opam_utils.dep_flag_scope ->
   with_dev_setup:Opam_utils.dep_flag_scope ->
   Build_context.t ->
-  unit
+  string list list

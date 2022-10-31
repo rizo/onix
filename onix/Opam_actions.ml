@@ -10,12 +10,6 @@ let local_vars ~with_test ~with_doc ~with_dev_setup =
     ]
 
 module Patch = struct
-  let make_opam_path ~opamfile file =
-    let opam_dir = OpamFilename.dirname opamfile in
-    let file = OpamFilename.Base.to_string file in
-    let base = OpamFilename.Base.of_string ("files/" ^ file) in
-    OpamFilename.create opam_dir base
-
   (* https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L343 *)
   let prepare_package_build env opam nv dir =
     let open OpamFilename.Op in
@@ -128,10 +122,10 @@ module Patch = struct
   let copy_extra_files ~opamfile ~build_dir extra_files =
     let bad_hash =
       OpamStd.List.filter_map
-        (fun (base, hash) ->
-          let src = make_opam_path ~opamfile base in
+        (fun (basename, hash) ->
+          let src = Opam_utils.make_opam_files_path ~opamfile basename in
           if OpamHash.check_file (OpamFilename.to_string src) hash then (
-            let dst = OpamFilename.create build_dir base in
+            let dst = OpamFilename.create build_dir basename in
             Logs.debug (fun log ->
                 log "Opam_actions.copy_extra_files: %a -> %a"
                   Opam_utils.pp_filename src Opam_utils.pp_filename dst);
@@ -217,39 +211,6 @@ module Install = struct
         "site-lib";
       ]
 
-  let make_opam_install_commands (ctx : Build_context.t) =
-    let install_file = OpamPackage.Name.to_string ctx.self.name ^ ".install" in
-    let libdir = make_path_lib ~ocaml_version:ctx.ocaml_version ctx.self in
-    if Sys.file_exists install_file then
-      [
-        "opam-installer";
-        "--prefix=" ^ ctx.self.prefix;
-        "--libdir=" ^ libdir;
-        install_file;
-      ]
-    else (
-      Logs.warn (fun log ->
-          log "Warning: no %S file: cwd=%S" install_file (Sys.getcwd ()));
-      [])
-
-  let install_config_file (self : Build_context.package) =
-    let ( </> ) = OpamFilename.Op.( / ) in
-    let base =
-      OpamFilename.Base.of_string
-        (OpamPackage.Name.to_string self.name ^ ".config")
-    in
-    let src = OpamFilename.(create (cwd ()) base) in
-    let dst =
-      OpamFilename.create
-        (OpamFilename.Dir.of_string self.prefix </> "etc")
-        base
-    in
-    if OpamFilename.exists src then (
-      Logs.debug (fun log ->
-          log "Opam_actions.install_config_file: %a..." Opam_utils.pp_filename
-            dst);
-      OpamFilename.copy ~src ~dst)
-
   let run ~with_test ~with_doc ~with_dev_setup (ctx : Build_context.t) =
     let version = ctx.self.version in
     let with_test = Opam_utils.eval_dep_flag ~version with_test in
@@ -258,16 +219,11 @@ module Install = struct
     let opam =
       Opam_utils.read_opam (OpamFilename.of_string ctx.self.opamfile)
     in
-    let commands =
-      OpamFilter.commands
-        (Build_context.resolve ctx
-           ~local:(local_vars ~with_test ~with_doc ~with_dev_setup))
-        (OpamFile.OPAM.install opam)
-      @ [make_opam_install_commands ctx]
-      |> List.filter List.is_not_empty
-    in
-    List.iter Utils.Os.run_command commands;
-    install_config_file ctx.self
+    OpamFilter.commands
+      (Build_context.resolve ctx
+         ~local:(local_vars ~with_test ~with_doc ~with_dev_setup))
+      (OpamFile.OPAM.install opam)
+    |> List.filter List.is_not_empty
 end
 
 let install = Install.run
