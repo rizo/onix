@@ -64,7 +64,7 @@ let collect_from_opam_files project_opam_files =
         let package =
           OpamPackage.create (OpamPackage.name pkg) Opam_utils.root_version
         in
-        { Opam_utils.package; opam; path = Some path })
+        { Opam_utils.package; opam; path })
       else
         (* Read original opam file for pin and use a fixed [url]. *)
         let src = Nix_utils.fetch url in
@@ -77,5 +77,5 @@ let collect_from_opam_files project_opam_files =
         let package =
           OpamPackage.create (OpamPackage.name pkg) Opam_utils.dev_version
         in
-        { package; opam; path = Some path })
+        { package; opam; path })
     pin_urls

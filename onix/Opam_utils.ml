@@ -10,7 +10,7 @@ type opam_file_type =
    - vendor/pkg/opam *)
 type opam_details = {
   package : OpamTypes.package;
-  path : OpamFilename.t option; (* None for repo paths. *)
+  path : OpamFilename.t; (* None for repo paths. *)
   opam : OpamFile.OPAM.t;
 }
 
@@ -121,12 +121,12 @@ let find_root_packages input_opam_paths =
     | _ -> input_opam_paths |> List.to_seq
   in
   root_opam_paths
-  |> Seq.map (fun opam_path ->
-         let package = opam_package_of_filename opam_path in
-         Logs.info (fun log -> log "Reading packages from %S..." opam_path);
-         let opam_path = OpamFilename.raw opam_path in
-         let opam = read_opam opam_path in
-         let details = { opam; package; path = Some opam_path } in
+  |> Seq.map (fun path ->
+         let package = opam_package_of_filename path in
+         Logs.info (fun log -> log "Reading packages from %S..." path);
+         let path = OpamFilename.raw path in
+         let opam = read_opam path in
+         let details = { opam; package; path } in
          (OpamPackage.name package, details))
   |> OpamPackage.Name.Map.of_seq
 

@@ -7,15 +7,15 @@ type t = {
   with_doc : Opam_utils.dep_flag_scope;
   with_dev_setup : Opam_utils.dep_flag_scope;
   repo_packages_dir : string;
-  fixed_packages : Opam_utils.opam_details OpamPackage.Name.Map.t;
+  fixed_opam_details : Opam_utils.opam_details OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;
   prefer_oldest : bool;
 }
 
 module Private = struct
-  let load_opam ~fixed_packages ~repo_packages_dir pkg =
+  let load_opam ~fixed_opam_details ~repo_packages_dir pkg =
     let { OpamPackage.name; version = _ } = pkg in
-    match OpamPackage.Name.Map.find_opt name fixed_packages with
+    match OpamPackage.Name.Map.find_opt name fixed_opam_details with
     | Some { Opam_utils.opam; _ } -> opam
     | None ->
       let opam_path =
@@ -38,15 +38,16 @@ module Private = struct
       OpamFilter.eval_to_bool ~default:false env available
 end
 
-let make ?(prefer_oldest = false) ?(fixed_packages = OpamPackage.Name.Map.empty)
-    ~constraints ~with_test ~with_doc ~with_dev_setup repo_packages_dir =
+let make ?(prefer_oldest = false)
+    ?(fixed_opam_details = OpamPackage.Name.Map.empty) ~constraints ~with_test
+    ~with_doc ~with_dev_setup repo_packages_dir =
   let repo_packages_dir = OpamFilename.Dir.to_string repo_packages_dir in
   {
     with_test;
     with_doc;
     with_dev_setup;
     repo_packages_dir;
-    fixed_packages;
+    fixed_opam_details;
     constraints;
     prefer_oldest;
   }
@@ -68,7 +69,7 @@ let pp_rejection f = function
 let user_restrictions t name = OpamPackage.Name.Map.find_opt name t.constraints
 
 let candidates t name =
-  match OpamPackage.Name.Map.find_opt name t.fixed_packages with
+  match OpamPackage.Name.Map.find_opt name t.fixed_opam_details with
   | Some { Opam_utils.package; opam; _ } ->
     [(OpamPackage.version package, Ok opam)]
   | None -> (
@@ -94,7 +95,7 @@ let candidates t name =
              | _ ->
                let pkg = OpamPackage.create name v in
                let opam =
-                 Private.load_opam ~fixed_packages:t.fixed_packages
+                 Private.load_opam ~fixed_opam_details:t.fixed_opam_details
                    ~repo_packages_dir:t.repo_packages_dir pkg
                in
                let available = OpamFile.OPAM.available opam in
