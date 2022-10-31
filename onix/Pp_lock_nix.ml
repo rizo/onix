@@ -8,10 +8,9 @@ let opam_path_for_locked_package (t : Lock_pkg.t) =
   let name = OpamPackage.name_to_string pkg in
   if Lock_pkg.is_pinned t || Lock_pkg.is_root t then
     match t.opam_details.path with
-    | Some path when OpamFilename.ends_with ".opam" path ->
+    | path when OpamFilename.ends_with ".opam" path ->
       Fmt.str "${%s.src}" name </> name ^ ".opam"
-    | Some _ -> Fmt.str "${%s.src}" name </> "opam"
-    | None -> failwith "BUG: pinned and root packages must have an opam path."
+    | _ -> Fmt.str "${%s.src}" name </> "opam"
   else
     let name_with_version = OpamPackage.to_string pkg in
     "${repo}/packages/" </> name </> name_with_version </> "opam"
@@ -49,11 +48,9 @@ let pp_hash f (kind, hash) =
 let pp_src ~ignore_file f (t : Lock_pkg.t) =
   if Lock_pkg.is_root t then
     let path =
-      match t.opam_details.Opam_utils.path with
-      | Some opam_path ->
-        let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
-        if String.equal path "." then "./." else path
-      | None -> failwith "BUG: Root packages must have an opam path."
+      let opam_path = t.opam_details.Opam_utils.path in
+      let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
+      if String.equal path "." then "./." else path
     in
     match ignore_file with
     | Some ".gitignore" ->

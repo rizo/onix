@@ -181,7 +181,8 @@ module Opam_install = struct
     let build_context =
       mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg ()
     in
-    Onix.Opam_actions.install ~with_test ~with_doc ~with_dev_setup build_context;
+    Onix.Opam_actions.install ~with_test ~with_doc ~with_dev_setup build_context
+    |> List.iter Onix.Utils.Os.run_command;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =
@@ -230,7 +231,7 @@ module Lock = struct
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" (Onix.Pp_lock_nix.pp ~ignore_file) lock_file);
+        Fmt.pf out "%a" (Onix.Pp_drv_tree.pp ~ignore_file) lock_file);
     Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
@@ -255,17 +256,40 @@ module Gen = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level ignore_file lock_file_path repo_url
-      resolutions with_test with_doc with_dev_setup input_opam_files =
+  let output_dir_arg =
+    let doc = "The path to the output directory." in
+    let docv = "DIR" in
+    Arg.(info ["output-dir"] ~docv ~doc |> opt dir "./onix" |> value)
+
+  let run style_renderer log_level ignore_file output_dir repo_url resolutions
+      with_test with_doc with_dev_setup input_opam_files =
     setup_logs style_renderer log_level;
-    Logs.info (fun log -> log "gen: Running... repo_url=%S" repo_url);
+    Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
+
+    let ignore_file =
+      if String.equal ignore_file "none" then None
+      else if Sys.file_exists ignore_file then (
+        Logs.debug (fun log ->
+            log "Using %S ignore file to filter root sources." ignore_file);
+        Some ignore_file)
+      else (
+        Logs.warn (fun log ->
+            log
+              "The ignore file %S does not exist, will not filter root sources."
+              ignore_file);
+        None)
+    in
+
     let lock_file =
       Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc
         ~with_dev_setup input_opam_files
     in
-    Onix.Gen_nix_pkg_tree.gen lock_file
+    Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
+        let out = Format.formatter_of_out_channel chan in
+        Fmt.pf out "%a" (Onix.Pp_drv_tree.pp ~ignore_file) lock_file);
+    Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
-  let info = Cmd.info "gen" ~doc:"Generate nix modules."
+  let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
 
   let cmd =
     Cmd.v info
@@ -274,7 +298,7 @@ module Gen = struct
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ignore_file_arg
-        $ lock_file_arg
+        $ output_dir_arg
         $ repo_url_arg
         $ resolutions_arg
         $ with_test_arg ~absent:`root
@@ -300,7 +324,7 @@ let () =
     let run () = `Help (`Pager, None) in
     Term.(ret (const run $ const ()))
   in
-  [Lock.cmd; Gen.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
+  [Lock.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
   |> Cmdliner.Cmd.group info ~default
   |> Cmdliner.Cmd.eval
   |> Stdlib.exit
