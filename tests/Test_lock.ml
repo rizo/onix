@@ -89,7 +89,8 @@ let installed _ = true
 let mk_lock ~name str =
   let package = OpamPackage.of_string name in
   let opam = OpamFile.OPAM.read_from_string str in
-  let opam_details = { Onix.Opam_utils.package; opam; path = None } in
+  let path = OpamFilename.of_string (name ^ ".opam") in
+  let opam_details = { Onix.Opam_utils.package; opam; path } in
   Onix.Lock_pkg.of_opam ~installed ~with_dev_setup:`all ~with_test:`all
     ~with_doc:`all opam_details
   |> Option.get
