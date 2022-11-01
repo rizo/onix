@@ -14,6 +14,9 @@ let build_depends_names =
   Opam_utils.
     [
       ocaml_name;
+      ocaml_config_name;
+      ocaml_system_name;
+      ocaml_name;
       ocamlfind_name;
       dune_name;
       dune_configurator_name;

@@ -36,6 +36,7 @@ let read_opam path =
       OpamFile.OPAM.read_from_channel ~filename ic)
 
 let ocaml_name = OpamPackage.Name.of_string "ocaml"
+let ocaml_config_name = OpamPackage.Name.of_string "ocaml-config"
 let ocamlfind_name = OpamPackage.Name.of_string "ocamlfind"
 let dune_name = OpamPackage.Name.of_string "dune"
 let ocamlbuild_name = OpamPackage.Name.of_string "ocamlbuild"

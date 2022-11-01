@@ -47,7 +47,7 @@
   - Could be loaded via OPAM_VAR_xxx with a hook?
   - The .config files also contain additional files, do we really want to copy them?
     - This is because in some cases they will actually resolve to nix paths.
-    - [x] An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Build_context from the saved `onix-propagated-opam-vars` file.
+    - [x] An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Pkg_ctx from the saved `onix-propagated-opam-vars` file.
     - [x] Cache the `Dot_config` file as it's likely to be accessed multiple times.
 - [x] Use nix-prefetch-url.
 - [x] Use nix-prefetch-git for repo fetching.

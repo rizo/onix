@@ -30,6 +30,7 @@ type t = {
   depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
+  flags : string list;
 }
 
 let check_is_zip_src src =
@@ -185,11 +186,11 @@ let get_depexts ~package ~is_zip_src ~env depexts =
 let resolve ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false)
     pkg v =
   let contents =
-    Build_context.Vars.try_resolvers
+    Pkg_ctx.Vars.try_resolvers
       [
-        Build_context.Vars.resolve_package pkg;
-        Build_context.Vars.resolve_from_base;
-        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~dev_setup;
+        Pkg_ctx.Vars.resolve_package pkg;
+        Pkg_ctx.Vars.resolve_from_base;
+        Pkg_ctx.Vars.resolve_dep_flags ~build ~test ~doc ~dev_setup;
       ]
       v
   in
@@ -210,8 +211,6 @@ let only_installed ~installed req opt =
 let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let package = opam_details.Opam_utils.package in
   let opam = opam_details.Opam_utils.opam in
-
-  let name = OpamPackage.name package in
   let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
   let src = Option.map (prefetch_src_if_md5 ~package) src in
@@ -270,8 +269,12 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let opam_depexts = OpamFile.OPAM.depexts opam in
   let depexts_nix, depexts_unknown =
     let is_zip_src = Option.map_default false check_is_zip_src src in
-    get_depexts ~is_zip_src ~package ~env:Build_context.Vars.resolve_from_base
+    get_depexts ~is_zip_src ~package ~env:Pkg_ctx.Vars.resolve_from_base
       opam_depexts
+  in
+
+  let flags =
+    List.map OpamTypesBase.string_of_pkg_flag (OpamFile.OPAM.flags opam)
   in
 
   Some
@@ -286,4 +289,5 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
         only_installed ~installed depends_dev_setup depopts_dev_setup;
       depexts_nix;
       depexts_unknown;
+      flags;
     }

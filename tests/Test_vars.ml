@@ -16,18 +16,17 @@ let onix_path =
     ]
 
 let dependencies =
-  Onix.Build_context.dependencies_of_onix_path ~ocaml_version:"4.14.0" onix_path
+  Onix.Pkg_ctx.dependencies_of_onix_path ~ocaml_version:"4.14.0" onix_path
 
 let self =
   {
-    Onix.Build_context.name = OpamPackage.Name.of_string "onix-example";
+    Onix.Pkg_ctx.name = OpamPackage.Name.of_string "onix-example";
     version = OpamPackage.Version.of_string "root";
     prefix = "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
     opamfile = "/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam";
   }
 
-let build_context =
-  Onix.Build_context.make ~dependencies ~ocaml_version:"4.14.0" self
+let ctx = Onix.Pkg_ctx.make ~dependencies ~ocaml_version:"4.14.0" self
 
 let eq_pkg_name n1 n2 =
   let eq = OpamPackage.Name.equal n1 n2 in
@@ -51,9 +50,7 @@ let mk_pkg_v = OpamPackage.Version.of_string
 let check_scope () =
   let check_pkg pkg_name =
     let mem =
-      OpamPackage.Name.Map.mem
-        (OpamPackage.Name.of_string pkg_name)
-        build_context.scope
+      OpamPackage.Name.Map.mem (OpamPackage.Name.of_string pkg_name) ctx.scope
     in
     if not mem then (
       Fmt.epr "Missing package in scope: %S@." pkg_name;
@@ -75,7 +72,7 @@ let check_scope () =
     ]
 
 let check_self () =
-  let self = build_context.self in
+  let self = ctx.self in
   assert (eq_pkg_name (mk_pkg_name "onix-example") self.name);
   assert (eq_pkg_v (mk_pkg_v "root") self.version)
 
@@ -83,7 +80,7 @@ let check_vars () =
   let check_var var_str expected =
     let full_var = OpamVariable.Full.of_string var_str in
     let actual =
-      match Onix.Build_context.resolve build_context full_var with
+      match Onix.Pkg_ctx.resolve ctx full_var with
       | Some var_contents ->
         OpamVariable.string_of_variable_contents var_contents
       | None -> ""

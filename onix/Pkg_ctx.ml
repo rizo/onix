@@ -141,10 +141,10 @@ module Vars = struct
         | Some pkg -> (pkg.prefix, Some pkg.name)
         | None -> (t.self.prefix, None)
       in
-      let prefix =
+      let libdir =
         String.concat "/" [prefix; "lib/ocaml"; ocaml_version; "site-lib"]
       in
-      string (make_path ~prefix ?suffix pkg_name)
+      string (make_path ~prefix:libdir ?suffix pkg_name)
     in
     let out ?suffix ~scoped pkg =
       let prefix, pkg_name =
@@ -217,7 +217,7 @@ module Vars = struct
       in
       if OpamFilename.exists config_filename then (
         Logs.debug (fun log ->
-            log "Build_context.resolve_from_etc_env: loading %a..."
+            log "Pkg_ctx.resolve_from_etc_env: loading %a..."
               Opam_utils.pp_filename config_filename);
         let config_file = OpamFile.make config_filename in
         let config = OpamFile.Dot_config.read config_file in

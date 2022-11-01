@@ -34,7 +34,7 @@ module Private = struct
       OpamPackage.Version.Set.mem (OpamPackage.version pkg)
         Nix_utils.available_ocaml_versions
     else
-      let env = Build_context.Vars.resolve_from_base in
+      let env = Pkg_ctx.Vars.resolve_from_base in
       OpamFilter.eval_to_bool ~default:false env available
 end
 
@@ -127,11 +127,11 @@ let filter_deps t pkg depends_formula =
   let dev_setup = Opam_utils.eval_dep_flag ~version t.with_dev_setup in
   let env var =
     let contents =
-      Build_context.Vars.try_resolvers
+      Pkg_ctx.Vars.try_resolvers
         [
-          Build_context.Vars.resolve_package pkg;
-          Build_context.Vars.resolve_from_base;
-          Build_context.Vars.resolve_dep_flags ~test ~doc ~dev_setup;
+          Pkg_ctx.Vars.resolve_package pkg;
+          Pkg_ctx.Vars.resolve_from_base;
+          Pkg_ctx.Vars.resolve_dep_flags ~test ~doc ~dev_setup;
         ]
         var
     in

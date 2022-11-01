@@ -29,7 +29,7 @@ let pp_version f version =
   (* We require that the version does NOT contain any '-' or '~' characters.
      - Note that nix will replace '~' to '-' automatically.
      The version is parsed with Nix_utils.parse_store_path by splitting bytes
-     '- ' to obtain the Build_context.package information.
+     '- ' to obtain the Pkg_ctx.package information.
      This is fine because the version in the lock file is mostly informative. *)
   let set_valid_char i =
     match String.get version i with
@@ -56,8 +56,8 @@ let pp_src ~ignore_file f (t : Lock_pkg.t) =
     | Some ".gitignore" ->
       Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSource [] %s;" path
     | Some custom ->
-      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] %s;" custom
-        path
+      Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSourcePure [ %s ] %s;"
+        custom path
     | None -> Fmt.pf f "@ src = ./.;"
   else
     match t.src with

@@ -98,21 +98,21 @@ let repo_url_arg =
     |> opt string "https://github.com/ocaml/opam-repository.git"
     |> value)
 
-let mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
+let mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
   let onix_path = Sys.getenv_opt "ONIXPATH" or "" in
   let dependencies =
-    Onix.Build_context.dependencies_of_onix_path ~ocaml_version onix_path
+    Onix.Pkg_ctx.dependencies_of_onix_path ~ocaml_version onix_path
   in
   let opam_pkg = OpamPackage.of_string opam_pkg in
   let self =
     {
-      Onix.Build_context.name = opam_pkg.name;
+      Onix.Pkg_ctx.name = opam_pkg.name;
       version = opam_pkg.version;
       prefix;
       opamfile;
     }
   in
-  Onix.Build_context.make ~dependencies ~ocaml_version self
+  Onix.Pkg_ctx.make ~dependencies ~ocaml_version self
 
 module Opam_patch = struct
   let run style_renderer log_level ocaml_version opamfile prefix opam_pkg =
@@ -120,10 +120,8 @@ module Opam_patch = struct
     Logs.info (fun log ->
         log "opam-patch: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
           ocaml_version prefix opamfile);
-    let build_context =
-      mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg ()
-    in
-    Onix.Opam_actions.patch build_context;
+    let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
+    Onix.Opam_actions.patch ctx;
     Logs.info (fun log -> log "opam-patch: Done.")
 
   let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
@@ -147,10 +145,8 @@ module Opam_build = struct
     Logs.info (fun log ->
         log "opam-build: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
           ocaml_version prefix opamfile);
-    let build_context =
-      mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg ()
-    in
-    Onix.Opam_actions.build ~with_test ~with_doc ~with_dev_setup build_context
+    let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
+    Onix.Opam_actions.build ~with_test ~with_doc ~with_dev_setup ctx
     |> List.iter Onix.Utils.Os.run_command;
     Logs.info (fun log -> log "opam-build: Done.")
 
@@ -178,10 +174,8 @@ module Opam_install = struct
     Logs.info (fun log ->
         log "opam-install: Running... pkg=%S ocaml=%S prefix=%S opam=%S"
           opam_pkg ocaml_version prefix opamfile);
-    let build_context =
-      mk_build_context ~ocaml_version ~opamfile ~prefix ~opam_pkg ()
-    in
-    Onix.Opam_actions.install ~with_test ~with_doc ~with_dev_setup build_context
+    let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
+    Onix.Opam_actions.install ~with_test ~with_doc ~with_dev_setup ctx
     |> List.iter Onix.Utils.Os.run_command;
     Logs.info (fun log -> log "opam-install: Done.")
 
@@ -304,12 +298,6 @@ module Gen = struct
         $ with_doc_arg ~absent:`root
         $ with_dev_setup_arg ~absent:`root
         $ input_opam_files_arg)
-end
-
-module Build = struct
-  let run () = Logs.info (fun log -> log "build: Running...")
-  let info = Cmd.info "build" ~doc:"Build the project from a lock file."
-  let cmd = Cmd.v info Term.(const run $ const ())
 end
 
 let () =

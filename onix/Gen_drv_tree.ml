@@ -89,7 +89,7 @@ let pp_version f version =
   (* We require that the version does NOT contain any '-' or '~' characters.
      - Note that nix will replace '~' to '-' automatically.
      The version is parsed with Nix_utils.parse_store_path by splitting bytes
-     '- ' to obtain the Build_context.package information.
+     '- ' to obtain the Pkg_ctx.package information.
      This is fine because the version in the lock file is mostly informative. *)
   let set_valid_char i =
     match String.get version i with
@@ -333,7 +333,7 @@ let get_pkgs_in_dir ~lock_dir =
       String_set.add pkg_name acc)
     String_set.empty dirs
 
-let build_context_for_lock_pkg (lock_pkg : Lock_pkg.t) =
+let pkg_ctx_for_lock_pkg (lock_pkg : Lock_pkg.t) =
   let name = OpamPackage.name lock_pkg.opam_details.package in
   let version = OpamPackage.version lock_pkg.opam_details.package in
   let dependencies_names =
@@ -344,7 +344,7 @@ let build_context_for_lock_pkg (lock_pkg : Lock_pkg.t) =
       (fun name acc ->
         let build_pkg =
           {
-            Build_context.name;
+            Pkg_ctx.name;
             version = OpamPackage.Version.of_string "version_todo";
             opamfile = "FIXME_OPAMFILE";
             prefix =
@@ -356,20 +356,20 @@ let build_context_for_lock_pkg (lock_pkg : Lock_pkg.t) =
   in
   let self =
     {
-      Build_context.name;
+      Pkg_ctx.name;
       version;
       opamfile = OpamFilename.to_string lock_pkg.opam_details.path;
       prefix = "$out";
     }
   in
-  Build_context.make ~dependencies ~ocaml_version:"4.14.0" self
+  Pkg_ctx.make ~dependencies ~ocaml_version:"4.14.0" self
 
 let name_set_to_string_set name_set =
   Name_set.fold
     (fun name acc -> String_set.add (OpamPackage.Name.to_string name) acc)
     name_set String_set.empty
 
-let drv_pkg_of_lock_pkg ~build_context ~with_test ~with_doc ~with_dev_setup
+let drv_pkg_of_lock_pkg ~ctx ~with_test ~with_doc ~with_dev_setup
     (lock_pkg : Lock_pkg.t) =
   let check_inputs = name_set_to_string_set lock_pkg.depends_test in
   let propagated_build_inputs =
@@ -398,10 +398,10 @@ let drv_pkg_of_lock_pkg ~build_context ~with_test ~with_doc ~with_dev_setup
       ]
   in
   let build_commands =
-    Opam_actions.build ~with_test ~with_doc ~with_dev_setup build_context
+    Opam_actions.build ~with_test ~with_doc ~with_dev_setup ctx
   in
   let install_commands =
-    Opam_actions.install ~with_test ~with_doc ~with_dev_setup build_context
+    Opam_actions.install ~with_test ~with_doc ~with_dev_setup ctx
   in
   {
     lock_pkg;
@@ -449,11 +449,10 @@ let gen_pkg ~lock_dir ~ignore_file ~with_test ~with_doc ~with_dev_setup
   let pkg_lock_dir = mk_pkg_lock_dir ~lock_dir lock_pkg in
   let pkg_file = OpamFilename.to_string (pkg_lock_dir <//> "default.nix") in
   Out_channel.with_open_text pkg_file @@ fun chan ->
-  let build_context = build_context_for_lock_pkg lock_pkg in
-  let env = Build_context.resolve build_context in
+  let ctx = pkg_ctx_for_lock_pkg lock_pkg in
+  let env = Pkg_ctx.resolve ctx in
   let drv_pkg =
-    drv_pkg_of_lock_pkg ~with_test ~with_doc ~with_dev_setup ~build_context
-      lock_pkg
+    drv_pkg_of_lock_pkg ~with_test ~with_doc ~with_dev_setup ~ctx lock_pkg
   in
   let extra_files = Opam_helpers.get_extra_files lock_pkg.opam_details in
   copy_extra_files ~pkg_lock_dir extra_files;

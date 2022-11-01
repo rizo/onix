@@ -1,3 +1,6 @@
+(* Build context defines the build environment for a package.
+   This can be seen as a sandboxed opam switch. *)
+
 type package = {
   name : OpamTypes.name;
   version : OpamTypes.version;
