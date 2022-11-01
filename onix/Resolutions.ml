@@ -8,7 +8,7 @@ let default =
   {
     with_constraint = OpamPackage.Name.Map.empty;
     without_constraint = OpamPackage.Name.Set.empty;
-    compiler = Opam_utils.base_ocaml_compiler_name;
+    compiler = Opam_utils.ocaml_base_compiler_name;
   }
 
 let constraints t = t.with_constraint

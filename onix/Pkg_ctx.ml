@@ -287,7 +287,7 @@ let basic_resolve ?(local = OpamVariable.Map.empty) vars full_var =
       ]
       full_var
   in
-  Opam_utils.debug_var ~scope:"basic_resovle" full_var contents;
+  (* Opam_utils.debug_var ~scope:"basic_resovle" full_var contents; *)
   contents
 
 let resolve ?(local = OpamVariable.Map.empty) t full_var =
@@ -303,7 +303,7 @@ let resolve ?(local = OpamVariable.Map.empty) t full_var =
       ]
       full_var
   in
-  Opam_utils.debug_var ~scope:"resolve" full_var contents;
+  (* Opam_utils.debug_var ~scope:"resolve" full_var contents; *)
   contents
 
 let package_of_nix_store_path ~ocaml_version ~onix_pkg_dir

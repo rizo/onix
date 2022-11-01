@@ -42,14 +42,14 @@ let dune_name = OpamPackage.Name.of_string "dune"
 let ocamlbuild_name = OpamPackage.Name.of_string "ocamlbuild"
 let topkg_name = OpamPackage.Name.of_string "ocamlfind"
 let cppo_name = OpamPackage.Name.of_string "cppo"
-let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
+let ocaml_base_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
 let ocaml_system_name = OpamPackage.Name.of_string "ocaml-system"
 let ocaml_variants_name = OpamPackage.Name.of_string "ocaml-variants"
 let dune_configurator_name = OpamPackage.Name.of_string "dune-configurator"
 let menhir_name = OpamPackage.Name.of_string "menhir"
 
 let is_ocaml_compiler_name name =
-  OpamPackage.Name.equal name base_ocaml_compiler_name
+  OpamPackage.Name.equal name ocaml_base_compiler_name
   || OpamPackage.Name.equal name ocaml_system_name
   || OpamPackage.Name.equal name ocaml_variants_name
 

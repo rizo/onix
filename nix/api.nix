@@ -28,40 +28,25 @@ let
 
   pkgsUnion = l1: l2:
     let
-      l1Attrs = foldl'
-        (acc: x: if hasAttr x.name acc then acc else acc // { ${x.name} = x; })
+      l1Attrs =
+        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
         { } l1;
-      unionAttrs = foldl'
-        (acc: x: if hasAttr x.name acc then acc else acc // { ${x.name} = x; })
+      unionAttrs =
+        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
         l1Attrs l2;
     in attrValues unionAttrs;
 
-  getDeps = depType: dep:
-    if hasAttr depType dep then
-      filter (dep': (!isNull dep')) (getAttr depType dep)
-    else
-      [ ];
-
-  # Process the lock deps to obtain a the full dependency tree.
+  # Process the lock deps to obtain a the full dependency tree by package.
   # TODO: pass dep flags.
   processDeps = foldl' (acc: dep:
-    if hasAttr dep.name acc then
+    if acc ? dep.name then
       acc
     else
       let
-        depends = getDeps "depends" dep;
-        buildDepends = getDeps "buildDepends" dep;
-        testDepends = getDeps "testDepends" dep;
-        docDepends = getDeps "docDepends" dep;
-        devSetupDepends = getDeps "devSetupDepends" dep;
-        transitive = processDeps { } (depends ++ buildDepends);
-        depexts = dep.depexts or [ ];
-        dep' = dep // {
-          inherit depends buildDepends testDepends docDepends devSetupDepends
-            depexts;
-          transitiveDepends = attrValues transitive;
-        };
-      in acc // transitive // { ${dep.name} = dep'; });
+        transitiveAttrs =
+          processDeps { } (dep.depends or [ ] ++ dep.buildDepends or [ ]);
+        dep' = dep // { transitiveDepends = attrValues transitiveAttrs; };
+      in acc // transitiveAttrs // { ${dep.name} = dep'; });
 
   # Collect OCaml paths from a set of pkgs.
   collectPaths = ocamlVersion: pkgs:
@@ -96,19 +81,22 @@ let
     name: dep:
     let
       ocaml = scope.ocaml;
-      dependsPkgs = map (dep: getAttr dep.name scope) dep.depends;
-      buildPkgs = map (dep: getAttr dep.name scope) dep.buildDepends;
-      testPkgs = map (dep: getAttr dep.name scope) dep.testDepends;
-      docPkgs = map (dep: getAttr dep.name scope) dep.docDepends;
-      devSetupPkgs = map (dep: getAttr dep.name scope) dep.devSetupDepends;
-      transitivePkgs = map (dep: getAttr dep.name scope) dep.transitiveDepends;
+      dependsPkgs = map (x: scope.${x.name}) (dep.depends or [ ]);
+      buildPkgs = map (x: scope.${x.name}) (dep.buildDepends or [ ]);
+      testPkgs = map (x: scope.${x.name}) (dep.testDepends or [ ]);
+      docPkgs = map (x: scope.${x.name}) (dep.docDepends or [ ]);
+      devSetupPkgs = map (x: scope.${x.name}) (dep.devSetupDepends or [ ]);
+      transitivePkgs = map (x: scope.${x.name}) dep.transitiveDepends;
+      depexts = filter (x: !isNull x) (dep.depexts or [ ]);
 
       transitivePaths = collectPaths ocaml.version transitivePkgs;
 
       src = dep.src or null;
+      flags = dep.flags or [ ];
 
-      isConfPkg = let flags = dep.flags or [ ];
-      in builtins.elem "conf" flags || builtins.elem "compiler" flags;
+      # compiler is considered conf because ocaml-system needs its depexts
+      # exported.
+      isConfPkg = builtins.elem "conf" flags || builtins.elem "compiler" flags;
 
     in stdenv.mkDerivation {
       inherit src;
@@ -119,14 +107,17 @@ let
       dontStrip = true;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
-      buildInputs = transitivePkgs ++ optionals (!isConfPkg) dep.depexts;
+      buildInputs = transitivePkgs ++ optionals (!isConfPkg) depexts;
       nativeBuildInputs = buildPkgs
         ++ optionals (evalDepFlag dep.version withTest) testPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
         ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
 
-      propagatedBuildInputs = optionals isConfPkg dep.depexts;
-      propagatedNativeBuildInputs = optionals isConfPkg dep.depexts;
+      # For conf packages we need to propagate both build and native build
+      # inputs because we don't know how they are used.
+      # For example, consider conf-gmp and conf-pkg-config.
+      propagatedBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
+      propagatedNativeBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
 
       ONIX_LOG_LEVEL = defaultLogLevel;
       ONIXPATH =
@@ -275,7 +266,7 @@ in rec {
     , withTest ? false, withDoc ? false, withDevSetup ? false }:
     let
       onixLock = import lockFile { inherit pkgs; };
-      deps = processDeps { } (attrValues onixLock.scope);
+      deps = processDeps { } (attrValues onixLock.packages);
       scope = buildScope { inherit withTest withDoc withDevSetup; } deps;
     in applyOverrides scope overrides;
 

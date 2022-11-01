@@ -13,10 +13,9 @@ let depexts_for_opam_name pkg_name =
 let build_depends_names =
   Opam_utils.
     [
-      ocaml_name;
-      ocaml_config_name;
+      ocaml_base_compiler_name;
       ocaml_system_name;
-      ocaml_name;
+      ocaml_variants_name;
       ocamlfind_name;
       dune_name;
       dune_configurator_name;
