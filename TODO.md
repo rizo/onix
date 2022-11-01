@@ -123,3 +123,6 @@
 - [ ] Include expanded patch/build/install commands in lock file.
   - This is not easy because substs need to happen during patch phase, which requires var lookup.
 - [ ] Ensure that strings, not paths, are passed to build/opamFiles.
+- [ ] If a dep is already in *buildInputs, does it need to be in nativeBuildInputs?
+- [ ] Test substs in a patch:
+  - https://github.com/ocaml/opam-repository/blob/c0e9300f14d3570da85aad7e6e0ae47484a597a9/packages/fury-puyo/fury-puyo.0.5/opam

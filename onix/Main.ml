@@ -231,7 +231,7 @@ module Lock = struct
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" (Onix.Pp_drv_tree.pp ~ignore_file) lock_file);
+        Fmt.pf out "%a" (Onix.Pp_lock_nix.pp ~ignore_file) lock_file);
     Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
@@ -256,12 +256,12 @@ module Gen = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let output_dir_arg =
-    let doc = "The path to the output directory." in
+  let lock_dir_arg =
+    let doc = "The path to the output lock directory." in
     let docv = "DIR" in
-    Arg.(info ["output-dir"] ~docv ~doc |> opt dir "./onix" |> value)
+    Arg.(info ["lock-dir"] ~docv ~doc |> opt file "./onix.lock" |> value)
 
-  let run style_renderer log_level ignore_file output_dir repo_url resolutions
+  let run style_renderer log_level ignore_file lock_dir repo_url resolutions
       with_test with_doc with_dev_setup input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
@@ -284,12 +284,11 @@ module Gen = struct
       Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc
         ~with_dev_setup input_opam_files
     in
-    Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
-        let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" (Onix.Pp_drv_tree.pp ~ignore_file) lock_file);
-    Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
+    Onix.Gen_drv_tree.gen ~ignore_file ~lock_dir ~with_test ~with_doc
+      ~with_dev_setup lock_file;
+    Logs.info (fun log -> log "Created the nix environment in %S." lock_dir)
 
-  let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
+  let info = Cmd.info "gen" ~doc:"Generate the derivation tree for packages."
 
   let cmd =
     Cmd.v info
@@ -298,7 +297,7 @@ module Gen = struct
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ignore_file_arg
-        $ output_dir_arg
+        $ lock_dir_arg
         $ repo_url_arg
         $ resolutions_arg
         $ with_test_arg ~absent:`root
@@ -324,7 +323,7 @@ let () =
     let run () = `Help (`Pager, None) in
     Term.(ret (const run $ const ()))
   in
-  [Lock.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
+  [Lock.cmd; Gen.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
   |> Cmdliner.Cmd.group info ~default
   |> Cmdliner.Cmd.eval
   |> Stdlib.exit
