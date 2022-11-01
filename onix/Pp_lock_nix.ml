@@ -101,10 +101,17 @@ let pp_depexts_sets name f (req, opt) =
   if String_set.is_empty req && String_set.is_empty opt then ()
   else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
 
+let pp_flags f flags =
+  if List.is_empty flags then ()
+  else
+    Fmt.pf f "@ flags = [@[<hov1>%a@ @]];"
+      (Fmt.list ~sep:Fmt.sp Fmt.Dump.string)
+      flags
+
 let pp_pkg ~ignore_file f (t : Lock_pkg.t) =
   let name = OpamPackage.name_to_string t.opam_details.package in
   let version = OpamPackage.version t.opam_details.package in
-  Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a" name
+  Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a%a" name
     pp_version version (pp_src ~ignore_file) t
     (opam_path_for_locked_package t)
     (pp_depends_sets "depends")
@@ -119,6 +126,7 @@ let pp_pkg ~ignore_file f (t : Lock_pkg.t) =
     t.depends_dev_setup
     (pp_depexts_sets "depexts")
     (t.depexts_nix, t.depexts_unknown)
+    pp_flags t.flags
 
 (* Lock file printers *)
 

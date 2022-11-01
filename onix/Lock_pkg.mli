@@ -20,6 +20,7 @@ type t = {
   depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
+  flags : string list;
 }
 
 val src_is_git : src -> bool
