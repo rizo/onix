@@ -7,10 +7,11 @@ type opam_file_type =
 (* path:
    - pkg.opam
    - vendor/pkg/pkg.opam
-   - vendor/pkg/opam *)
+   - vendor/pkg/opam
+   - $repo/packages/pkg/pkg.version/opam *)
 type opam_details = {
   package : OpamTypes.package;
-  path : OpamFilename.t; (* None for repo paths. *)
+  path : OpamFilename.t;
   opam : OpamFile.OPAM.t;
 }
 

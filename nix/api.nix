@@ -89,7 +89,7 @@ let
       transitivePkgs = map (x: scope.${x.name}) dep.transitiveDepends;
       depexts = filter (x: !isNull x) (dep.depexts or [ ]);
 
-      transitivePaths = collectPaths ocaml.version transitivePkgs;
+      pkgPaths = collectPaths ocaml.version transitivePkgs;
 
       src = dep.src or null;
       flags = dep.flags or [ ];
@@ -108,7 +108,7 @@ let
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
       buildInputs = transitivePkgs ++ optionals (!isConfPkg) depexts;
-      nativeBuildInputs = buildPkgs
+      nativeBuildInputs = [ ]
         ++ optionals (evalDepFlag dep.version withTest) testPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
         ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
@@ -117,7 +117,8 @@ let
       # inputs because we don't know how they are used.
       # For example, consider conf-gmp and conf-pkg-config.
       propagatedBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
-      propagatedNativeBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
+      propagatedNativeBuildInputs = buildPkgs
+        ++ optionals isConfPkg (depexts ++ buildPkgs);
 
       ONIX_LOG_LEVEL = defaultLogLevel;
       ONIXPATH =
@@ -125,9 +126,9 @@ let
 
       # Set environment variables for OCaml library lookup. This needs to use
       # transitive dependencies as dune requires the full dependency tree.
-      OCAMLPATH = transitivePaths.libdir;
-      CAML_LD_LIBRARY_PATH = transitivePaths.stublibs;
-      OCAMLTOP_INCLUDE_PATH = transitivePaths.toplevel;
+      OCAMLPATH = pkgPaths.libdir;
+      CAML_LD_LIBRARY_PATH = pkgPaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH = pkgPaths.toplevel;
 
       prePatch = ''
         ${onix}/bin/onix opam-patch \
@@ -217,9 +218,9 @@ let
       '';
 
       shellHook = ''
-        export OCAMLPATH=${transitivePaths.libdir}
-        export CAML_LD_LIBRARY_PATH=${transitivePaths.stublibs}
-        export OCAMLTOP_INCLUDE_PATH=${transitivePaths.toplevel}
+        export OCAMLPATH=${pkgPaths.libdir}
+        export CAML_LD_LIBRARY_PATH=${pkgPaths.stublibs}
+        export OCAMLTOP_INCLUDE_PATH=${pkgPaths.toplevel}
       '';
     };
 
