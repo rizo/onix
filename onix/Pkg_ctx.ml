@@ -3,8 +3,8 @@ open Utils
 type package = {
   name : OpamPackage.Name.t;
   version : OpamPackage.Version.t;
-  opam : OpamFilename.t;
-  path : OpamFilename.Dir.t;
+  opamfile : string;
+  prefix : string;
 }
 
 type t = {
@@ -21,10 +21,26 @@ let pp_package formatter package =
        [
          field "name" (fun r -> r.name) Opam_utils.pp_package_name;
          field "version" (fun r -> r.version) Opam_utils.pp_package_version;
-         field "opam" (fun r -> r.opam) Opam_utils.pp_filename;
-         field "path" (fun r -> r.path) Opam_utils.pp_filename_dir;
+         field "opam" (fun r -> r.opamfile) Fmt.Dump.string;
+         field "path" (fun r -> r.prefix) Fmt.Dump.string;
        ])
     package
+
+let pp formatter t =
+  let field = Fmt.Dump.field in
+  Fmt.pf formatter "%a"
+    (Fmt.Dump.record
+       [
+         field "self" (fun r -> r.self) pp_package;
+         field "ocaml_version"
+           (fun r -> r.ocaml_version)
+           Opam_utils.pp_package_version;
+         field "scope"
+           (fun r -> OpamPackage.Name.Map.to_seq r.scope)
+           (Fmt.Dump.seq (Fmt.pair Opam_utils.pp_package_name pp_package));
+         field "vars" (fun _r -> "$vars") Fmt.Dump.string;
+       ])
+    t
 
 module Vars = struct
   let add_native_system_vars vars =
@@ -122,23 +138,21 @@ module Vars = struct
       let ocaml_version = OpamPackage.Version.to_string t.ocaml_version in
       let prefix, pkg_name =
         match pkg with
-        | Some pkg -> (pkg.path, Some pkg.name)
-        | None -> (t.self.path, None)
+        | Some pkg -> (pkg.prefix, Some pkg.name)
+        | None -> (t.self.prefix, None)
       in
-      let prefix = OpamFilename.Dir.to_string prefix in
-      let prefix =
+      let libdir =
         String.concat "/" [prefix; "lib/ocaml"; ocaml_version; "site-lib"]
       in
-      string (make_path ~prefix ?suffix pkg_name)
+      string (make_path ~prefix:libdir ?suffix pkg_name)
     in
     let out ?suffix ~scoped pkg =
       let prefix, pkg_name =
         match pkg with
-        | Some pkg when scoped -> (pkg.path, Some pkg.name)
-        | Some pkg -> (pkg.path, None)
-        | None -> (t.self.path, None)
+        | Some pkg when scoped -> (pkg.prefix, Some pkg.name)
+        | Some pkg -> (pkg.prefix, None)
+        | None -> (t.self.prefix, None)
       in
-      let prefix = OpamFilename.Dir.to_string prefix in
       string (make_path ~prefix ?suffix pkg_name)
     in
     let v = OpamVariable.to_string (OpamVariable.Full.variable v) in
@@ -160,10 +174,10 @@ module Vars = struct
       string (OpamPackage.Version.to_string t.self.version)
     | "version", `Installed pkg ->
       string (OpamPackage.Version.to_string pkg.version)
-    | "build-id", `Global -> string (OpamFilename.Dir.to_string t.self.path)
-    | "build-id", `Installed pkg -> string (OpamFilename.Dir.to_string pkg.path)
-    | "opamfile", `Global -> string (OpamFilename.to_string t.self.opam)
-    | "opamfile", `Installed pkg -> string (OpamFilename.to_string pkg.opam)
+    | "build-id", `Global -> string t.self.prefix
+    | "build-id", `Installed pkg -> string pkg.prefix
+    | "opamfile", `Global -> string t.self.opamfile
+    | "opamfile", `Installed pkg -> string pkg.opamfile
     | "depends", _ | "hash", _ -> string ("ONIX_NOT_IMPLEMENTED_" ^ v)
     (* site-lib paths *)
     | "lib", `Global -> lib None
@@ -196,10 +210,14 @@ module Vars = struct
         OpamFilename.Base.of_string
           (OpamPackage.Name.to_string pkg.name ^ ".config")
       in
-      let config_filename = OpamFilename.create (pkg.path </> "etc") base in
+      let config_filename =
+        OpamFilename.create
+          (OpamFilename.Dir.of_string pkg.prefix </> "etc")
+          base
+      in
       if OpamFilename.exists config_filename then (
         Logs.debug (fun log ->
-            log "Build_context.resolve_from_etc_env: loading %a..."
+            log "Pkg_ctx.resolve_from_etc_env: loading %a..."
               Opam_utils.pp_filename config_filename);
         let config_file = OpamFile.make config_filename in
         let config = OpamFile.Dot_config.read config_file in
@@ -234,9 +252,9 @@ module Vars = struct
     let string x = Some (OpamVariable.string x) in
     let var_str = OpamVariable.Full.to_string full_var in
     match (var_str, OpamPackage.Name.Map.find_opt t.self.name t.scope) with
-    | "prefix", Some { path; _ }
-    | "switch", Some { path; _ }
-    | "root", Some { path; _ } -> string (OpamFilename.Dir.to_string path)
+    | "prefix", Some { prefix; _ }
+    | "switch", Some { prefix; _ }
+    | "root", Some { prefix; _ } -> string prefix
     | "user", _ -> Some (OpamVariable.string (Unix.getlogin ()))
     | "group", _ -> (
       try
@@ -269,7 +287,7 @@ let basic_resolve ?(local = OpamVariable.Map.empty) vars full_var =
       ]
       full_var
   in
-  Opam_utils.debug_var ~scope:"basic_resovle" full_var contents;
+  (* Opam_utils.debug_var ~scope:"basic_resovle" full_var contents; *)
   contents
 
 let resolve ?(local = OpamVariable.Map.empty) t full_var =
@@ -285,7 +303,7 @@ let resolve ?(local = OpamVariable.Map.empty) t full_var =
       ]
       full_var
   in
-  Opam_utils.debug_var ~scope:"resolve" full_var contents;
+  (* Opam_utils.debug_var ~scope:"resolve" full_var contents; *)
   contents
 
 let package_of_nix_store_path ~ocaml_version ~onix_pkg_dir
@@ -294,9 +312,9 @@ let package_of_nix_store_path ~ocaml_version ~onix_pkg_dir
   {
     name = store_path.package_name;
     version = store_path.package_version;
-    path = store_path.prefix;
+    prefix = OpamFilename.Dir.to_string store_path.prefix;
     (* FIXME: This is not the opam file from the repo. *)
-    opam =
+    opamfile =
       OpamFilename.Op.(
         onix_pkg_dir
         / "lib"
@@ -304,32 +322,25 @@ let package_of_nix_store_path ~ocaml_version ~onix_pkg_dir
         / ocaml_version
         / "site-lib"
         / package_name
-        // "opam");
+        // "opam")
+      |> OpamFilename.to_string;
   }
 
-let make ?(onix_path = Sys.getenv_opt "ONIXPATH" or "") ?(vars = Vars.base)
-    ~ocaml_version ~opam ~path opam_pkg =
-  Logs.debug (fun log -> log "Build_context.make: ONIXPATH=%s" onix_path);
-  let opam_pkg = OpamPackage.of_string opam_pkg in
-  let deps =
-    if String.length onix_path = 0 then OpamPackage.Name.Map.empty
-    else
-      let onix_pkg_dirs = String.split_on_char ':' onix_path in
-      List.fold_left
-        (fun acc onix_pkg_dir ->
-          let onix_pkg_dir = OpamFilename.Dir.of_string onix_pkg_dir in
-          let store_path = Nix_utils.parse_store_path onix_pkg_dir in
-          let pkg =
-            package_of_nix_store_path ~ocaml_version ~onix_pkg_dir store_path
-          in
-          OpamPackage.Name.Map.add store_path.package_name pkg acc)
-        OpamPackage.Name.Map.empty onix_pkg_dirs
-  in
-  let self =
-    let path = OpamFilename.Dir.of_string path in
-    let opam = OpamFilename.of_string opam in
-    { name = opam_pkg.name; version = opam_pkg.version; path; opam }
-  in
-  let scope = OpamPackage.Name.Map.add self.name self deps in
+let dependencies_of_onix_path ~ocaml_version onix_path =
+  if String.length onix_path = 0 then OpamPackage.Name.Map.empty
+  else
+    let onix_pkg_dirs = String.split_on_char ':' onix_path in
+    List.fold_left
+      (fun acc onix_pkg_dir ->
+        let onix_pkg_dir = OpamFilename.Dir.of_string onix_pkg_dir in
+        let store_path = Nix_utils.parse_store_path onix_pkg_dir in
+        let pkg =
+          package_of_nix_store_path ~ocaml_version ~onix_pkg_dir store_path
+        in
+        OpamPackage.Name.Map.add store_path.package_name pkg acc)
+      OpamPackage.Name.Map.empty onix_pkg_dirs
+
+let make ~dependencies ?(vars = Vars.base) ~ocaml_version self =
+  let scope = OpamPackage.Name.Map.add self.name self dependencies in
   let ocaml_version = OpamPackage.Version.of_string ocaml_version in
   { self; ocaml_version; vars; scope }

@@ -1,8 +1,11 @@
+(* Build context defines the build environment for a package.
+   This can be seen as a sandboxed opam switch. *)
+
 type package = {
   name : OpamTypes.name;
   version : OpamTypes.version;
-  opam : OpamFilename.t;
-  path : OpamTypes.dirname;
+  opamfile : string;
+  prefix : string;
 }
 
 type t = {
@@ -13,6 +16,7 @@ type t = {
 }
 
 val pp_package : Format.formatter -> package -> unit
+val pp : Format.formatter -> t -> unit
 
 module Vars : sig
   val base : OpamVariable.variable_contents OpamVariable.Full.Map.t
@@ -49,13 +53,12 @@ val basic_resolve :
   OpamFilter.env
 (** Resolve without build context for local, env and static vars. *)
 
+val dependencies_of_onix_path :
+  ocaml_version:string -> string -> package OpamPackage.Name.Map.t
+
 val make :
-  ?onix_path:string ->
+  dependencies:package OpamPackage.Name.Map.t ->
   ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
   ocaml_version:string ->
-  opam:string ->
-  path:string ->
-  string ->
+  package ->
   t
-(* [make ?vars ~ocaml_version ~path opam_pkg] creates a build context for a
-   package located at a nix store path [path] with opam file located at [opam]. *)

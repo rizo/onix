@@ -10,8 +10,17 @@ type src =
       hash : OpamHash.kind * string;
     }
 
+let src_is_git src =
+  match src with
+  | Git _ -> true
+  | _ -> false
+
+let src_is_http src =
+  match src with
+  | Http _ -> true
+  | _ -> false
+
 type t = {
-  package : OpamPackage.t;
   src : src option;
   opam_details : Opam_utils.opam_details;
   depends : Name_set.t;
@@ -21,6 +30,7 @@ type t = {
   depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
+  flags : string list;
 }
 
 let check_is_zip_src src =
@@ -30,130 +40,9 @@ let check_is_zip_src src =
     let basename = OpamUrl.basename url in
     Filename.extension basename = ".zip"
 
-let name t = OpamPackage.name t.package
-let is_pinned t = Opam_utils.is_pinned t.package
-let is_root t = Opam_utils.is_root t.package
-
-let opam_path_for_locked_package t =
-  let pkg = t.package in
-  let ( </> ) = Filename.concat in
-  let name = OpamPackage.name_to_string pkg in
-  if is_pinned t || is_root t then
-    match t.opam_details.path with
-    | Some path when OpamFilename.ends_with ".opam" path ->
-      Fmt.str "${%s.src}" name </> name ^ ".opam"
-    | Some _ -> Fmt.str "${%s.src}" name </> "opam"
-    | None -> failwith "BUG: pinned and root packages must have an opam path."
-  else
-    let name_with_version = OpamPackage.to_string pkg in
-    "${repo}/packages/" </> name </> name_with_version </> "opam"
-
-let pp_name_escape_with_enderscore formatter name =
-  let name = OpamPackage.Name.to_string name in
-  if Utils.String.starts_with_number name then Fmt.string formatter ("_" ^ name)
-  else Fmt.string formatter name
-
-let pp_string_escape_quotted formatter str =
-  if Utils.String.starts_with_number str then Fmt.Dump.string formatter str
-  else Fmt.string formatter str
-
-let pp_version f version =
-  let version = OpamPackage.Version.to_string version in
-  (* We require that the version does NOT contain any '-' or '~' characters.
-     - Note that nix will replace '~' to '-' automatically.
-     The version is parsed with Nix_utils.parse_store_path by splitting bytes
-     '- ' to obtain the Build_context.package information.
-     This is fine because the version in the lock file is mostly informative. *)
-  let set_valid_char i =
-    match String.get version i with
-    | '-' | '~' -> '+'
-    | valid -> valid
-  in
-  let version = String.init (String.length version) set_valid_char in
-  Fmt.pf f "%S" version
-
-let pp_hash f (kind, hash) =
-  match kind with
-  | `SHA256 -> Fmt.pf f "sha256 = %S" hash
-  | `SHA512 -> Fmt.pf f "sha512 = %S" hash
-  | `MD5 -> Fmt.pf f "md5 = %S" hash
-
-let pp_src ~ignore_file f t =
-  if is_root t then
-    let path =
-      match t.opam_details.Opam_utils.path with
-      | Some opam_path ->
-        let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
-        if String.equal path "." then "./." else path
-      | None -> failwith "BUG: Root packages must have an opam path."
-    in
-    match ignore_file with
-    | Some ".gitignore" ->
-      Fmt.pf f "@ src = pkgs.nix-gitignore.gitignoreSource [] %s;" path
-    | Some custom ->
-      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] %s;" custom
-        path
-    | None -> Fmt.pf f "@ src = ./.;"
-  else
-    match t.src with
-    | None -> ()
-    | Some (Git { url; rev }) ->
-      Fmt.pf f
-        "@ src = @[<v-4>builtins.fetchGit {@ url = %S;@ rev = %S;@ allRefs = \
-         true;@]@ };"
-        url rev
-    (* MD5 hashes are not supported by Nix fetchers. Fetch without hash.
-       This normally would not happen as we try to prefetch_src_if_md5. *)
-    | Some (Http { url; hash = `MD5, _ }) ->
-      Logs.warn (fun log ->
-          log "Ignoring hash for %a. MD5 hashes are not supported by nix."
-            Opam_utils.pp_package t.package);
-      Fmt.pf f "@ src = @[<v-4>builtins.fetchurl {@ url = %a;@]@ };"
-        (Fmt.quote Opam_utils.pp_url)
-        url
-    | Some (Http { url; hash }) ->
-      Fmt.pf f "@ src = @[<v-4>pkgs.fetchurl {@ url = %a;@ %a;@]@ };"
-        (Fmt.quote Opam_utils.pp_url)
-        url pp_hash hash
-
-let pp_depends_sets name f req =
-  let pp_req f =
-    Name_set.iter (fun dep ->
-        Fmt.pf f "@ %a" pp_name_escape_with_enderscore dep)
-  in
-  if Name_set.is_empty req then ()
-  else Fmt.pf f "@ %s = [@[<hov1>%a@ @]];" name pp_req req
-
-let pp_depexts_sets name f (req, opt) =
-  let pp_req f =
-    String_set.iter (fun dep ->
-        Fmt.pf f "@ pkgs.%a" pp_string_escape_quotted dep)
-  in
-  let pp_opt f =
-    String_set.iter (fun dep ->
-        Fmt.pf f "@ (pkgs.%a or null)" pp_string_escape_quotted dep)
-  in
-  if String_set.is_empty req && String_set.is_empty opt then ()
-  else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
-
-let pp ~ignore_file f t =
-  let name = OpamPackage.name_to_string t.package in
-  let version = OpamPackage.version t.package in
-  Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a" name
-    pp_version version (pp_src ~ignore_file) t
-    (opam_path_for_locked_package t)
-    (pp_depends_sets "depends")
-    t.depends
-    (pp_depends_sets "buildDepends")
-    t.depends_build
-    (pp_depends_sets "testDepends")
-    t.depends_test
-    (pp_depends_sets "docDepends")
-    t.depends_doc
-    (pp_depends_sets "devSetupDepends")
-    t.depends_dev_setup
-    (pp_depexts_sets "depexts")
-    (t.depexts_nix, t.depexts_unknown)
+let name t = OpamPackage.name t.opam_details.package
+let is_pinned t = Opam_utils.is_pinned t.opam_details.package
+let is_root t = Opam_utils.is_root t.opam_details.package
 
 let prefetch_src_if_md5 ~package src =
   match src with
@@ -294,14 +183,14 @@ let get_depexts ~package ~is_zip_src ~env depexts =
   in
   (nix_depexts, unknown_depexts)
 
-let resolve ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false) pkg
-    v =
+let resolve ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false)
+    pkg v =
   let contents =
-    Build_context.Vars.try_resolvers
+    Pkg_ctx.Vars.try_resolvers
       [
-        Build_context.Vars.resolve_package pkg;
-        Build_context.Vars.resolve_from_base;
-        Build_context.Vars.resolve_dep_flags ~build ~test ~doc ~dev_setup;
+        Pkg_ctx.Vars.resolve_package pkg;
+        Pkg_ctx.Vars.resolve_from_base;
+        Pkg_ctx.Vars.resolve_dep_flags ~build ~test ~doc ~dev_setup;
       ]
       v
   in
@@ -317,10 +206,11 @@ let only_installed ~installed req opt =
   let opt_installed = Name_set.filter installed opt in
   Name_set.union req opt_installed
 
+(* Can the "basename" be a folder path? *)
+
 let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let package = opam_details.Opam_utils.package in
   let opam = opam_details.Opam_utils.opam in
-
   let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
   let src = Option.map (prefetch_src_if_md5 ~package) src in
@@ -379,20 +269,25 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let opam_depexts = OpamFile.OPAM.depexts opam in
   let depexts_nix, depexts_unknown =
     let is_zip_src = Option.map_default false check_is_zip_src src in
-    get_depexts ~is_zip_src ~package ~env:Build_context.Vars.resolve_from_base
+    get_depexts ~is_zip_src ~package ~env:Pkg_ctx.Vars.resolve_from_base
       opam_depexts
+  in
+
+  let flags =
+    List.map OpamTypesBase.string_of_pkg_flag (OpamFile.OPAM.flags opam)
   in
 
   Some
     {
-      package;
       src;
       opam_details;
       depends = only_installed ~installed depends depopts;
       depends_build = only_installed ~installed depends_build depopts_build;
       depends_test = only_installed ~installed depends_test depopts_test;
       depends_doc = only_installed ~installed depends_doc depopts_doc;
-      depends_dev_setup = only_installed ~installed depends_dev_setup depopts_dev_setup;
+      depends_dev_setup =
+        only_installed ~installed depends_dev_setup depopts_dev_setup;
       depexts_nix;
       depexts_unknown;
+      flags;
     }

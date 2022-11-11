@@ -26,65 +26,77 @@ let
     else
       throw "invalid dependency flag value: ${depFlag}";
 
-  getDeps = depType: dep:
-    if hasAttr depType dep then
-      filter (dep': (!isNull dep')) (getAttr depType dep)
-    else
-      [ ];
+  pkgsUnion = l1: l2:
+    let
+      l1Attrs =
+        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
+        { } l1;
+      unionAttrs =
+        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
+        l1Attrs l2;
+    in attrValues unionAttrs;
 
-  # Process the lock deps to obtain a the full dependency tree.
+  # Process the lock deps to obtain a the full dependency tree by package.
   # TODO: pass dep flags.
   processDeps = foldl' (acc: dep:
-    if hasAttr dep.name acc then
+    if acc ? dep.name then
       acc
     else
       let
-        depends = getDeps "depends" dep;
-        buildDepends = getDeps "buildDepends" dep;
-        testDepends = getDeps "testDepends" dep;
-        docDepends = getDeps "docDepends" dep;
-        devSetupDepends = getDeps "devSetupDepends" dep;
-        transitive = processDeps { } (depends ++ buildDepends);
-        depexts = dep.depexts or [ ];
-        dep' = dep // {
-          inherit depends buildDepends testDepends docDepends devSetupDepends
-            depexts;
+        transitiveAttrs =
+          processDeps { } (dep.depends or [ ] ++ dep.buildDepends or [ ]);
+        dep' = dep // { transitiveDepends = attrValues transitiveAttrs; };
+      in acc // transitiveAttrs // { ${dep.name} = dep'; });
+
+  # Collect OCaml paths from a set of pkgs.
+  collectPaths = ocamlVersion: pkgs:
+    let
+      check = dir: if pathExists dir then dir else null;
+      add = acc: path:
+        if isNull path then
+          acc
+        else if acc == "" then
+          path
+        else
+          acc + ":" + path;
+      empty = {
+        libdir = "";
+        stublibs = "";
+        toplevel = "";
+      };
+      updatePath = acc: pkg:
+        let
+          libdir = check "${pkg}/lib/ocaml/${ocamlVersion}/site-lib";
+          stublibs = check "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/stublibs";
+          toplevel = check "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/toplevel";
+        in {
+          libdir = add acc.libdir libdir;
+          stublibs = add acc.stublibs stublibs;
+          toplevel = add acc.toplevel toplevel;
         };
-      in acc // transitive // { ${dep.name} = dep'; });
+    in foldl' updatePath empty pkgs;
 
   # Build a package from a lock dependency.
   buildPkg = { scope, withTest, withDoc, withDevSetup }:
     name: dep:
     let
       ocaml = scope.ocaml;
-      dependsPkgs = map (dep: getAttr dep.name scope) dep.depends;
-      buildPkgs = map (dep: getAttr dep.name scope) dep.buildDepends;
-      testPkgs = map (dep: getAttr dep.name scope) dep.testDepends;
-      docPkgs = map (dep: getAttr dep.name scope) dep.docDepends;
-      devSetupPkgs = map (dep: getAttr dep.name scope) dep.devSetupDepends;
+      dependsPkgs = map (x: scope.${x.name}) (dep.depends or [ ]);
+      buildPkgs = map (x: scope.${x.name}) (dep.buildDepends or [ ]);
+      testPkgs = map (x: scope.${x.name}) (dep.testDepends or [ ]);
+      docPkgs = map (x: scope.${x.name}) (dep.docDepends or [ ]);
+      devSetupPkgs = map (x: scope.${x.name}) (dep.devSetupDepends or [ ]);
+      transitivePkgs = map (x: scope.${x.name}) dep.transitiveDepends;
+      depexts = filter (x: !isNull x) (dep.depexts or [ ]);
+
+      pkgPaths = collectPaths ocaml.version transitivePkgs;
+
       src = dep.src or null;
+      flags = dep.flags or [ ];
 
-      # Adds an env hook for "targetOffset", i.e., all runtime deps to add OCaml paths.
-      onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
-        (pkgs.writeText "onix-path-hook" ''
-          [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
-
-          addOCamlPath () {
-            local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
-
-            if [[ -d "$libdir" ]]; then
-              true
-            else
-              return 0
-            fi
-
-            addToSearchPath "OCAMLPATH" "$libdir"
-            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
-            addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$libdir/toplevel"
-          }
-
-          addEnvHooks "$targetOffset" addOCamlPath
-        '');
+      # compiler is considered conf because ocaml-system needs its depexts
+      # exported.
+      isConfPkg = builtins.elem "conf" flags || builtins.elem "compiler" flags;
 
     in stdenv.mkDerivation {
       inherit src;
@@ -95,20 +107,30 @@ let
       dontStrip = true;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
-
-      propagatedBuildInputs = dependsPkgs ++ buildPkgs ++ dep.depexts
-        ++ [ onixPathHook ];
-      propagatedNativeBuildInputs = [ pkgs.opam-installer ] ++ dependsPkgs
-        ++ dep.depexts ++ buildPkgs
+      buildInputs = transitivePkgs ++ optionals (!isConfPkg) depexts;
+      nativeBuildInputs = [ ]
+        ++ optionals (evalDepFlag dep.version withTest) testPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
         ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
 
+      # For conf packages we need to propagate both build and native build
+      # inputs because we don't know how they are used.
+      # For example, consider conf-gmp and conf-pkg-config.
+      propagatedBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
+      propagatedNativeBuildInputs = buildPkgs
+        ++ optionals isConfPkg (depexts ++ buildPkgs);
+
       ONIX_LOG_LEVEL = defaultLogLevel;
-      ONIXPATH = lib.strings.concatStringsSep ":" (dependsPkgs ++ buildPkgs);
+      ONIXPATH =
+        lib.strings.concatStringsSep ":" (pkgsUnion dependsPkgs buildPkgs);
+
+      # Set environment variables for OCaml library lookup. This needs to use
+      # transitive dependencies as dune requires the full dependency tree.
+      OCAMLPATH = pkgPaths.libdir;
+      CAML_LD_LIBRARY_PATH = pkgPaths.stublibs;
+      OCAMLTOP_INCLUDE_PATH = pkgPaths.toplevel;
 
       prePatch = ''
-        echo "+ prePatch: ${dep.name}-${dep.version}"
-
         ${onix}/bin/onix opam-patch \
           --ocaml-version=${ocaml.version} \
           --opam=${dep.opam} \
@@ -124,8 +146,6 @@ let
       # Notes:
       # - Do we need export OPAM_SWITCH_PREFIX="$out"?
       configurePhase = ''
-        echo "+ configurePhase: ${dep.name}-${dep.version}"
-
         runHook preConfigure
 
         ${optionalString pkgs.stdenv.cc.isClang ''
@@ -141,12 +161,7 @@ let
       # - onix opam-build;
       # - postBuild.
       buildPhase = ''
-        echo "+ buildPhase: ${dep.name}-${dep.version}"
         runHook preBuild
-
-        echo "+ OCAMLPATH=$OCAMLPATH"
-        echo "+ CAML_LD_LIBRARY_PATH=$CAML_LD_LIBRARY_PATH"
-        echo "+ OCAMLTOP_INCLUDE_PATH=$OCAMLTOP_INCLUDE_PATH"
 
         ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
@@ -165,15 +180,25 @@ let
       # - create $OCAMLFIND_DESTDIR/pkg: `ocamlfind install` requires the liddir to exist;
       # - onix opam-install;
       # - move $out/lib to $OCAMLFIND_DESTDIR (because of dune, see DUNE_INSTALL_PREFIX);
-      # - attempt to remove OCAMLFIND_DESTDIR/pkg if empty.
+      # - ~~attempt to remove OCAMLFIND_DESTDIR/pkg if empty.~~
+      #   - should at least contain opam?
       # - postInstall.
       # Notes:
       # - Do we need to rm libdir? At least opam should be always installed?
       installPhase = ''
-        echo "+ installPhase: ${dep.name}-${dep.version}"
         runHook preInstall
 
-        echo "+ installPhase: Creating $OCAMLFIND_DESTDIR/${dep.name}"
+        # .install files
+        ${pkgs.opaline}/bin/opaline \
+          -prefix="$out" \
+          -libdir="$out/lib/ocaml/${ocaml.version}/site-lib"
+
+        # .config files
+        if [[ -e "./${dep.name}.config" ]]; then
+          mkdir -p "$out/etc"
+          cp "./${dep.name}.config" "$out/etc/${dep.name}.config"
+        fi
+
         mkdir -p "$OCAMLFIND_DESTDIR/${dep.name}"
 
         ${onix}/bin/onix opam-install \
@@ -186,20 +211,16 @@ let
           ${dep.name}.${dep.version}
 
         if [[ -e "$out/lib/${dep.name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${dep.name}" ]]; then
-          echo "+ installPhase: Moving $out/lib/${dep.name} to $OCAMLFIND_DESTDIR"
           mv "$out/lib/${dep.name}" "$OCAMLFIND_DESTDIR"
         fi
 
-        # Remove OCAMLFIND_DESTDIR/pkg tree if empty.
-        echo "+ installPhase: Removing empty $OCAMLFIND_DESTDIR/${dep.name} tree..."
-        rmdir -v "$out/lib/ocaml/${ocaml.version}/site-lib/${dep.name}" \
-          && rmdir -v "$out/lib/ocaml/${ocaml.version}/site-lib" \
-          && rmdir -v "$out/lib/ocaml/${ocaml.version}" \
-          && rmdir -v "$out/lib/ocaml" \
-          && rmdir -v "$out/lib" \
-          || true
-
         runHook postInstall
+      '';
+
+      shellHook = ''
+        export OCAMLPATH=${pkgPaths.libdir}
+        export CAML_LD_LIBRARY_PATH=${pkgPaths.stublibs}
+        export OCAMLTOP_INCLUDE_PATH=${pkgPaths.toplevel}
       '';
     };
 
@@ -246,7 +267,7 @@ in rec {
     , withTest ? false, withDoc ? false, withDevSetup ? false }:
     let
       onixLock = import lockFile { inherit pkgs; };
-      deps = processDeps { } (attrValues onixLock.scope);
+      deps = processDeps { } (attrValues onixLock.packages);
       scope = buildScope { inherit withTest withDoc withDevSetup; } deps;
     in applyOverrides scope overrides;
 
@@ -276,11 +297,5 @@ in rec {
           --verbosity='${logLevel}'${opamFilesStr}
         exit $?
       '';
-    };
-
-  shell = pkg:
-    pkgs.mkShell {
-      OCAMLPATH = pkg.OCAMLPATH;
-      inputsFrom = [ pkg ];
     };
 }

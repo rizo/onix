@@ -13,7 +13,7 @@ let eval expr =
   in
   String.sub output 1 (String.length output - 2)
 
-let eval' ?(raw = true) ?(pure = true) expr =
+let _eval ?(raw = true) ?(pure = true) expr =
   let open Bos in
   Cmd.(
     v "nix"

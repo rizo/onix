@@ -47,7 +47,7 @@
   - Could be loaded via OPAM_VAR_xxx with a hook?
   - The .config files also contain additional files, do we really want to copy them?
     - This is because in some cases they will actually resolve to nix paths.
-    - [x] An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Build_context from the saved `onix-propagated-opam-vars` file.
+    - [x] An approach alternative to setting OPAM_VAR_xxx is to explicitly lookup vars in Pkg_ctx from the saved `onix-propagated-opam-vars` file.
     - [x] Cache the `Dot_config` file as it's likely to be accessed multiple times.
 - [x] Use nix-prefetch-url.
 - [x] Use nix-prefetch-git for repo fetching.
@@ -123,3 +123,8 @@
 - [ ] Include expanded patch/build/install commands in lock file.
   - This is not easy because substs need to happen during patch phase, which requires var lookup.
 - [ ] Ensure that strings, not paths, are passed to build/opamFiles.
+- [ ] If a dep is already in *buildInputs, does it need to be in nativeBuildInputs?
+- [ ] Test substs in a patch:
+  - https://github.com/ocaml/opam-repository/blob/c0e9300f14d3570da85aad7e6e0ae47484a597a9/packages/fury-puyo/fury-puyo.0.5/opam
+- [ ] There are no more nulls in lock file, avoid checks.
+- [ ] Consider using attrsets (name => x) for representing deps to avoid duplicates when (++).

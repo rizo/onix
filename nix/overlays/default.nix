@@ -39,6 +39,14 @@ let
         fi
       '';
     });
+
+    ctypes = super.ctypes.overrideAttrs (selfAttrs: superAttrs: {
+      postInstall = ''
+        mkdir -p "$out/lib/ocaml/4.14.0/site-lib/stublibs"
+        mv $out/lib/ocaml/4.14.0/site-lib/ctypes/*.so "$out/lib/ocaml/4.14.0/site-lib/stublibs"
+      '';
+    });
+
   };
 
   darwin = {

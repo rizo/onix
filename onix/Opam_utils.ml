@@ -7,11 +7,18 @@ type opam_file_type =
 (* path:
    - pkg.opam
    - vendor/pkg/pkg.opam
-   - vendor/pkg/opam *)
+   - vendor/pkg/opam
+   - $repo/packages/pkg/pkg.version/opam *)
 type opam_details = {
   package : OpamTypes.package;
-  path : OpamFilename.t option; (* None for repo paths. *)
+  path : OpamFilename.t;
   opam : OpamFile.OPAM.t;
+}
+
+type dep_flags = {
+  with_test : bool;
+  with_doc : bool;
+  with_dev_setup : bool;
 }
 
 let opam_name = OpamFile.OPAM.name
@@ -30,19 +37,20 @@ let read_opam path =
       OpamFile.OPAM.read_from_channel ~filename ic)
 
 let ocaml_name = OpamPackage.Name.of_string "ocaml"
+let ocaml_config_name = OpamPackage.Name.of_string "ocaml-config"
 let ocamlfind_name = OpamPackage.Name.of_string "ocamlfind"
 let dune_name = OpamPackage.Name.of_string "dune"
 let ocamlbuild_name = OpamPackage.Name.of_string "ocamlbuild"
 let topkg_name = OpamPackage.Name.of_string "ocamlfind"
 let cppo_name = OpamPackage.Name.of_string "cppo"
-let base_ocaml_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
+let ocaml_base_compiler_name = OpamPackage.Name.of_string "ocaml-base-compiler"
 let ocaml_system_name = OpamPackage.Name.of_string "ocaml-system"
 let ocaml_variants_name = OpamPackage.Name.of_string "ocaml-variants"
 let dune_configurator_name = OpamPackage.Name.of_string "dune-configurator"
 let menhir_name = OpamPackage.Name.of_string "menhir"
 
 let is_ocaml_compiler_name name =
-  OpamPackage.Name.equal name base_ocaml_compiler_name
+  OpamPackage.Name.equal name ocaml_base_compiler_name
   || OpamPackage.Name.equal name ocaml_system_name
   || OpamPackage.Name.equal name ocaml_variants_name
 
@@ -74,7 +82,7 @@ let opam_package_of_filename filename =
     with Failure _ ->
       OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
 
-type dep_flag =
+type dep_flag_scope =
   [ `root
   | `deps
   | `none
@@ -115,11 +123,22 @@ let find_root_packages input_opam_paths =
     | _ -> input_opam_paths |> List.to_seq
   in
   root_opam_paths
-  |> Seq.map (fun opam_path ->
-         let package = opam_package_of_filename opam_path in
-         Logs.info (fun log -> log "Reading packages from %S..." opam_path);
-         let opam_path = OpamFilename.raw opam_path in
-         let opam = read_opam opam_path in
-         let details = { opam; package; path = Some opam_path } in
+  |> Seq.map (fun path ->
+         let package = opam_package_of_filename path in
+         Logs.info (fun log -> log "Reading packages from %S..." path);
+         let path = OpamFilename.raw path in
+         let opam = read_opam path in
+         let details = { opam; package; path } in
          (OpamPackage.name package, details))
   |> OpamPackage.Name.Map.of_seq
+
+let mk_repo_opamfile ~(repo_dir : OpamFilename.Dir.t) opam_package =
+  let name = OpamPackage.name_to_string opam_package in
+  let name_with_version = OpamPackage.to_string opam_package in
+  OpamFilename.Op.(repo_dir / "packages" / name / name_with_version // "opam")
+
+let make_opam_files_path ~opamfile file =
+  let opam_dir = OpamFilename.dirname opamfile in
+  let file = OpamFilename.Base.to_string file in
+  let base = OpamFilename.Base.of_string ("files/" ^ file) in
+  OpamFilename.create opam_dir base

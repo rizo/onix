@@ -3,19 +3,19 @@
 let ( </> ) = Filename.concat
 
 type t = {
-  with_test : Opam_utils.dep_flag;
-  with_doc : Opam_utils.dep_flag;
-  with_dev_setup : Opam_utils.dep_flag;
+  with_test : Opam_utils.dep_flag_scope;
+  with_doc : Opam_utils.dep_flag_scope;
+  with_dev_setup : Opam_utils.dep_flag_scope;
   repo_packages_dir : string;
-  fixed_packages : Opam_utils.opam_details OpamPackage.Name.Map.t;
+  fixed_opam_details : Opam_utils.opam_details OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;
   prefer_oldest : bool;
 }
 
 module Private = struct
-  let load_opam ~fixed_packages ~repo_packages_dir pkg =
+  let load_opam ~fixed_opam_details ~repo_packages_dir pkg =
     let { OpamPackage.name; version = _ } = pkg in
-    match OpamPackage.Name.Map.find_opt name fixed_packages with
+    match OpamPackage.Name.Map.find_opt name fixed_opam_details with
     | Some { Opam_utils.opam; _ } -> opam
     | None ->
       let opam_path =
@@ -34,19 +34,20 @@ module Private = struct
       OpamPackage.Version.Set.mem (OpamPackage.version pkg)
         Nix_utils.available_ocaml_versions
     else
-      let env = Build_context.Vars.resolve_from_base in
+      let env = Pkg_ctx.Vars.resolve_from_base in
       OpamFilter.eval_to_bool ~default:false env available
 end
 
-let make ?(prefer_oldest = false) ?(fixed_packages = OpamPackage.Name.Map.empty)
-    ~constraints ~with_test ~with_doc ~with_dev_setup repo_packages_dir =
+let make ?(prefer_oldest = false)
+    ?(fixed_opam_details = OpamPackage.Name.Map.empty) ~constraints ~with_test
+    ~with_doc ~with_dev_setup repo_packages_dir =
   let repo_packages_dir = OpamFilename.Dir.to_string repo_packages_dir in
   {
     with_test;
     with_doc;
     with_dev_setup;
     repo_packages_dir;
-    fixed_packages;
+    fixed_opam_details;
     constraints;
     prefer_oldest;
   }
@@ -68,7 +69,7 @@ let pp_rejection f = function
 let user_restrictions t name = OpamPackage.Name.Map.find_opt name t.constraints
 
 let candidates t name =
-  match OpamPackage.Name.Map.find_opt name t.fixed_packages with
+  match OpamPackage.Name.Map.find_opt name t.fixed_opam_details with
   | Some { Opam_utils.package; opam; _ } ->
     [(OpamPackage.version package, Ok opam)]
   | None -> (
@@ -94,7 +95,7 @@ let candidates t name =
              | _ ->
                let pkg = OpamPackage.create name v in
                let opam =
-                 Private.load_opam ~fixed_packages:t.fixed_packages
+                 Private.load_opam ~fixed_opam_details:t.fixed_opam_details
                    ~repo_packages_dir:t.repo_packages_dir pkg
                in
                let available = OpamFile.OPAM.available opam in
@@ -126,11 +127,11 @@ let filter_deps t pkg depends_formula =
   let dev_setup = Opam_utils.eval_dep_flag ~version t.with_dev_setup in
   let env var =
     let contents =
-      Build_context.Vars.try_resolvers
+      Pkg_ctx.Vars.try_resolvers
         [
-          Build_context.Vars.resolve_package pkg;
-          Build_context.Vars.resolve_from_base;
-          Build_context.Vars.resolve_dep_flags ~test ~doc ~dev_setup;
+          Pkg_ctx.Vars.resolve_package pkg;
+          Pkg_ctx.Vars.resolve_from_base;
+          Pkg_ctx.Vars.resolve_dep_flags ~test ~doc ~dev_setup;
         ]
         var
     in

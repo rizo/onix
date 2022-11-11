@@ -6,4 +6,4 @@
 (test
  (name Test_lock)
  (modules Test_lock)
- (libraries onix opam-format fmt))
+ (libraries onix opam-format opam-core fmt))

@@ -17,42 +17,45 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_dev_setup
   Resolutions.debug resolutions;
 
   (* Packages with .opam files at the root of the project. *)
-  let root_packages = Opam_utils.find_root_packages input_opam_files in
+  let root_opam_details = Opam_utils.find_root_packages input_opam_files in
 
   (* Pin-depends packages found in root_packages. *)
-  let pins = Pin_depends.collect_from_opam_files root_packages in
+  let pin_opam_details =
+    Pin_depends.collect_from_opam_files root_opam_details
+  in
 
   (* Packages provided by the project (roots + pins). *)
-  let fixed_packages =
+  let fixed_opam_details =
     OpamPackage.Name.Map.union
       (fun _local _pin ->
         failwith "Locally defined packages are not allowed in pin-depends")
-      root_packages pins
+      root_opam_details pin_opam_details
   in
 
-  (* Packages to start solve with (roots + ocaml compiler). *)
-  let target_packages =
+  (* Packages to start solve with (roots + user-provided resolutions). *)
+  let target_package_names =
     List.append
       (Resolutions.all resolutions)
-      (OpamPackage.Name.Map.keys root_packages)
+      (OpamPackage.Name.Map.keys root_opam_details)
   in
 
-  let repo_path, repo_url = resolve_repo repo_url in
+  let repo_dir, repo_url = resolve_repo repo_url in
 
   let constraints = Resolutions.constraints resolutions in
 
   let context =
     Solver_context.make
-      OpamFilename.Op.(repo_path / "packages")
-      ~fixed_packages ~constraints ~with_test ~with_doc ~with_dev_setup
+      OpamFilename.Op.(repo_dir / "packages")
+      ~fixed_opam_details ~constraints ~with_test ~with_doc ~with_dev_setup
   in
 
   let get_opam_details package =
     let name = OpamPackage.name package in
-    try OpamPackage.Name.Map.find name fixed_packages
+    try OpamPackage.Name.Map.find name fixed_opam_details
     with Not_found ->
       let opam = Solver_context.get_opam_file context package in
-      { package; path = None; opam }
+      let path = Opam_utils.mk_repo_opamfile ~repo_dir package in
+      { package; path; opam }
   in
 
   Logs.info (fun log ->
@@ -62,8 +65,8 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_dev_setup
   Logs.info (fun log ->
       log "Target packages: %a"
         Fmt.(list ~sep:Fmt.sp Opam_utils.pp_package_name)
-        target_packages);
-  match Opam_0install_solver.solve context target_packages with
+        target_package_names);
+  match Opam_0install_solver.solve context target_package_names with
   | Ok selections ->
     let packages =
       selections
