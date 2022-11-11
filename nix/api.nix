@@ -73,7 +73,7 @@ let
             local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
 
             if [[ -d "$libdir" ]]; then
-              echo "+ onix-path-hook: adding $libdir"
+              true
             else
               return 0
             fi
