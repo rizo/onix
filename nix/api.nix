@@ -267,7 +267,7 @@ in rec {
     , withTest ? false, withDoc ? false, withDevSetup ? false }:
     let
       onixLock = import lockFile { inherit pkgs; };
-      deps = processDeps { } (attrValues onixLock.packages);
+      deps = processDeps { } (attrValues onixLock);
       scope = buildScope { inherit withTest withDoc withDevSetup; } deps;
     in applyOverrides scope overrides;
 
@@ -280,7 +280,7 @@ in rec {
       shellHook = if isNull resolutions then ''
         onix lock \
           --repo-url='${repoUrl}' \
-          --lock-file='${lockFile}' \
+          --lock-file='${builtins.toString lockFile}' \
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
           --with-dev-setup=${builtins.toJSON withDevSetup} \
@@ -290,7 +290,7 @@ in rec {
         onix lock \
           --repo-url='${repoUrl}' \
           --resolutions='${mkResolutionsArg resolutions}' \
-          --lock-file='${lockFile}' \
+          --lock-file='${builtins.toString lockFile}' \
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
           --with-dev-setup=${builtins.toJSON withDevSetup} \

@@ -2,7 +2,7 @@
 
 let
   ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_14;
-  onix = import ./default.nix { inherit pkgs; };
+  onix = import ../default.nix { inherit pkgs; };
 in {
   scope = onix.build { lockFile = ./onix-lock.nix; };
   lock = onix.lock {
