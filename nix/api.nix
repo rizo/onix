@@ -13,6 +13,23 @@ let
   inherit (lib) optionalString;
   inherit (pkgs.lib.lists) optional optionals;
 
+  pkgsUnion = l1: l2:
+    let
+      l1Attrs =
+        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
+        { } l1;
+      unionAttrs =
+        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
+        l1Attrs l2;
+    in attrValues unionAttrs;
+
+  getTransitive = foldl' (acc: dep:
+    if hasAttr dep.name acc then
+      acc
+    else
+      let transitive = getTransitive { } (dep.depends or [ ]);
+      in acc // transitive // { ${dep.name} = dep; });
+
   evalDepFlag = version: depFlag:
     let isRoot = version == "root";
     in if depFlag == true then
@@ -26,70 +43,25 @@ let
     else
       throw "invalid dependency flag value: ${depFlag}";
 
-  pkgsUnion = l1: l2:
-    let
-      l1Attrs =
-        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
-        { } l1;
-      unionAttrs =
-        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
-        l1Attrs l2;
-    in attrValues unionAttrs;
-
-  # Process the lock deps to obtain a the full dependency tree by package.
-  # TODO: pass dep flags.
-  processDeps = foldl' (acc: dep:
-    if acc ? dep.name then
-      acc
-    else
-      let
-        transitiveAttrs =
-          processDeps { } (dep.depends or [ ] ++ dep.buildDepends or [ ]);
-        dep' = dep // { transitiveDepends = attrValues transitiveAttrs; };
-      in acc // transitiveAttrs // { ${dep.name} = dep'; });
-
-  # Collect OCaml paths from a set of pkgs.
-  collectPaths = ocamlVersion: pkgs:
-    let
-      check = dir: if pathExists dir then dir else null;
-      add = acc: path:
-        if isNull path then
-          acc
-        else if acc == "" then
-          path
-        else
-          acc + ":" + path;
-      empty = {
-        libdir = "";
-        stublibs = "";
-        toplevel = "";
-      };
-      updatePath = acc: pkg:
-        let
-          libdir = check "${pkg}/lib/ocaml/${ocamlVersion}/site-lib";
-          stublibs = check "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/stublibs";
-          toplevel = check "${pkg}/lib/ocaml/${ocamlVersion}/site-lib/toplevel";
-        in {
-          libdir = add acc.libdir libdir;
-          stublibs = add acc.stublibs stublibs;
-          toplevel = add acc.toplevel toplevel;
-        };
-    in foldl' updatePath empty pkgs;
+  optionalsPkg = name: pkgs:
+    lib.lists.toList (lib.lists.findFirst (x: x.name == name) [ ] pkgs);
 
   # Build a package from a lock dependency.
   buildPkg = { scope, withTest, withDoc, withDevSetup }:
     name: dep:
     let
       ocaml = scope.ocaml;
+
       dependsPkgs = map (x: scope.${x.name}) (dep.depends or [ ]);
       buildPkgs = map (x: scope.${x.name}) (dep.buildDepends or [ ]);
       testPkgs = map (x: scope.${x.name}) (dep.testDepends or [ ]);
       docPkgs = map (x: scope.${x.name}) (dep.docDepends or [ ]);
       devSetupPkgs = map (x: scope.${x.name}) (dep.devSetupDepends or [ ]);
-      transitivePkgs = map (x: scope.${x.name}) dep.transitiveDepends;
       depexts = filter (x: !isNull x) (dep.depexts or [ ]);
-
-      pkgPaths = collectPaths ocaml.version transitivePkgs;
+      transitiveDependsPkgs = map (x: scope.${x.name})
+        (attrValues ((getTransitive { } dep.depends or [ ])));
+      transitiveBuildPkgs = map (x: scope.${x.name})
+        (attrValues ((getTransitive { } dep.buildDepends or [ ])));
 
       src = dep.src or null;
       flags = dep.flags or [ ];
@@ -97,6 +69,44 @@ let
       # compiler is considered conf because ocaml-system needs its depexts
       # exported.
       isConfPkg = builtins.elem "conf" flags || builtins.elem "compiler" flags;
+
+      # - addHostOCamlPath: add to OCAMLPATH for packages that use topkg (asetmap).
+      # - addHostOCamlPath: add to OCAMLTOP_INCLUDE_PATH to allow loading topfind (topkg).
+      onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
+        (pkgs.writeText "onix-path-hook.sh" ''
+          echo "+ ocaml-setup-hook: $1 $hostOffset"
+          [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
+          echo "+ ocaml-setup-hook: $1 in"
+
+          addTargetOCamlPath () {
+            local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
+
+            if [[ ! -d "$libdir" ]]; then
+              return 0
+            fi
+            echo "+ ocaml-setup-hook: addTargetOCamlPath: adding $1"
+
+            addToSearchPath "OCAMLPATH" "$libdir"
+            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
+          }
+
+          addHostOCamlPath () {
+            local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
+
+            if [[ ! -d "$libdir" ]]; then
+              return 0
+            fi
+            echo "+ ocaml-setup-hook: addHostOCamlPath: adding $1"
+
+            addToSearchPath "OCAMLPATH" "$libdir"
+            addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$libdir/toplevel"
+          }
+
+          # run for every buildInput
+          addEnvHooks "$targetOffset" addTargetOCamlPath
+
+          addEnvHooks "$hostOffset" addHostOCamlPath
+        '');
 
     in stdenv.mkDerivation {
       inherit src;
@@ -107,8 +117,9 @@ let
       dontStrip = true;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
-      buildInputs = transitivePkgs ++ optionals (!isConfPkg) depexts;
-      nativeBuildInputs = [ ]
+      buildInputs = transitiveDependsPkgs ++ optionals (!isConfPkg) depexts;
+      nativeBuildInputs = [ onixPathHook ]
+        ++ optionals (!isConfPkg) transitiveBuildPkgs
         ++ optionals (evalDepFlag dep.version withTest) testPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
         ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
@@ -116,9 +127,8 @@ let
       # For conf packages we need to propagate both build and native build
       # inputs because we don't know how they are used.
       # For example, consider conf-gmp and conf-pkg-config.
-      propagatedBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
-      propagatedNativeBuildInputs = buildPkgs
-        ++ optionals isConfPkg (depexts ++ buildPkgs);
+      propagatedBuildInputs = optionals isConfPkg depexts;
+      propagatedNativeBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
 
       ONIX_LOG_LEVEL = defaultLogLevel;
       ONIXPATH =
@@ -126,9 +136,9 @@ let
 
       # Set environment variables for OCaml library lookup. This needs to use
       # transitive dependencies as dune requires the full dependency tree.
-      OCAMLPATH = pkgPaths.libdir;
-      CAML_LD_LIBRARY_PATH = pkgPaths.stublibs;
-      OCAMLTOP_INCLUDE_PATH = pkgPaths.toplevel;
+      # OCAMLPATH = pkgPaths.libdir;
+      # CAML_LD_LIBRARY_PATH = pkgPaths.stublibs;
+      # OCAMLTOP_INCLUDE_PATH = pkgPaths.toplevel;
 
       prePatch = ''
         ${onix}/bin/onix opam-patch \
@@ -216,12 +226,6 @@ let
 
         runHook postInstall
       '';
-
-      shellHook = ''
-        export OCAMLPATH=${pkgPaths.libdir}
-        export CAML_LD_LIBRARY_PATH=${pkgPaths.stublibs}
-        export OCAMLTOP_INCLUDE_PATH=${pkgPaths.toplevel}
-      '';
     };
 
   # Convert an attrset with resolutions to a cmdline argument.
@@ -261,20 +265,21 @@ let
     in scope.overrideScope' overlay;
 
 in rec {
-  private = { inherit processDeps; };
+  private = { };
 
   build = { lockFile, overrides ? null, logLevel ? defaultLogLevel
     , withTest ? false, withDoc ? false, withDevSetup ? false }:
     let
-      onixLock = import lockFile { inherit pkgs; };
-      deps = processDeps { } (attrValues onixLock);
+      deps = import lockFile { inherit pkgs; };
       scope = buildScope { inherit withTest withDoc withDevSetup; } deps;
     in applyOverrides scope overrides;
 
   lock = { repoUrl ? defaultRepoUrl, resolutions ? null
     , lockFile ? defaultLockFile, logLevel ? defaultLogLevel, withTest ? false
     , withDoc ? false, withDevSetup ? false, opamFiles ? [ ] }:
-    let opamFilesStr = lib.strings.concatStrings (map (f: " " + f) opamFiles);
+    let
+      opamFilesStr = lib.strings.concatStrings
+        (map (f: " " + builtins.toString f) opamFiles);
     in pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = if isNull resolutions then ''

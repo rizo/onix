@@ -111,6 +111,7 @@
   - Support lock-file.
   - Support easy building of any package without nix lock.
   - Support offline mode.
+  - Prefetch packages to compute sha256 when md5 is used.
 - [ ] Help debug nix paths (eg show opam repo path)
 - [x] When the scope is built but there was a pkg override do we still build the pkg? Must not.
 - [x] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.
@@ -123,6 +124,7 @@
 - [ ] Include expanded patch/build/install commands in lock file.
   - This is not easy because substs need to happen during patch phase, which requires var lookup.
 - [ ] Ensure that strings, not paths, are passed to build/opamFiles.
+  - Using toString is not sufficient, the lock file will contain an absolute path.
 - [ ] If a dep is already in *buildInputs, does it need to be in nativeBuildInputs?
 - [ ] Test substs in a patch:
   - https://github.com/ocaml/opam-repository/blob/c0e9300f14d3570da85aad7e6e0ae47484a597a9/packages/fury-puyo/fury-puyo.0.5/opam
