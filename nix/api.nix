@@ -162,7 +162,7 @@ let
       buildPhase = ''
         runHook preBuild
 
-        ${onix}/bin/onix opam-build \
+        echo ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
           --opam=${dep.opam} \
           --with-test=${builtins.toJSON withTest} \
@@ -188,7 +188,7 @@ let
         runHook preInstall
 
         # .install files
-        ${pkgs.opaline}/bin/opaline \
+        echo ${pkgs.opaline}/bin/opaline \
           -prefix="$out" \
           -libdir="$out/lib/ocaml/${ocaml.version}/site-lib"
 
@@ -200,7 +200,7 @@ let
 
         mkdir -p "$OCAMLFIND_DESTDIR/${dep.name}"
 
-        ${onix}/bin/onix opam-install \
+        echo ${onix}/bin/onix opam-install \
           --ocaml-version=${ocaml.version} \
           --opam=${dep.opam} \
           --with-test=${builtins.toJSON withTest} \
