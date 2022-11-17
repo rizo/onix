@@ -23,13 +23,6 @@ let
         l1Attrs l2;
     in attrValues unionAttrs;
 
-  getTransitive = foldl' (acc: dep:
-    if hasAttr dep.name acc then
-      acc
-    else
-      let transitive = getTransitive { } (dep.depends or [ ]);
-      in acc // transitive // { ${dep.name} = dep; });
-
   evalDepFlag = version: depFlag:
     let isRoot = version == "root";
     in if depFlag == true then
@@ -58,10 +51,6 @@ let
       docPkgs = map (x: scope.${x.name}) (dep.docDepends or [ ]);
       devSetupPkgs = map (x: scope.${x.name}) (dep.devSetupDepends or [ ]);
       depexts = filter (x: !isNull x) (dep.depexts or [ ]);
-      transitiveDependsPkgs = map (x: scope.${x.name})
-        (attrValues ((getTransitive { } dep.depends or [ ])));
-      transitiveBuildPkgs = map (x: scope.${x.name})
-        (attrValues ((getTransitive { } dep.buildDepends or [ ])));
 
       src = dep.src or null;
       flags = dep.flags or [ ];
@@ -117,9 +106,9 @@ let
       dontStrip = true;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
-      buildInputs = transitiveDependsPkgs ++ optionals (!isConfPkg) depexts;
-      nativeBuildInputs = [ onixPathHook ]
-        ++ optionals (!isConfPkg) transitiveBuildPkgs
+      buildInputs = optionals (!isConfPkg) depexts;
+
+      nativeBuildInputs = [ onixPathHook ] ++ optionals (!isConfPkg) buildPkgs
         ++ optionals (evalDepFlag dep.version withTest) testPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
         ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
@@ -127,7 +116,7 @@ let
       # For conf packages we need to propagate both build and native build
       # inputs because we don't know how they are used.
       # For example, consider conf-gmp and conf-pkg-config.
-      propagatedBuildInputs = optionals isConfPkg depexts;
+      propagatedBuildInputs = dependsPkgs ++ optionals isConfPkg depexts;
       propagatedNativeBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
 
       ONIX_LOG_LEVEL = defaultLogLevel;
