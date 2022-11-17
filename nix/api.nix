@@ -63,9 +63,7 @@ let
       # - addHostOCamlPath: add to OCAMLTOP_INCLUDE_PATH to allow loading topfind (topkg).
       onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
         (pkgs.writeText "onix-path-hook.sh" ''
-          echo "+ ocaml-setup-hook: $1 $hostOffset"
           [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
-          echo "+ ocaml-setup-hook: $1 in"
 
           addTargetOCamlPath () {
             local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
@@ -73,7 +71,6 @@ let
             if [[ ! -d "$libdir" ]]; then
               return 0
             fi
-            echo "+ ocaml-setup-hook: addTargetOCamlPath: adding $1"
 
             addToSearchPath "OCAMLPATH" "$libdir"
             addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
@@ -85,7 +82,6 @@ let
             if [[ ! -d "$libdir" ]]; then
               return 0
             fi
-            echo "+ ocaml-setup-hook: addHostOCamlPath: adding $1"
 
             addToSearchPath "OCAMLPATH" "$libdir"
             addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$libdir/toplevel"
@@ -162,7 +158,7 @@ let
       buildPhase = ''
         runHook preBuild
 
-        echo ${onix}/bin/onix opam-build \
+        ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
           --opam=${dep.opam} \
           --with-test=${builtins.toJSON withTest} \
@@ -188,7 +184,7 @@ let
         runHook preInstall
 
         # .install files
-        echo ${pkgs.opaline}/bin/opaline \
+        ${pkgs.opaline}/bin/opaline \
           -prefix="$out" \
           -libdir="$out/lib/ocaml/${ocaml.version}/site-lib"
 
@@ -200,7 +196,7 @@ let
 
         mkdir -p "$OCAMLFIND_DESTDIR/${dep.name}"
 
-        echo ${onix}/bin/onix opam-install \
+        ${onix}/bin/onix opam-install \
           --ocaml-version=${ocaml.version} \
           --opam=${dep.opam} \
           --with-test=${builtins.toJSON withTest} \
