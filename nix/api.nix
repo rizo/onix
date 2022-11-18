@@ -55,10 +55,6 @@ let
       src = dep.src or null;
       flags = dep.flags or [ ];
 
-      # compiler is considered conf because ocaml-system needs its depexts
-      # exported.
-      isConfPkg = builtins.elem "conf" flags || builtins.elem "compiler" flags;
-
       # - addHostOCamlPath: add to OCAMLPATH for packages that use topkg (asetmap).
       # - addHostOCamlPath: add to OCAMLTOP_INCLUDE_PATH to allow loading topfind (topkg).
       onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
@@ -76,22 +72,10 @@ let
             addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
           }
 
-          addHostOCamlPath () {
-            local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
-
-            if [[ ! -d "$libdir" ]]; then
-              return 0
-            fi
-
-            addToSearchPath "OCAMLPATH" "$libdir"
-            addToSearchPath "OCAMLTOP_INCLUDE_PATH" "$libdir/toplevel"
-          }
-
-          # run for every buildInput
           addEnvHooks "$targetOffset" addTargetOCamlPath
-
-          addEnvHooks "$hostOffset" addHostOCamlPath
         '');
+
+      dependsAndBuildPkgs = pkgsUnion dependsPkgs buildPkgs;
 
     in stdenv.mkDerivation {
       inherit src;
@@ -99,31 +83,19 @@ let
       version = dep.version;
       dontUnpack = isNull src;
       strictDeps = true;
-      dontStrip = true;
+      dontStrip = false;
 
       checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
-      buildInputs = optionals (!isConfPkg) depexts;
-
-      nativeBuildInputs = [ onixPathHook ] ++ optionals (!isConfPkg) buildPkgs
+      nativeBuildInputs = [ onixPathHook ]
         ++ optionals (evalDepFlag dep.version withTest) testPkgs
         ++ optionals (evalDepFlag dep.version withDoc) docPkgs
         ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
 
-      # For conf packages we need to propagate both build and native build
-      # inputs because we don't know how they are used.
-      # For example, consider conf-gmp and conf-pkg-config.
-      propagatedBuildInputs = dependsPkgs ++ optionals isConfPkg depexts;
-      propagatedNativeBuildInputs = optionals isConfPkg (depexts ++ buildPkgs);
+      propagatedBuildInputs = dependsAndBuildPkgs ++ depexts;
+      propagatedNativeBuildInputs = buildPkgs ++ depexts;
 
       ONIX_LOG_LEVEL = defaultLogLevel;
-      ONIXPATH =
-        lib.strings.concatStringsSep ":" (pkgsUnion dependsPkgs buildPkgs);
-
-      # Set environment variables for OCaml library lookup. This needs to use
-      # transitive dependencies as dune requires the full dependency tree.
-      # OCAMLPATH = pkgPaths.libdir;
-      # CAML_LD_LIBRARY_PATH = pkgPaths.stublibs;
-      # OCAMLTOP_INCLUDE_PATH = pkgPaths.toplevel;
+      ONIXPATH = lib.strings.concatStringsSep ":" dependsAndBuildPkgs;
 
       prePatch = ''
         ${onix}/bin/onix opam-patch \
