@@ -3,7 +3,7 @@
 let
   defaultRepos = [ "https://github.com/ocaml/opam-repository.git" ];
   defaultLockFile = "onix-lock.json";
-  defaultLogLevel = "debug";
+  defaultLogLevel = "warning";
   defaultOverlay = import ./overlays/default.nix pkgs;
 
   inherit (builtins)
@@ -86,7 +86,8 @@ let
     builtins.replaceStrings [ "-" "~" ] [ "+" "+" ] version;
 
   # Build a package from a lock dependency.
-  buildPkg = { projectRoot, repoPath, scope, withTest, withDoc, withDevSetup }:
+  buildPkg =
+    { projectRoot, repoPath, logLevel, scope, withTest, withDoc, withDevSetup }:
     name: dep:
     let
       ocaml = scope.ocaml;
@@ -161,6 +162,7 @@ let
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
           --path=$out \
+          --verbosity=${logLevel} \
           ${name}.${dep.version}
       '';
 
@@ -196,6 +198,7 @@ let
           --with-doc=${builtins.toJSON withDoc} \
           --with-dev-setup=${builtins.toJSON withDevSetup} \
           --path=$out \
+          --verbosity=${logLevel} \
           ${name}.${dep.version}
 
         runHook postBuild
@@ -263,13 +266,14 @@ let
         name + "=" + value) resolutions);
 
   # Build a package scope from the locked deps.
-  buildScope = { projectRoot, repoPath, withTest, withDoc, withDevSetup }:
+  buildScope =
+    { projectRoot, repoPath, logLevel, withTest, withDoc, withDevSetup }:
     deps:
     pkgs.lib.makeScope pkgs.newScope (self:
       (mapAttrs' (name: dep: {
         inherit name;
         value = buildPkg {
-          inherit projectRoot repoPath withTest withDoc withDevSetup;
+          inherit projectRoot repoPath logLevel withTest withDoc withDevSetup;
           scope = self;
         } name dep;
       }) deps));
@@ -306,7 +310,7 @@ in rec {
       repoPath = joinRepositories repositories;
       deps = onixLock.packages;
       scope = buildScope {
-        inherit projectRoot repoPath withTest withDoc withDevSetup;
+        inherit projectRoot repoPath logLevel withTest withDoc withDevSetup;
       } deps;
     in applyOverrides scope overrides;
 
