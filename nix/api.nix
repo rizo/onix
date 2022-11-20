@@ -1,7 +1,7 @@
 { pkgs ? import <nixpkgs> { }, onix }:
 
 let
-  defaultRepoUrl = "https://github.com/ocaml/opam-repository.git";
+  defaultRepos = [ "https://github.com/ocaml/opam-repository.git" ];
   defaultLockFile = "onix-lock.json";
   defaultLogLevel = "debug";
   defaultOverlay = import ./overlays/default.nix pkgs;
@@ -283,6 +283,12 @@ let
         self: super: defaultOverlay self super // overrides self super;
     in scope.overrideScope' overlay;
 
+  joinRepositories = repositories:
+    pkgs.symlinkJoin {
+      name = "onix-opam-repo";
+      paths = map builtins.fetchGit repositories;
+    };
+
 in rec {
   private = { };
 
@@ -291,24 +297,26 @@ in rec {
     , withDoc ? false, withDevSetup ? false }:
     let
       onixLock = lib.importJSON lockFile;
-      repoPath = builtins.fetchGit onixLock.repository;
+      repositories = onixLock.repositories;
+      repoPath = joinRepositories repositories;
       deps = onixLock.packages;
       scope = buildScope {
         inherit projectRoot repoPath withTest withDoc withDevSetup;
       } deps;
     in applyOverrides scope overrides;
 
-  lock = { repoUrl ? defaultRepoUrl, resolutions ? null
+  lock = { repositories ? defaultRepos, resolutions ? null
     , lockFile ? defaultLockFile, logLevel ? defaultLogLevel, withTest ? false
     , withDoc ? false, withDevSetup ? false, opamFiles ? [ ] }:
     let
+      repositoriesStr = lib.strings.concatStringsSep "," repositories;
       opamFilesStr = lib.strings.concatStrings
         (map (f: " " + builtins.toString f) opamFiles);
     in pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = if isNull resolutions then ''
         onix lock \
-          --repo-url='${repoUrl}' \
+          --repositories='${repositoriesStr}' \
           --lock-file='${builtins.toString lockFile}' \
           --with-test=${builtins.toJSON withTest} \
           --with-doc=${builtins.toJSON withDoc} \
@@ -317,7 +325,7 @@ in rec {
         exit $?
       '' else ''
         onix lock \
-          --repo-url='${repoUrl}' \
+          --repositories='${repositoriesStr}' \
           --resolutions='${mkResolutionsArg resolutions}' \
           --lock-file='${builtins.toString lockFile}' \
           --with-test=${builtins.toJSON withTest} \

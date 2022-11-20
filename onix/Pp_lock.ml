@@ -6,21 +6,6 @@ let pp_name_quoted formatter name =
   let name = OpamPackage.Name.to_string name in
   Fmt.Dump.string formatter name
 
-let pp_version f version =
-  let version = OpamPackage.Version.to_string version in
-  (* We require that the version does NOT contain any '-' or '~' characters.
-     - Note that nix will replace '~' to '-' automatically.
-     The version is parsed with Nix_utils.parse_store_path by splitting bytes
-     '- ' to obtain the Pkg_ctx.package information.
-     This is fine because the version in the lock file is mostly informative. *)
-  let set_valid_char i =
-    match String.get version i with
-    | '-' | '~' -> '+'
-    | valid -> valid
-  in
-  let version = String.init (String.length version) set_valid_char in
-  Fmt.pf f "%S" version
-
 let pp_hash f (kind, hash) =
   match kind with
   | `SHA256 -> Fmt.pf f "\"sha256\": %S" hash
@@ -78,15 +63,21 @@ let pp_pkg ppf (t : Lock_pkg.t) =
 
 let pp_version f version = Fmt.pf f "\"version\": %S" version
 
-let pp_repo_uri f repo_url =
-  match repo_url.OpamUrl.hash with
-  | Some rev ->
-    Fmt.pf f "@[<v2>\"repository\": {@ \"url\": %a,@ \"rev\": %S@]@,}"
-      (Fmt.quote Opam_utils.pp_url)
-      { repo_url with OpamUrl.hash = None }
-      rev
-  | None ->
-    Fmt.invalid_arg "Repo URI without fragment: %a" Opam_utils.pp_url repo_url
+let pp_repos =
+  let pp_repo_url ppf repo_url =
+    match repo_url.OpamUrl.hash with
+    | None ->
+      Fmt.invalid_arg "Repo URI without fragment: %a" Opam_utils.pp_url repo_url
+    | Some rev ->
+      Fmt.pf ppf "@[<v2>{@ \"url\": %a,@ \"rev\": %S@]@,}"
+        (Fmt.quote Opam_utils.pp_url)
+        { repo_url with OpamUrl.hash = None }
+        rev
+  in
+  fun f repos ->
+    Fmt.pf f "@[<v2>\"repositories\": [@,%a@]@,]"
+      (Fmt.list ~sep:Fmt.comma pp_repo_url)
+      repos
 
 let pp_packages f deps =
   let pp_pkg fmt pkg =
@@ -97,5 +88,5 @@ let pp_packages f deps =
   Fmt.pf f "@[<v2>\"packages\" : {@,%a@]@,}" (Fmt.hvbox pp_list) deps
 
 let pp fmt (t : Lock_file.t) =
-  Fmt.pf fmt {|{@[<v2>@,%a,@,%a,@,%a@]@,}@.|} pp_version Lib.version pp_repo_uri
-    t.repo pp_packages t.packages
+  Fmt.pf fmt {|{@[<v2>@,%a,@,%a,@,%a@]@,}@.|} pp_version Lib.version pp_repos
+    t.repos pp_packages t.packages

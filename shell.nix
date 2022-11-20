@@ -1,10 +1,7 @@
-{ pkgs ? import <nixpkgs> { } }:
-let onix = import ./. { inherit pkgs; };
+{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_4_14
+}:
+let onix = import ./. { inherit pkgs ocamlPackages; };
 in pkgs.mkShell {
   inputsFrom = [ onix ];
-  buildInputs = [
-    pkgs.nixfmt
-    pkgs.ocaml-ng.ocamlPackages_4_14.ocaml-lsp
-    pkgs.ocamlformat
-  ];
+  buildInputs = [ pkgs.nixfmt ocamlPackages.ocaml-lsp pkgs.ocamlformat ];
 }

@@ -112,6 +112,7 @@
   - Support easy building of any package without nix lock.
   - Support offline mode.
   - Prefetch packages to compute sha256 when md5 is used.
+  - Support multiple opam repositories.
 - [ ] Help debug nix paths (eg show opam repo path)
 - [x] When the scope is built but there was a pkg override do we still build the pkg? Must not.
 - [x] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.

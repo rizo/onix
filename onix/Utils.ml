@@ -38,6 +38,11 @@ module List = struct
   let is_not_empty = function
     | [] -> false
     | _ -> true
+
+  let is_singleton t =
+    match t with
+    | [_] -> true
+    | _ -> false
 end
 
 module String = struct
