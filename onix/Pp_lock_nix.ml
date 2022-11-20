@@ -15,14 +15,9 @@ let opam_path_for_locked_package (t : Lock_pkg.t) =
     let name_with_version = OpamPackage.to_string pkg in
     "${repo}/packages/" </> name </> name_with_version </> "opam"
 
-let pp_name_escape_with_enderscore formatter name =
+let pp_name_quoted formatter name =
   let name = OpamPackage.Name.to_string name in
-  if Utils.String.starts_with_number name then Fmt.string formatter ("_" ^ name)
-  else Fmt.string formatter name
-
-let pp_string_escape_quotted formatter str =
-  if Utils.String.starts_with_number str then Fmt.Dump.string formatter str
-  else Fmt.string formatter str
+  Fmt.Dump.string formatter name
 
 let pp_version f version =
   let version = OpamPackage.Version.to_string version in
@@ -45,7 +40,7 @@ let pp_hash f (kind, hash) =
   | `SHA512 -> Fmt.pf f "sha512 = %S" hash
   | `MD5 -> Fmt.pf f "md5 = %S" hash
 
-let pp_src ~ignore_file f (t : Lock_pkg.t) =
+let pp_src_ ~ignore_file f (t : Lock_pkg.t) =
   if Lock_pkg.is_root t then
     let path =
       let opam_path = t.opam_details.Opam_utils.path in
@@ -81,25 +76,40 @@ let pp_src ~ignore_file f (t : Lock_pkg.t) =
         (Fmt.quote Opam_utils.pp_url)
         url pp_hash hash
 
+let pp_src f (t : Lock_pkg.t) =
+  if Lock_pkg.is_root t then
+    let path =
+      let opam_path = t.opam_details.Opam_utils.path in
+      let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
+      if String.equal path "./." || String.equal path "./" then "." else path
+    in
+    Fmt.pf f "@,src = { url = \"file://%s\"; };" path
+  else
+    match t.src with
+    | None -> ()
+    | Some (Git { url; rev }) ->
+      Fmt.pf f "@,@[<v2>src = {@,url = \"git+%s\";@,rev = %S;@]@,};" url rev
+    (* MD5 hashes are not supported by Nix fetchers. Fetch without hash.
+       This normally would not happen as we try to prefetch_src_if_md5. *)
+    | Some (Http { url; hash = `MD5, _ }) ->
+      Fmt.invalid_arg "Unexpected md5 hash: package=%a url=%a"
+        Opam_utils.pp_package t.opam_details.package Opam_utils.pp_url url
+    | Some (Http { url; hash }) ->
+      Fmt.pf f "@,@[<v2>src = {@,url = %a;@,%a;@]@,};"
+        (Fmt.quote Opam_utils.pp_url)
+        url pp_hash hash
+
 let pp_depends_sets name f req =
-  let pp_req f =
-    Name_set.iter (fun dep ->
-        Fmt.pf f "@ %a" pp_name_escape_with_enderscore dep)
+  let pp_dep f =
+    Name_set.iter (fun dep -> Fmt.pf f "@ %a" pp_name_quoted dep)
   in
   if Name_set.is_empty req then ()
-  else Fmt.pf f "@ %s = [@[<hov1>%a@ @]];" name pp_req req
+  else Fmt.pf f "@ %s = [@[<hov1>%a@ @]];" name pp_dep req
 
 let pp_depexts_sets name f (req, opt) =
-  let pp_req f =
-    String_set.iter (fun dep ->
-        Fmt.pf f "@ pkgs.%a" pp_string_escape_quotted dep)
-  in
-  let pp_opt f =
-    String_set.iter (fun dep ->
-        Fmt.pf f "@ (pkgs.%a or null)" pp_string_escape_quotted dep)
-  in
+  let pp_dep f = String_set.iter (fun dep -> Fmt.pf f "@ %S" dep) in
   if String_set.is_empty req && String_set.is_empty opt then ()
-  else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
+  else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_dep req pp_dep opt
 
 let pp_flags f flags =
   if List.is_empty flags then ()
@@ -112,7 +122,7 @@ let pp_pkg ~ignore_file f (t : Lock_pkg.t) =
   let name = OpamPackage.name_to_string t.opam_details.package in
   let version = OpamPackage.version t.opam_details.package in
   Format.fprintf f "name = %S;@ version = %a;%a@ opam = %S;%a%a%a%a%a%a%a" name
-    pp_version version (pp_src ~ignore_file) t
+    pp_version version pp_src t
     (opam_path_for_locked_package t)
     (pp_depends_sets "depends")
     t.depends
@@ -145,8 +155,8 @@ let pp_repo_uri f repo_url =
 
 let pp_packages ~ignore_file f deps =
   let pp_pkg fmt pkg =
-    Fmt.pf fmt "@[<v2>%a = {@ %a@]@,}" pp_name_escape_with_enderscore
-      (Lock_pkg.name pkg) (pp_pkg ~ignore_file) pkg
+    Fmt.pf fmt "@[<v2>%a = {@ %a@]@,}" pp_name_quoted (Lock_pkg.name pkg)
+      (pp_pkg ~ignore_file) pkg
   in
   let pp_list = Fmt.iter ~sep:(Fmt.any ";@,") List.iter pp_pkg in
   Fmt.pf f "@[<v2>rec {@,%a;@]@,}@]" (Fmt.hvbox pp_list) deps

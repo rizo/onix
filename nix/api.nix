@@ -7,10 +7,11 @@ let
   defaultOverlay = import ./overlays/default.nix pkgs;
 
   inherit (builtins)
-    filter trace hasAttr getAttr setAttr attrNames attrValues mapAttrs concatMap
+    filter trace hasAttr getAttr setAttr attrNames attrValues concatMap
     pathExists foldl';
   inherit (pkgs) lib stdenv;
-  inherit (lib) optionalString;
+  inherit (pkgs.lib) optionalString;
+  inherit (pkgs.lib.attrsets) mapAttrs';
   inherit (pkgs.lib.lists) optional optionals;
 
   pkgsUnion = l1: l2:
@@ -36,27 +37,61 @@ let
     else
       throw "invalid dependency flag value: ${depFlag}";
 
-  optionalsPkg = name: pkgs:
-    lib.lists.toList (lib.lists.findFirst (x: x.name == name) [ ] pkgs);
+  fetchSrc = { projectRoot, gitignore ? null }:
+    name: src:
+    let urlLen = builtins.stringLength src.url;
+    in if lib.strings.hasPrefix "file://" src.url then
+    # local url
+      let
+        path = builtins.substring 7 (urlLen - 7) src.url;
+        projectPath = if path == "." || path == "./." || path == "./" then
+          projectRoot
+        else
+          "${projectRoot}/path";
+      in (if isNull gitignore then
+        projectPath
+      else if gitignore == ".gitignore" then
+        pkgs.nix-gitignore.gitignoreSource [ ] projectPath
+      else
+        pkgs.nix-gitignore.gitignoreSourcePure [ gitignore ] projectPath)
+    else if lib.strings.hasPrefix "git+" src.url then
+    # git url
+      builtins.fetchGit {
+        url = builtins.substring 4 (urlLen - 4) src.url;
+        inherit (src) rev;
+        allRefs = true;
+      }
+    else if lib.strings.hasPrefix "http" src.url then
+    # http url
+      pkgs.fetchurl src
+    else
+      throw "invalid src for package ${name}: ${builtins.toJSON src}";
 
   # Build a package from a lock dependency.
-  buildPkg = { scope, withTest, withDoc, withDevSetup }:
-    name: dep:
+  buildPkg = { projectRoot, scope, withTest, withDoc, withDevSetup }:
+    dep:
     let
       ocaml = scope.ocaml;
 
-      dependsPkgs = map (x: scope.${x.name}) (dep.depends or [ ]);
-      buildPkgs = map (x: scope.${x.name}) (dep.buildDepends or [ ]);
-      testPkgs = map (x: scope.${x.name}) (dep.testDepends or [ ]);
-      docPkgs = map (x: scope.${x.name}) (dep.docDepends or [ ]);
-      devSetupPkgs = map (x: scope.${x.name}) (dep.devSetupDepends or [ ]);
-      depexts = filter (x: !isNull x) (dep.depexts or [ ]);
+      dependsPkgs = map (dep': scope.${dep'}) (dep.depends or [ ]);
+      buildPkgs = map (dep': scope.${dep'}) (dep.buildDepends or [ ]);
+      testPkgs = map (dep': scope.${dep'}) (dep.testDepends or [ ]);
+      docPkgs = map (dep': scope.${dep'}) (dep.docDepends or [ ]);
+      devSetupPkgs = map (dep': scope.${dep'}) (dep.devSetupDepends or [ ]);
 
-      src = dep.src or null;
+      # Ex: "ocaml-ng.ocamlPackages_4_14.ocaml" -> pkgs.ocaml-ng.ocamlPackages_4_14.ocaml
+      depexts = concatMap (pkgKey:
+        let pkgPath = (lib.strings.splitString "." pkgKey);
+        in lib.lists.toList (lib.attrsets.attrByPath pkgPath [ ] pkgs))
+        (dep.depexts or [ ]);
+
+      src = if dep ? src then
+        fetchSrc { inherit projectRoot; } dep.name dep.src
+      else
+        null;
+
       flags = dep.flags or [ ];
 
-      # - addHostOCamlPath: add to OCAMLPATH for packages that use topkg (asetmap).
-      # - addHostOCamlPath: add to OCAMLTOP_INCLUDE_PATH to allow loading topfind (topkg).
       onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
         (pkgs.writeText "onix-path-hook.sh" ''
           [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
@@ -79,7 +114,7 @@ let
 
     in stdenv.mkDerivation {
       inherit src;
-      pname = name;
+      pname = dep.name;
       version = dep.version;
       dontUnpack = isNull src;
       strictDeps = true;
@@ -204,12 +239,15 @@ let
         name + "=" + value) resolutions);
 
   # Build a package scope from the locked deps.
-  buildScope = { withTest, withDoc, withDevSetup }:
+  buildScope = { projectRoot, withTest, withDoc, withDevSetup }:
     deps:
     pkgs.lib.makeScope pkgs.newScope (self:
-      (mapAttrs (buildPkg {
-        inherit withTest withDoc withDevSetup;
-        scope = self;
+      (mapAttrs' (_name: dep: {
+        name = dep.name;
+        value = buildPkg {
+          inherit projectRoot withTest withDoc withDevSetup;
+          scope = self;
+        } dep;
       }) deps));
 
   # Apply default and user-provided overrides to the scope.
@@ -224,11 +262,13 @@ let
 in rec {
   private = { };
 
-  build = { lockFile, overrides ? null, logLevel ? defaultLogLevel
-    , withTest ? false, withDoc ? false, withDevSetup ? false }:
+  build = { projectRoot, lockFile ? projectRoot ++ "/onix-lock.nix"
+    , overrides ? null, logLevel ? defaultLogLevel, withTest ? false
+    , withDoc ? false, withDevSetup ? false }:
     let
       deps = import lockFile { inherit pkgs; };
-      scope = buildScope { inherit withTest withDoc withDevSetup; } deps;
+      scope =
+        buildScope { inherit projectRoot withTest withDoc withDevSetup; } deps;
     in applyOverrides scope overrides;
 
   lock = { repoUrl ? defaultRepoUrl, resolutions ? null
