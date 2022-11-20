@@ -284,10 +284,15 @@ let
     in scope.overrideScope' overlay;
 
   joinRepositories = repositories:
-    pkgs.symlinkJoin {
-      name = "onix-opam-repo";
-      paths = map builtins.fetchGit repositories;
-    };
+    if builtins.length repositories == 1 then
+      builtins.fetchGit (builtins.head repositories)
+    else if repositories == [ ] then
+      throw "No opam repositories found!"
+    else
+      pkgs.symlinkJoin {
+        name = "onix-opam-repository";
+        paths = map builtins.fetchGit repositories;
+      };
 
 in rec {
   private = { };
