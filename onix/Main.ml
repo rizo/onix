@@ -200,24 +200,10 @@ module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level ignore_file lock_file_path repo_url
-      resolutions with_test with_doc with_dev_setup input_opam_files =
+  let run style_renderer log_level lock_file_path repo_url resolutions with_test
+      with_doc with_dev_setup input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
-
-    let ignore_file =
-      if String.equal ignore_file "none" then None
-      else if Sys.file_exists ignore_file then (
-        Logs.debug (fun log ->
-            log "Using %S ignore file to filter root sources." ignore_file);
-        Some ignore_file)
-      else (
-        Logs.warn (fun log ->
-            log
-              "The ignore file %S does not exist, will not filter root sources."
-              ignore_file);
-        None)
-    in
 
     let lock_file =
       Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc
@@ -225,7 +211,7 @@ module Lock = struct
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" (Onix.Pp_lock_nix.pp ~ignore_file) lock_file);
+        Fmt.pf out "%a" Onix.Pp_lock.pp lock_file);
     Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
@@ -236,7 +222,6 @@ module Lock = struct
         const run
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
-        $ ignore_file_arg
         $ lock_file_arg
         $ repo_url_arg
         $ resolutions_arg
