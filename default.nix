@@ -9,7 +9,7 @@ let
     version = "0.0.1";
     duneVersion = "3";
 
-    passthru = { inherit (api) build lock shell private; };
+    passthru = { inherit (api) project; };
 
     src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 

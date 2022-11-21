@@ -1,9 +1,6 @@
 { pkgs ? import <nixpkgs> { }, onix }:
 
 let
-  defaultRepos = [ "https://github.com/ocaml/opam-repository.git" ];
-  defaultLockFile = "onix-lock.json";
-  defaultLogLevel = "warning";
   defaultOverlay = import ./overlays/default.nix pkgs;
 
   inherit (builtins)
@@ -37,16 +34,16 @@ let
     else
       throw "invalid dependency flag value: ${depFlag}";
 
-  fetchSrc = { projectRoot, name, src }:
+  fetchSrc = { rootDir, name, src }:
     let urlLen = builtins.stringLength src.url;
     in if lib.strings.hasPrefix "file://" src.url then
     # local url
       let
         path = builtins.substring 7 (urlLen - 7) src.url;
         projectPath = if path == "." || path == "./." || path == "./" then
-          projectRoot
+          rootDir
         else
-          "${projectRoot}/path";
+          "${rootDir}/${path}";
       in (if pathExists "${projectPath}/.gitignore" then
         pkgs.nix-gitignore.gitignoreSource [ ] projectPath
       else
@@ -86,10 +83,10 @@ let
     builtins.replaceStrings [ "-" "~" ] [ "+" "+" ] version;
 
   # Build a package from a lock dependency.
-  buildPkg =
-    { projectRoot, repoPath, logLevel, scope, withTest, withDoc, withDevSetup }:
+  buildPkg = { rootDir, repoPath, verbosity, scope, flags }:
     name: dep:
     let
+      inherit (flags) with-test with-doc with-dev-setup;
       ocaml = scope.ocaml;
 
       dependsPkgs = map (dep': scope.${dep'}) (dep.depends or [ ]);
@@ -106,7 +103,7 @@ let
 
       src = if dep ? src then
         fetchSrc {
-          inherit projectRoot name;
+          inherit rootDir name;
           inherit (dep) src;
         }
       else
@@ -145,16 +142,16 @@ let
       strictDeps = true;
       dontStrip = false;
 
-      checkInputs = optionals (evalDepFlag dep.version withTest) testPkgs;
+      checkInputs = optionals (evalDepFlag dep.version with-test) testPkgs;
       nativeBuildInputs = [ onixPathHook ]
-        ++ optionals (evalDepFlag dep.version withTest) testPkgs
-        ++ optionals (evalDepFlag dep.version withDoc) docPkgs
-        ++ optionals (evalDepFlag dep.version withDevSetup) devSetupPkgs;
+        ++ optionals (evalDepFlag dep.version with-test) testPkgs
+        ++ optionals (evalDepFlag dep.version with-doc) docPkgs
+        ++ optionals (evalDepFlag dep.version with-dev-setup) devSetupPkgs;
 
       propagatedBuildInputs = dependsAndBuildPkgs ++ depexts;
       propagatedNativeBuildInputs = buildPkgs ++ depexts;
 
-      ONIX_LOG_LEVEL = defaultLogLevel;
+      ONIX_LOG_LEVEL = verbosity;
       ONIXPATH = lib.strings.concatStringsSep ":" dependsAndBuildPkgs;
 
       prePatch = ''
@@ -162,7 +159,7 @@ let
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
           --path=$out \
-          --verbosity=${logLevel} \
+          --verbosity=${verbosity} \
           ${name}.${dep.version}
       '';
 
@@ -194,11 +191,11 @@ let
         ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON withTest} \
-          --with-doc=${builtins.toJSON withDoc} \
-          --with-dev-setup=${builtins.toJSON withDevSetup} \
+          --with-test=${builtins.toJSON with-test} \
+          --with-doc=${builtins.toJSON with-doc} \
+          --with-dev-setup=${builtins.toJSON with-dev-setup} \
           --path=$out \
-          --verbosity=${logLevel} \
+          --verbosity=${verbosity} \
           ${name}.${dep.version}
 
         runHook postBuild
@@ -233,9 +230,9 @@ let
         ${onix}/bin/onix opam-install \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON withTest} \
-          --with-doc=${builtins.toJSON withDoc} \
-          --with-dev-setup=${builtins.toJSON withDevSetup} \
+          --with-test=${builtins.toJSON with-test} \
+          --with-doc=${builtins.toJSON with-doc} \
+          --with-dev-setup=${builtins.toJSON with-dev-setup} \
           --path=$out \
           ${name}.${dep.version}
 
@@ -265,19 +262,6 @@ let
       # pkg = "X"
         name + "=" + value) resolutions);
 
-  # Build a package scope from the locked deps.
-  buildScope =
-    { projectRoot, repoPath, logLevel, withTest, withDoc, withDevSetup }:
-    deps:
-    pkgs.lib.makeScope pkgs.newScope (self:
-      (mapAttrs' (name: dep: {
-        inherit name;
-        value = buildPkg {
-          inherit projectRoot repoPath logLevel withTest withDoc withDevSetup;
-          scope = self;
-        } name dep;
-      }) deps));
-
   # Apply default and user-provided overrides to the scope.
   applyOverrides = scope: overrides:
     let
@@ -298,50 +282,107 @@ let
         paths = map builtins.fetchGit repositories;
       };
 
-in rec {
-  private = { };
-
-  build = { projectRoot, lockFile ? "${projectRoot}/${defaultLockFile}"
-    , overrides ? null, logLevel ? defaultLogLevel, withTest ? false
-    , withDoc ? false, withDevSetup ? false }:
-    let
-      onixLock = lib.importJSON lockFile;
-      repositories = onixLock.repositories;
-      repoPath = joinRepositories repositories;
-      deps = onixLock.packages;
-      scope = buildScope {
-        inherit projectRoot repoPath logLevel withTest withDoc withDevSetup;
-      } deps;
-    in applyOverrides scope overrides;
-
-  lock = { repositories ? defaultRepos, resolutions ? null
-    , lockFile ? defaultLockFile, logLevel ? defaultLogLevel, withTest ? false
-    , withDoc ? false, withDevSetup ? false, opamFiles ? [ ] }:
+  mkLock = { lock, roots, repositories, resolutions, verbosity, flags }:
     let
       repositoriesStr = lib.strings.concatStringsSep "," repositories;
-      opamFilesStr = lib.strings.concatStrings
-        (map (f: " " + builtins.toString f) opamFiles);
+      rootsStr = lib.strings.concatStrings (map (f: " " + f) roots);
     in pkgs.mkShell {
       buildInputs = [ onix ];
-      shellHook = if isNull resolutions then ''
-        onix lock \
-          --repositories='${repositoriesStr}' \
-          --lock-file='${builtins.toString lockFile}' \
-          --with-test=${builtins.toJSON withTest} \
-          --with-doc=${builtins.toJSON withDoc} \
-          --with-dev-setup=${builtins.toJSON withDevSetup} \
-          --verbosity='${logLevel}'${opamFilesStr}
-        exit $?
-      '' else ''
+      shellHook = ''
+        set -x
         onix lock \
           --repositories='${repositoriesStr}' \
           --resolutions='${mkResolutionsArg resolutions}' \
-          --lock-file='${builtins.toString lockFile}' \
-          --with-test=${builtins.toJSON withTest} \
-          --with-doc=${builtins.toJSON withDoc} \
-          --with-dev-setup=${builtins.toJSON withDevSetup} \
-          --verbosity='${logLevel}'${opamFilesStr}
+          --lock-file='${builtins.toString lock}' \
+          --with-test=${builtins.toJSON flags.with-test} \
+          --with-doc=${builtins.toJSON flags.with-doc} \
+          --with-dev-setup=${builtins.toJSON flags.with-dev-setup} \
+          --verbosity='${verbosity}'${rootsStr}
         exit $?
+        set +x
       '';
+    };
+
+  mkScope = { rootDir, lock, overrides, verbosity, flags }:
+    let
+      onixLock = lib.importJSON "${rootDir}/${lock}";
+      repositories = onixLock.repositories;
+      repoPath = joinRepositories repositories;
+      deps = onixLock.packages;
+
+      # Build a package scope from the locked deps.
+      scope = pkgs.lib.makeScope pkgs.newScope (self:
+        (mapAttrs' (name: dep: {
+          inherit name;
+          value = buildPkg {
+            inherit rootDir repoPath verbosity flags;
+            scope = self;
+          } name dep;
+        }) deps));
+    in applyOverrides scope overrides;
+
+in {
+  project = rootDir:
+    {
+    # The paths of the root opam files.
+    # Will lookup all at the project root dir by default.
+    roots ? [ ],
+
+    # The path of the lock file. Must be in the root dir of the project.
+    lock ? "onix-lock.json",
+
+    # The URLs of OPAM package repositories.
+    repositories ? [ "https://github.com/ocaml/opam-repository.git" ],
+
+    # Additional dependency resolutions.
+    resolutions ? { },
+
+    # Package overrides.
+    overrides ? null,
+
+    # Verbosity of the onix tool.
+    verbosity ? "info",
+
+    # Dependency flags: with-test, with-doc, with-dev-setup.
+    flags ? { } }:
+
+    let
+      allFlags = {
+        with-test = false;
+        with-doc = false;
+        with-dev-setup = false;
+      } // flags;
+
+      scope = mkScope {
+        inherit rootDir lock overrides verbosity;
+        flags = allFlags;
+      };
+
+      relativeRoots = map (path:
+        lib.strings.removePrefix (builtins.toString rootDir + "/")
+        (builtins.toString path)) roots;
+
+      roots = lib.attrsets.filterAttrs
+        (n: p: builtins.isAttrs p && p.version == "root") scope;
+    in {
+      # Resolve the dependencies and generate a lock file.
+      lock = mkLock {
+        inherit lock repositories resolutions verbosity;
+        flags = allFlags;
+        roots = relativeRoots;
+      };
+
+      # Build the project with custom dependency flags.
+      build = { with-test ? false, with-doc ? false, with-dev-setup ? false }:
+        mkScope { inherit rootDir lock overrides verbosity flags; };
+
+      pkgs = scope;
+
+      roots = pkgs.linkFarm (builtins.baseNameOf rootDir + "-roots") (map (r: {
+        name = r.name;
+        path = r;
+      }) (lib.attrsets.attrValues roots));
+
+      shell = pkgs.mkShell { inputsFrom = lib.attrsets.attrValues roots; };
     };
 }

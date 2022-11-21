@@ -73,5 +73,9 @@ let
       ];
     });
   };
-in common
-// nixpkgs.lib.optionalAttrs nixpkgs.stdenv.hostPlatform.isDarwin darwin
+
+  all = common
+    // nixpkgs.lib.optionalAttrs nixpkgs.stdenv.hostPlatform.isDarwin darwin;
+
+  # Remove overrides for packages not present in scope.
+in lib.attrsets.filterAttrs (name: _: builtins.hasAttr name super) all
