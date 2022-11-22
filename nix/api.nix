@@ -1,6 +1,7 @@
 { pkgs ? import <nixpkgs> { }, onix }:
 
 let
+  debug = data: x: builtins.trace "onix: [DEBUG] ${builtins.toJSON data}" x;
   defaultOverlay = import ./overlays/default.nix pkgs;
 
   inherit (builtins)
@@ -282,7 +283,7 @@ let
         paths = map builtins.fetchGit repositories;
       };
 
-  mkLock = { lock, roots, repositories, resolutions, verbosity, flags }:
+  mkLock = { lockPath, roots, repositories, resolutions, verbosity, flags }:
     let
       repositoriesStr = lib.strings.concatStringsSep "," repositories;
       rootsStr = lib.strings.concatStrings (map (f: " " + f) roots);
@@ -293,7 +294,7 @@ let
         onix lock \
           --repositories='${repositoriesStr}' \
           --resolutions='${mkResolutionsArg resolutions}' \
-          --lock-file='${builtins.toString lock}' \
+          --lock-file='${lockPath}' \
           --with-test=${builtins.toJSON flags.with-test} \
           --with-doc=${builtins.toJSON flags.with-doc} \
           --with-dev-setup=${builtins.toJSON flags.with-dev-setup} \
@@ -303,9 +304,8 @@ let
       '';
     };
 
-  mkScope = { rootDir, lock, overrides, verbosity, flags }:
+  mkScope = { rootDir, onixLock, overrides, verbosity, flags }:
     let
-      onixLock = lib.importJSON "${rootDir}/${lock}";
       repositories = onixLock.repositories;
       repoPath = joinRepositories repositories;
       deps = onixLock.packages;
@@ -322,7 +322,7 @@ let
     in applyOverrides scope overrides;
 
 in {
-  project = rootDir:
+  project = rootDirArg:
     {
     # The paths of the root opam files.
     # Will lookup all at the project root dir by default.
@@ -343,46 +343,66 @@ in {
     # Verbosity of the onix tool.
     verbosity ? "info",
 
-    # Dependency flags: with-test, with-doc, with-dev-setup.
-    flags ? { } }:
+    # Apply gitignore to root directory: true|false|path
+    gitignore ? true,
+
+    flags ? { }, }:
 
     let
-      allFlags = {
+      rootDir = if builtins.isBool gitignore && gitignore
+      && builtins.pathExists "${builtins.toString rootDirArg}/.gitignore" then
+        pkgs.nix-gitignore.gitignoreSource [ ] rootDirArg
+      else if builtins.isBool gitignore && !gitignore then
+        builtins.toString rootDirArg
+      else if builtins.isPath gitignore && builtins.pathExists gitignore then
+        pkgs.nix-gitignore.gitignoreSourcePure [ gitignore ]
+        (builtins.toString rootDirArg)
+      else
+        throw "onix.project: gitignore must be either a bool or a path";
+
+      lockPath = if builtins.isPath lock then
+        builtins.toString lock
+      else
+        "${builtins.toString rootDirArg}/${builtins.toString lock}";
+
+      onixLock = lib.importJSON lockPath;
+
+      flags' = {
         with-test = false;
         with-doc = false;
         with-dev-setup = false;
       } // flags;
 
-      scope = mkScope {
-        inherit rootDir lock overrides verbosity;
-        flags = allFlags;
-      };
-
       relativeRoots = map (path:
-        lib.strings.removePrefix (builtins.toString rootDir + "/")
-        (builtins.toString path)) roots;
+        lib.strings.removePrefix (rootDir + "/") (builtins.toString path))
+        roots;
 
-      roots = lib.attrsets.filterAttrs
-        (n: p: builtins.isAttrs p && p.version == "root") scope;
-    in {
-      # Resolve the dependencies and generate a lock file.
-      lock = mkLock {
-        inherit lock repositories resolutions verbosity;
-        flags = allFlags;
-        roots = relativeRoots;
+      lockPkgs = mkScope {
+        inherit rootDir onixLock overrides verbosity;
+        flags = flags';
       };
 
-      # Build the project with custom dependency flags.
-      build = { with-test ? false, with-doc ? false, with-dev-setup ? false }:
-        mkScope { inherit rootDir lock overrides verbosity flags; };
+      rootPkgs = lib.attrsets.filterAttrs
+        (n: p: builtins.isAttrs p && p.version == "root") lockPkgs;
 
-      pkgs = scope;
+    in {
+      # Generate a lock file.
+      lock = mkLock {
+        inherit lockPath repositories resolutions verbosity;
+        roots = relativeRoots;
+        flags = flags';
+      };
 
+      # All packages with standard options.
+      pkgs = lockPkgs;
+
+      # Build the root packages link farm.
       roots = pkgs.linkFarm (builtins.baseNameOf rootDir + "-roots") (map (r: {
         name = r.name;
         path = r;
-      }) (lib.attrsets.attrValues roots));
+      }) (lib.attrsets.attrValues rootPkgs));
 
-      shell = pkgs.mkShell { inputsFrom = lib.attrsets.attrValues roots; };
+      # Create a shell for root packages.
+      shell = pkgs.mkShell { inputsFrom = lib.attrsets.attrValues rootPkgs; };
     };
 }

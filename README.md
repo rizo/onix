@@ -77,7 +77,7 @@ $ nix-shell -A shell
 ### `onix.project`
 
 ```nix
-let project = onix.project {
+let project = onix.project ./. {
   # The paths of the root opam files.
   # Will lookup all at the project root dir by default.
   roots ? [ ],
@@ -91,19 +91,22 @@ let project = onix.project {
   # Additional dependency resolutions.
   resolutions ? { },
 
-
   # Package overrides.
   overrides ? null,
 
   # Verbosity of the onix tool.
   verbosity ? "warning",
 
-  # Dependency flags for resolution.
+  # Flags for dependency resolution.
   flags ? {
     with-test = false;
     with-doc = false;
     with-dev-setup = false;
-  }
+  },
+
+  # Apply gitignore filter to project directory.
+  # Possible values: true, false, path to gitignore file.
+  gitignore ? true
 };
 ```
 
@@ -116,16 +119,9 @@ project.lock
 # A package set with all project packages.
 project.pkgs
 
-# A package set with all root pacakges.
+# Build all root pacakges.
 project.roots
 
-# A package set with all root pacakges.
-project.build {
-  with-test = true;
-  with-doc = true;
-  with-dev-setup = true;
-}
-
-# Start a development shell for root packages.
+# Start a shell for root packages.
 project.shell
 ```
