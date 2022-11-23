@@ -58,7 +58,7 @@
 - [ ] Remove empty libdir after install (should at least have opam!!)?
   - [ ] Install repo's opam, the monads pkg does not install opam for example.
 - [ ] Document that opam vars can be set by defining OPAM_VAR_pkg_name.
-- [ ] Consider using opaline.
+- [x] Consider using opaline.
   - Or we could even intall ourselves with OpamFile.Dot_install.
   - https://docs.ocaml.pro/docs/LIBRARY.opam_format@opam-format.2.0.8/OpamFile/Dot_install/index.html
 - [ ] Implement onix shell.
@@ -67,11 +67,11 @@
 - [ ] Add a command similar to `opam var` to lookup package variables?
 - [ ] Improve error-handling.
 - [ ] Build any package without a project `onix build utop` or similar.
-- [ ] ~~Make depends/depexts optional fields.~~ No longer needed for new build context.
+- [x] ~~Make depends/depexts optional fields.~~ No longer needed for new build context.
 - [ ] Handle empty lock file.
 - [ ] Fetch opam extra-source files.
 - [ ] Always patch shebangs?
-- [ ] ~~Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?~~
+- [x] ~~Do we need to pass --ocaml-version? Can we expect OCaml to be always in the path?~~
   - [ ] Pass package nv to opam actions. This will fix the develop $out issue.
 - [x] Add an example with overrides.
 - [ ] Support static compilation.
@@ -81,15 +81,16 @@
 - [x] ~~Use strictDeps. This will require handling conf- packages in the lock file.~~
   - Added a build option.
 - [ ] Handle lock file without ocaml.
-- [ ] Version the lock file.
+- [x] Version the lock file.
   - Add version, packages and repo fields.
-- [ ] Consider using joinSymlinks to create a build scope.
+- [ ] Consider using joinSymlinks/linkFarm(!) to create a build scope.
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
 - [x] Consider using makeScope for the scope.
 - [ ] Handle pkg:installed?enable:disable.
 - [x] Stop using emptyPkg. Override the base compiler only?
 - [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
 - [ ] Handle enable-ocaml-beta-repository.
+  - In theory this is now working with multirepos.
 - [ ] Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.
 - [x] Hanlde "sys-ocaml-version" var.
 - [ ] Group dep flags.
@@ -112,6 +113,7 @@
   - Support easy building of any package without nix lock.
   - Support offline mode.
   - Prefetch packages to compute sha256 when md5 is used.
+  - Support multiple opam repositories.
 - [ ] Help debug nix paths (eg show opam repo path)
 - [x] When the scope is built but there was a pkg override do we still build the pkg? Must not.
 - [x] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.
@@ -128,5 +130,6 @@
 - [ ] If a dep is already in *buildInputs, does it need to be in nativeBuildInputs?
 - [ ] Test substs in a patch:
   - https://github.com/ocaml/opam-repository/blob/c0e9300f14d3570da85aad7e6e0ae47484a597a9/packages/fury-puyo/fury-puyo.0.5/opam
-- [ ] There are no more nulls in lock file, avoid checks.
+- [x] There are no more nulls in lock file, avoid checks.
 - [ ] Consider using attrsets (name => x) for representing deps to avoid duplicates when (++).
+- [ ] Add support for local repos.

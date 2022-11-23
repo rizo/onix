@@ -137,6 +137,61 @@ let prefetch_git_with_path url =
   in
   (rev, path)
 
+let fetch_resolve_many_expr urls =
+  let url_to_nix (url : OpamUrl.t) =
+    match url.hash with
+    | Some hash ->
+      let url' = { url with OpamUrl.hash = None } in
+      Fmt.str "{ url = \"%a\"; rev = \"%s\"; }" Opam_utils.pp_url url' hash
+    | None -> Fmt.str "{ url = \"%a\"; }" Opam_utils.pp_url url
+  in
+  let urls = urls |> List.map url_to_nix |> String.concat " " in
+  Fmt.str
+    {|
+let
+  urls = [ %s ];
+  fetched = map (x: (builtins.fetchGit x) // { inherit (x) url; }) urls;
+  resolved = map (x: "${x.url}#${x.rev},${x.outPath}") fetched;
+in
+  builtins.concatStringsSep ";" resolved
+|}
+    urls
+
+let fetch_resolve_many urls =
+  let result = urls |> fetch_resolve_many_expr |> eval in
+  let lines = String.split_on_char ';' result in
+  List.map
+    (fun line ->
+      match String.split_on_char ',' line with
+      | [url; path] -> (OpamUrl.of_string url, OpamFilename.Dir.of_string path)
+      | _ -> Fmt.failwith "Invalid repo format: %s" line)
+    lines
+
+let symlink_join_expr ~name paths =
+  Fmt.str
+    {|
+let pkgs = import <nixpkgs> {};
+in pkgs.symlinkJoin {
+  name = %S;
+  paths = [ %a ];
+}
+|}
+    name
+    Fmt.(list ~sep:Fmt.sp Opam_utils.pp_filename_dir)
+    paths
+
+let symlink_join ~name paths =
+  let open Bos in
+  let expr = symlink_join_expr ~name paths in
+  let cmd = Cmd.(v "nix-build" % "--no-out-link" % "-E" % expr) in
+  let result =
+    cmd
+    |> OS.Cmd.run_out ~err:OS.Cmd.err_null
+    |> OS.Cmd.to_string
+    |> Utils.Result.force_with_msg
+  in
+  OpamFilename.Dir.of_string result
+
 type store_path = {
   hash : string;
   package_name : OpamPackage.Name.t;

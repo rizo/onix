@@ -1,17 +1,22 @@
 module Opam_0install_solver = Opam_0install.Solver.Make (Solver_context)
 
-let resolve_repo repo_url =
-  let path, url =
-    let url = OpamUrl.of_string repo_url in
-    if Option.is_some url.hash then (Nix_utils.fetch url, url)
-    else
-      let rev, path = Nix_utils.fetch_resolve url in
-      (path, { url with hash = Some rev })
+let resolve_repos repos =
+  let repos = List.map OpamUrl.of_string repos in
+  let resolved_with_path = Nix_utils.fetch_resolve_many repos in
+  let joint_path =
+    match resolved_with_path with
+    | [(_repo_url, path)] -> path
+    | _ ->
+      Nix_utils.symlink_join ~name:"onix-opam-repo"
+        (List.map snd resolved_with_path)
   in
-  Logs.info (fun log -> log "Using OPAM repository: %a" Opam_utils.pp_url url);
-  (path, url)
+  let resolved_urls = List.map fst resolved_with_path in
+  Fmt.epr "@[<v>Repositories:@,%a@]@."
+    Fmt.(list ~sep:cut (any "- " ++ Opam_utils.pp_url))
+    resolved_urls;
+  (joint_path, resolved_urls)
 
-let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_dev_setup
+let solve ?(resolutions = []) ~repos ~with_test ~with_doc ~with_dev_setup
     input_opam_files =
   let resolutions = Resolutions.make resolutions in
   Resolutions.debug resolutions;
@@ -39,7 +44,7 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_dev_setup
       (OpamPackage.Name.Map.keys root_opam_details)
   in
 
-  let repo_dir, repo_url = resolve_repo repo_url in
+  let repo_dir, resolved_repos = resolve_repos repos in
 
   let constraints = Resolutions.constraints resolutions in
 
@@ -94,7 +99,7 @@ let solve ?(resolutions = []) ~repo_url ~with_test ~with_doc ~with_dev_setup
              None
            | some -> some)
     |> OpamPackage.Name.Map.values
-    |> Lock_file.make ~repo_url
+    |> Lock_file.make ~repos:resolved_repos
   | Error err ->
     prerr_endline (Opam_0install_solver.diagnostics err);
     exit 2

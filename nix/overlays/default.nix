@@ -13,6 +13,10 @@ let
         ./ocamlfind/onix_install_topfind_194.patch
         ++ lib.optional (lib.versionAtLeast oldAttrs.version "1.9.5")
         ./ocamlfind/onix_install_topfind_195.patch;
+
+      setupHook = nixpkgs.writeText "ocamlfind-setup-hook.sh" ''
+        export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${self.ocaml.version}/site-lib/toplevel"
+      '';
     });
 
     ocb-stubblr = super.ocb-stubblr.overrideAttrs
@@ -40,14 +44,22 @@ let
       '';
     });
 
+    # With propagated inputs this is not necessary.
     # https://github.com/ocaml/opam-repository/blob/e470f5f4ad3083618a4e144668faaa81b726b912/packages/either/either.1.0.0/opam#L14
-    either = super.either.overrideAttrs
-      (oldAttrs: { buildInputs = oldAttrs.buildInputs ++ [ self.ocaml ]; });
+    # either = super.either.overrideAttrs
+    #   (oldAttrs: { buildInputs = oldAttrs.buildInputs ++ [ self.ocaml ]; });
+    #
+    # ctypes = super.ctypes.overrideAttrs (selfAttrs: superAttrs: {
+    #   postInstall = ''
+    #     mkdir -p "$out/lib/ocaml/4.14.0/site-lib/stublibs"
+    #     mv $out/lib/ocaml/4.14.0/site-lib/ctypes/*.so "$out/lib/ocaml/4.14.0/site-lib/stublibs"
+    #   '';
+    # });
 
-    ctypes = super.ctypes.overrideAttrs (selfAttrs: superAttrs: {
+    num = super.num.overrideAttrs (selfAttrs: superAttrs: {
       postInstall = ''
         mkdir -p "$out/lib/ocaml/4.14.0/site-lib/stublibs"
-        mv $out/lib/ocaml/4.14.0/site-lib/ctypes/*.so "$out/lib/ocaml/4.14.0/site-lib/stublibs"
+        mv $out/lib/ocaml/4.14.0/site-lib/num/*.so "$out/lib/ocaml/4.14.0/site-lib/stublibs"
       '';
     });
 
@@ -61,5 +73,9 @@ let
       ];
     });
   };
-in common
-// nixpkgs.lib.optionalAttrs nixpkgs.stdenv.hostPlatform.isDarwin darwin
+
+  all = common
+    // nixpkgs.lib.optionalAttrs nixpkgs.stdenv.hostPlatform.isDarwin darwin;
+
+  # Remove overrides for packages not present in scope.
+in lib.attrsets.filterAttrs (name: _: builtins.hasAttr name super) all

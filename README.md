@@ -72,25 +72,56 @@ $ nix-shell -A shell
 - `ocaml-base-compiler` - build an opam compiler with vanilla options.
 
 
-## Reference
+## Nix API Reference
 
-### `onix.lock`
-
-- `withTest` - `true|false|"all`
-- `withDoc` - `true|false|"all`
-- `withDevSetup` - `true|false|"all`
-- `constraints`: overrides the version selection from the opam file.
-
-**Examples**
+### `onix.project`
 
 ```nix
-onix.lock = {
-  withTest = true;
-  withDoc = "all";
-  withDevSetup = true;
-  constraints = {
-    dune = "<3.3";
-  }
-}
+let project = onix.project ./. {
+  # The paths of the root opam files.
+  # Will lookup all at the project root dir by default.
+  roots ? [ ],
+
+  # The path of the lock file. Must be in the root dir of the project.
+  lock ? "onix-lock.json",
+
+  # The URLs of OPAM package repositories.
+  repositories ? [ "https://github.com/ocaml/opam-repository.git" ],
+
+  # Additional dependency resolutions.
+  resolutions ? { },
+
+  # Package overrides.
+  overrides ? null,
+
+  # Verbosity of the onix tool.
+  verbosity ? "warning",
+
+  # Flags for dependency resolution.
+  flags ? {
+    with-test = false;
+    with-doc = false;
+    with-dev-setup = false;
+  },
+
+  # Apply gitignore filter to project directory.
+  # Possible values: true, false, path to gitignore file.
+  gitignore ? true
+};
 ```
 
+The return type of `onix.project` is a set with the following attributes:
+
+```nix
+# Resolve dependencies and generate a lock file.
+project.lock
+
+# A package set with all project packages.
+project.pkgs
+
+# Build all root pacakges.
+project.roots
+
+# Start a shell for root packages.
+project.shell
+```

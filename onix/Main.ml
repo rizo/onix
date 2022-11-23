@@ -86,16 +86,16 @@ let with_dev_setup_arg ~absent =
   |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
 
-let repo_url_arg =
+let repositories_arg =
   let doc =
-    "The URL of the OPAM repository to be used when solving the dependencies. \
-     Use the following format: \
+    "Comma-separated URLs of the OPAM repositories to be used when solving the \
+     dependencies. Use the following format: \
      https://github.com/ocaml/opam-repository.git[#HASH]"
   in
-  let docv = "URL" in
+  let docv = "LIST" in
   Arg.(
-    info ["repo-url"] ~env:(Cmd.Env.info "ONIX_REPO_URL") ~docv ~doc
-    |> opt string "https://github.com/ocaml/opam-repository.git"
+    info ["repositories"] ~docv ~doc
+    |> opt (list string) ["https://github.com/ocaml/opam-repository.git"]
     |> value)
 
 let mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
@@ -200,32 +200,18 @@ module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level ignore_file lock_file_path repo_url
-      resolutions with_test with_doc with_dev_setup input_opam_files =
+  let run style_renderer log_level lock_file_path repos resolutions with_test
+      with_doc with_dev_setup input_opam_files =
     setup_logs style_renderer log_level;
-    Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
-
-    let ignore_file =
-      if String.equal ignore_file "none" then None
-      else if Sys.file_exists ignore_file then (
-        Logs.debug (fun log ->
-            log "Using %S ignore file to filter root sources." ignore_file);
-        Some ignore_file)
-      else (
-        Logs.warn (fun log ->
-            log
-              "The ignore file %S does not exist, will not filter root sources."
-              ignore_file);
-        None)
-    in
+    Logs.info (fun log -> log "lock: Running...");
 
     let lock_file =
-      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc
-        ~with_dev_setup input_opam_files
+      Onix.Solver.solve ~repos ~resolutions ~with_test ~with_doc ~with_dev_setup
+        input_opam_files
     in
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" (Onix.Pp_lock_nix.pp ~ignore_file) lock_file);
+        Fmt.pf out "%a" Onix.Pp_lock.pp lock_file);
     Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
@@ -236,9 +222,8 @@ module Lock = struct
         const run
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
-        $ ignore_file_arg
         $ lock_file_arg
-        $ repo_url_arg
+        $ repositories_arg
         $ resolutions_arg
         $ with_test_arg ~absent:`root
         $ with_doc_arg ~absent:`root
@@ -255,10 +240,10 @@ module Gen = struct
     let docv = "DIR" in
     Arg.(info ["lock-dir"] ~docv ~doc |> opt file "./onix.lock" |> value)
 
-  let run style_renderer log_level ignore_file lock_dir repo_url resolutions
+  let run style_renderer log_level ignore_file lock_dir repos resolutions
       with_test with_doc with_dev_setup input_opam_files =
     setup_logs style_renderer log_level;
-    Logs.info (fun log -> log "lock: Running... repo_url=%S" repo_url);
+    Logs.info (fun log -> log "gen: Running...");
 
     let ignore_file =
       if String.equal ignore_file "none" then None
@@ -275,8 +260,8 @@ module Gen = struct
     in
 
     let lock_file =
-      Onix.Solver.solve ~repo_url ~resolutions ~with_test ~with_doc
-        ~with_dev_setup input_opam_files
+      Onix.Solver.solve ~repos ~resolutions ~with_test ~with_doc ~with_dev_setup
+        input_opam_files
     in
     Onix.Gen_drv_tree.gen ~ignore_file ~lock_dir ~with_test ~with_doc
       ~with_dev_setup lock_file;
@@ -292,7 +277,7 @@ module Gen = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ignore_file_arg
         $ lock_dir_arg
-        $ repo_url_arg
+        $ repositories_arg
         $ resolutions_arg
         $ with_test_arg ~absent:`root
         $ with_doc_arg ~absent:`root
