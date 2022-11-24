@@ -102,7 +102,7 @@ let project = onix.project ./. {
     with-test = false;
     with-doc = false;
     with-dev-setup = false;
-  },
+  };
 
   # Apply gitignore filter to project directory.
   # Possible values: true, false, path to gitignore file.
