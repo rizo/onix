@@ -47,7 +47,7 @@ let is_root t = Opam_utils.is_root t.opam_details.package
 let prefetch_src_if_md5 ~package src =
   match src with
   | Http { url; hash = `MD5, _ } ->
-    Logs.debug (fun log ->
+    Logs.warn (fun log ->
         log "Package %a uses an md5 hash, prefetching to compute a sha256 hash."
           Opam_utils.pp_package package);
     let hash =
