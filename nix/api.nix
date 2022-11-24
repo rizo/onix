@@ -87,7 +87,6 @@ let
   buildPkg = { rootDir, repoPath, verbosity, scope, flags }:
     name: dep:
     let
-      inherit (flags) with-test with-doc with-dev-setup;
       ocaml = scope.ocaml;
 
       dependsPkgs = map (dep': scope.${dep'}) (dep.depends or [ ]);
@@ -143,11 +142,11 @@ let
       strictDeps = true;
       dontStrip = false;
 
-      checkInputs = optionals (evalDepFlag dep.version with-test) testPkgs;
+      checkInputs = optionals (evalDepFlag dep.version flags.test) testPkgs;
       nativeBuildInputs = [ onixPathHook ]
-        ++ optionals (evalDepFlag dep.version with-test) testPkgs
-        ++ optionals (evalDepFlag dep.version with-doc) docPkgs
-        ++ optionals (evalDepFlag dep.version with-dev-setup) devSetupPkgs;
+        ++ optionals (evalDepFlag dep.version flags.test) testPkgs
+        ++ optionals (evalDepFlag dep.version flags.doc) docPkgs
+        ++ optionals (evalDepFlag dep.version flags.dev-setup) devSetupPkgs;
 
       propagatedBuildInputs = dependsAndBuildPkgs ++ depexts;
       propagatedNativeBuildInputs = buildPkgs ++ depexts;
@@ -192,9 +191,9 @@ let
         ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON with-test} \
-          --with-doc=${builtins.toJSON with-doc} \
-          --with-dev-setup=${builtins.toJSON with-dev-setup} \
+          --with-test=${builtins.toJSON flags.test} \
+          --with-doc=${builtins.toJSON flags.doc} \
+          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
           --path=$out \
           --verbosity=${verbosity} \
           ${name}.${dep.version}
@@ -231,9 +230,9 @@ let
         ${onix}/bin/onix opam-install \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON with-test} \
-          --with-doc=${builtins.toJSON with-doc} \
-          --with-dev-setup=${builtins.toJSON with-dev-setup} \
+          --with-test=${builtins.toJSON flags.test} \
+          --with-doc=${builtins.toJSON flags.doc} \
+          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
           --path=$out \
           ${name}.${dep.version}
 
@@ -290,17 +289,15 @@ let
     in pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = ''
-        set -x
         onix lock \
           --repositories='${repositoriesStr}' \
           --resolutions='${mkResolutionsArg resolutions}' \
           --lock-file='${lockPath}' \
-          --with-test=${builtins.toJSON flags.with-test} \
-          --with-doc=${builtins.toJSON flags.with-doc} \
-          --with-dev-setup=${builtins.toJSON flags.with-dev-setup} \
+          --with-test=${builtins.toJSON flags.test} \
+          --with-doc=${builtins.toJSON flags.doc} \
+          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
           --verbosity='${verbosity}'${rootsStr}
         exit $?
-        set +x
       '';
     };
 
@@ -368,9 +365,9 @@ in {
       onixLock = lib.importJSON lockPath;
 
       flags' = {
-        with-test = false;
-        with-doc = false;
-        with-dev-setup = false;
+        test = false;
+        doc = false;
+        dev-setup = false;
       } // flags;
 
       relativeRoots = map (path:
