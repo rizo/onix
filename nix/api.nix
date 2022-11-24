@@ -352,7 +352,7 @@ in {
       rootDir = if builtins.isBool gitignore && gitignore
       && builtins.pathExists "${builtins.toString rootDirArg}/.gitignore" then
         pkgs.nix-gitignore.gitignoreSource [ ] rootDirArg
-      else if builtins.isBool gitignore && !gitignore then
+      else if builtins.isBool gitignore then
         builtins.toString rootDirArg
       else if builtins.isPath gitignore && builtins.pathExists gitignore then
         pkgs.nix-gitignore.gitignoreSourcePure [ gitignore ]
