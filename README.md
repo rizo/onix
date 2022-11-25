@@ -22,21 +22,8 @@ depends: [
 ]
 ```
 
-### 2. Update your lock file:
-
-```
-$ nix-shell -A lock ./nix/onix.nix
-```
-
-### 3. Start a develpoment shell:
-
-```bash
-$ nix-shell -A shell
-```
-
 
 ## OCaml compilers
-
 
 - `ocaml-system` - use the compiler provided by nixpkgs;
 - `ocaml-variants` - build a custom opam compiler;
