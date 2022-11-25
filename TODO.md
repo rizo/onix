@@ -125,7 +125,7 @@
 - [x] Do not include opt deps in lock.
 - [ ] Include expanded patch/build/install commands in lock file.
   - This is not easy because substs need to happen during patch phase, which requires var lookup.
-- [ ] Ensure that strings, not paths, are passed to build/opamFiles.
+- [x] Ensure that strings, not paths, are passed to build/opamFiles.
   - Using toString is not sufficient, the lock file will contain an absolute path.
 - [ ] If a dep is already in *buildInputs, does it need to be in nativeBuildInputs?
 - [ ] Test substs in a patch:
@@ -133,3 +133,6 @@
 - [x] There are no more nulls in lock file, avoid checks.
 - [ ] Consider using attrsets (name => x) for representing deps to avoid duplicates when (++).
 - [ ] Add support for local repos.
+- [ ] Host's OPAMPATH is used when -i is not passed to develop for shell target.
+- [ ] Formatting dune files is slow with vscode.
+    - Which uses `nix develop -i -c $prog $args`.
