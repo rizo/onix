@@ -384,8 +384,8 @@ in {
       } // flags;
 
       relativeRoots = map (path:
-        lib.strings.removePrefix (rootDir + "/") (builtins.toString path))
-        roots;
+        lib.strings.removePrefix (builtins.toString rootDirArg + "/")
+        (builtins.toString path)) roots;
 
       lockPkgs = mkScope {
         inherit rootDir onixLock overrides verbosity;
