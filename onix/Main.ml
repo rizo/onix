@@ -30,6 +30,14 @@ let lock_file_arg =
   let docv = "FILE" in
   Arg.(info ["lock-file"] ~docv ~doc |> opt string "./onix-lock.nix" |> value)
 
+let opam_lock_file_arg =
+  let doc =
+    "The path to the \".opam.locked\" file. The opam lock file will not be \
+     generated if this option is not passed."
+  in
+  let docv = "FILE" in
+  Arg.(info ["opam-lock-file"] ~docv ~doc |> opt (some string) None |> value)
+
 let ignore_file_arg =
   let doc =
     "The path to the project ignore file (by default .gitignore). Pass \
@@ -200,8 +208,8 @@ module Lock = struct
   let input_opam_files_arg =
     Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
 
-  let run style_renderer log_level lock_file_path repos resolutions with_test
-      with_doc with_dev_setup input_opam_files =
+  let run style_renderer log_level lock_file_path opam_lock_file_path repos
+      resolutions with_test with_doc with_dev_setup input_opam_files =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running...");
 
@@ -209,10 +217,22 @@ module Lock = struct
       Onix.Solver.solve ~repos ~resolutions ~with_test ~with_doc ~with_dev_setup
         input_opam_files
     in
+
+    (* Generate onix lock file. *)
     Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
         let out = Format.formatter_of_out_channel chan in
         Fmt.pf out "%a" Onix.Pp_lock.pp lock_file);
-    Logs.info (fun log -> log "Created a lock file at %S." lock_file_path)
+    Logs.info (fun log -> log "Created a lock file at %S." lock_file_path);
+
+    (* Generate opam lock file. *)
+    Option.iter
+      (fun opam_lock_file_path ->
+        Onix.Utils.Out_channel.with_open_text opam_lock_file_path (fun chan ->
+            let out = Format.formatter_of_out_channel chan in
+            Fmt.pf out "%a" Onix.Pp_opam_lock.pp lock_file);
+        Logs.info (fun log ->
+            log "Created an opam lock file at %S." opam_lock_file_path))
+      opam_lock_file_path
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
 
@@ -223,6 +243,7 @@ module Lock = struct
         $ Fmt_cli.style_renderer ()
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ lock_file_arg
+        $ opam_lock_file_arg
         $ repositories_arg
         $ resolutions_arg
         $ with_test_arg ~absent:`root

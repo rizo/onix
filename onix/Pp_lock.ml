@@ -88,5 +88,5 @@ let pp_packages f deps =
   Fmt.pf f "@[<v2>\"packages\" : {@,%a@]@,}" (Fmt.hvbox pp_list) deps
 
 let pp fmt (t : Lock_file.t) =
-  Fmt.pf fmt {|{@[<v2>@,%a,@,%a,@,%a@]@,}@.|} pp_version Lib.version pp_repos
+  Fmt.pf fmt "{@[<v2>@,%a,@,%a,@,%a@]@,}@." pp_version Lib.version pp_repos
     t.repos pp_packages t.packages

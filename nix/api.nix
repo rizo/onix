@@ -282,21 +282,24 @@ let
         paths = map builtins.fetchGit repositories;
       };
 
-  mkLock = { lockPath, roots, repositories, resolutions, verbosity, flags }:
+  mkLock = { lockPath, opamLockPath, roots, repositories, resolutions, verbosity
+    , flags }:
     let
       repositoriesStr = lib.strings.concatStringsSep "," repositories;
-      rootsStr = lib.strings.concatStrings (map (f: " " + f) roots);
+      rootsArg = lib.strings.concatStrings (map (f: " " + f) roots);
+      opamLockPathOpt =
+        if isNull opamLockPath then "" else " --opam-lock-file=${opamLockPath}";
     in pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = ''
         onix lock \
           --repositories='${repositoriesStr}' \
           --resolutions='${mkResolutionsArg resolutions}' \
-          --lock-file='${lockPath}' \
+          --lock-file='${lockPath}'${opamLockPathOpt} \
           --with-test=${builtins.toJSON flags.test} \
           --with-doc=${builtins.toJSON flags.doc} \
           --with-dev-setup=${builtins.toJSON flags.dev-setup} \
-          --verbosity='${verbosity}'${rootsStr}
+          --verbosity='${verbosity}'${rootsArg}
         exit $?
       '';
     };
@@ -325,8 +328,11 @@ in {
     # Will lookup all at the project root dir by default.
     roots ? [ ],
 
-    # The path of the lock file. Must be in the root dir of the project.
+    # The path of the onix lock file. Must be in the root dir of the project.
     lock ? "onix-lock.json",
+
+    # The path of the opam lock file. Will not be generated if null.
+    opam-lock ? null,
 
     # The URLs of OPAM package repositories.
     repositories ? [ "https://github.com/ocaml/opam-repository.git" ],
@@ -362,6 +368,13 @@ in {
       else
         "${builtins.toString rootDirArg}/${builtins.toString lock}";
 
+      opamLockPath = if builtins.isPath opam-lock then
+        builtins.toString opam-lock
+      else if builtins.isString opam-lock then
+        "${builtins.toString rootDirArg}/${opam-lock}"
+      else
+        null;
+
       onixLock = lib.importJSON lockPath;
 
       flags' = {
@@ -385,7 +398,7 @@ in {
     in {
       # Generate a lock file.
       lock = mkLock {
-        inherit lockPath repositories resolutions verbosity;
+        inherit lockPath opamLockPath repositories resolutions verbosity;
         roots = relativeRoots;
         flags = flags';
       };
