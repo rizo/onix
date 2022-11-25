@@ -403,11 +403,11 @@ in {
         flags = flags';
       };
 
-      # All packages with standard options.
+      # All project's packages.
       pkgs = lockPkgs;
 
       # Build the root packages link farm.
-      roots = pkgs.linkFarm (builtins.baseNameOf rootDir + "-roots") (map (r: {
+      all = pkgs.linkFarm (builtins.baseNameOf rootDir + "-roots") (map (r: {
         name = r.name;
         path = r;
       }) (lib.attrsets.attrValues rootPkgs));
