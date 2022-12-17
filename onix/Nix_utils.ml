@@ -35,7 +35,7 @@ let fetch_git_expr ~rev url =
 }; in result.outPath|}
     url rev
 
-let fetch url =
+let fetch_git url =
   let rev = url.OpamUrl.hash |> Option.or_fail "Missing rev in opam url" in
   let nix_url = OpamUrl.base_url url in
   Logs.debug (fun log ->
@@ -48,7 +48,7 @@ let fetch_git_resolve_expr url =
 "${result.rev},${result.outPath}"|}
     url
 
-let fetch_resolve url =
+let fetch_git_resolve url =
   let nix_url = OpamUrl.base_url url in
   Logs.debug (fun log -> log "Fetching git repository: url=%S rev=None" nix_url);
   let result = nix_url |> fetch_git_resolve_expr |> eval in
@@ -191,6 +191,19 @@ let symlink_join ~name paths =
     |> Utils.Result.force_with_msg
   in
   OpamFilename.Dir.of_string result
+
+let resolve_repos repos =
+  let resolved_with_path = fetch_resolve_many repos in
+  let joint_path =
+    match resolved_with_path with
+    | [(_repo_url, path)] -> path
+    | _ -> symlink_join ~name:"onix-opam-repo" (List.map snd resolved_with_path)
+  in
+  let resolved_urls = List.map fst resolved_with_path in
+  Fmt.epr "@[<v>Repositories:@,%a@]@."
+    Fmt.(list ~sep:cut (any "- " ++ Opam_utils.pp_url))
+    resolved_urls;
+  (joint_path, resolved_urls)
 
 type store_path = {
   hash : string;

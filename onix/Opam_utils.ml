@@ -54,10 +54,6 @@ let is_ocaml_compiler_name name =
   || OpamPackage.Name.equal name ocaml_system_name
   || OpamPackage.Name.equal name ocaml_variants_name
 
-let is_opam_filename filename =
-  String.equal (Filename.extension filename) ".opam"
-  || String.equal (Filename.basename filename) "opam"
-
 let dev_version = OpamPackage.Version.of_string "dev"
 let root_version = OpamPackage.Version.of_string "root"
 let is_pinned_version version = OpamPackage.Version.equal version dev_version
@@ -66,18 +62,18 @@ let is_pinned package = is_pinned_version (OpamPackage.version package)
 let is_root package = is_root_version (OpamPackage.version package)
 
 let opam_package_of_filename filename =
-  let basename = Filename.basename filename in
-  if String.equal basename "opam" then
-    let dirname = Filename.dirname filename in
-    match List.rev (String.split_on_char '/' dirname) with
+  let base_str = OpamFilename.Base.to_string (OpamFilename.basename filename) in
+  if String.equal base_str "opam" then
+    let dir_str = OpamFilename.Dir.to_string (OpamFilename.dirname filename) in
+    match List.rev (String.split_on_char '/' dir_str) with
     | pkg_dir :: _ ->
       OpamPackage.create (OpamPackage.Name.of_string pkg_dir) root_version
     | _ ->
       invalid_arg
         ("Could not extract package name from path (must be pkg/opam): "
-        ^ filename)
+        ^ OpamFilename.to_string filename)
   else
-    let opamname = Filename.remove_extension basename in
+    let opamname = Filename.remove_extension base_str in
     try OpamPackage.of_string opamname
     with Failure _ ->
       OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
@@ -114,28 +110,23 @@ let debug_var ?(scope = "unknown") var contents =
            (Fmt.using OpamVariable.string_of_variable_contents Fmt.Dump.string))
         contents scope)
 
-let find_root_packages input_opam_paths =
-  let root_opam_paths =
-    match input_opam_paths with
-    | [] ->
-      let contents = Utils.Filesystem.list_dir "." in
-      contents |> List.to_seq |> Seq.filter is_opam_filename
-    | _ -> input_opam_paths |> List.to_seq
-  in
-  root_opam_paths
+let find_root_packages input_paths =
+  input_paths
+  |> List.to_seq
   |> Seq.map (fun path ->
          let package = opam_package_of_filename path in
-         Logs.info (fun log -> log "Reading packages from %S..." path);
-         let path = OpamFilename.raw path in
+         Logs.info (fun log ->
+             log "Reading packages from %a..." pp_filename path);
          let opam = read_opam path in
          let details = { opam; package; path } in
          (OpamPackage.name package, details))
   |> OpamPackage.Name.Map.of_seq
 
-let mk_repo_opamfile ~(repo_dir : OpamFilename.Dir.t) opam_package =
+let mk_repo_opamfile ~(repository_dir : OpamFilename.Dir.t) opam_package =
   let name = OpamPackage.name_to_string opam_package in
   let name_with_version = OpamPackage.to_string opam_package in
-  OpamFilename.Op.(repo_dir / "packages" / name / name_with_version // "opam")
+  OpamFilename.Op.(
+    repository_dir / "packages" / name / name_with_version // "opam")
 
 let make_opam_files_path ~opamfile file =
   let opam_dir = OpamFilename.dirname opamfile in

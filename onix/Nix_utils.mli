@@ -1,6 +1,6 @@
 val get_nix_build_jobs : unit -> string
-val fetch : OpamUrl.t -> OpamFilename.Dir.t
-val fetch_resolve : OpamUrl.t -> string * OpamFilename.Dir.t
+val fetch_git : OpamUrl.t -> OpamFilename.Dir.t
+val fetch_git_resolve : OpamUrl.t -> string * OpamFilename.Dir.t
 val fetch_resolve_many : OpamUrl.t list -> (OpamUrl.t * OpamFilename.Dir.t) list
 val symlink_join : name:string -> OpamFilename.Dir.t list -> OpamFilename.Dir.t
 
@@ -14,6 +14,7 @@ val prefetch_url :
   ?hash_type:[< `sha256 | `sha512 > `sha256] -> ?hash:string -> string -> string
 
 val prefetch_git_with_path : OpamUrl.t -> string * OpamFilename.Dir.t
+val resolve_repos : OpamUrl.t list -> OpamFilename.Dir.t * OpamUrl.t list
 
 type store_path = {
   hash : string;

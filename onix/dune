@@ -28,4 +28,5 @@
   fmt.tty
   cmdliner
   onix
+  opam-core
   opam-format))

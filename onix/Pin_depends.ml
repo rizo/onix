@@ -67,7 +67,7 @@ let collect_from_opam_files project_opam_files =
         { Opam_utils.package; opam; path })
       else
         (* Read original opam file for pin and use a fixed [url]. *)
-        let src = Nix_utils.fetch url in
+        let src = Nix_utils.fetch_git url in
         Logs.debug (fun log ->
             log "Reading opam file for remote pin: name=%S url=%a src=%a"
               name_str Opam_utils.pp_url url Opam_utils.pp_filename_dir src);

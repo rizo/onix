@@ -1,418 +1,295 @@
-{ pkgs ? import <nixpkgs> { }, onix }:
+{ pkgs ? import <nixpkgs> { }, onix, verbosity }:
 
 let
+  inherit (pkgs) lib;
+  inherit (builtins) isNull isList isAttrs isString isPath isFunction length;
+
   debug = data: x: builtins.trace "onix: [DEBUG] ${builtins.toJSON data}" x;
-  defaultOverlay = import ./overlays/default.nix pkgs;
 
-  inherit (builtins)
-    filter trace hasAttr getAttr setAttr attrNames attrValues concatMap
-    pathExists foldl';
-  inherit (pkgs) lib stdenv;
-  inherit (pkgs.lib) optionalString;
-  inherit (pkgs.lib.attrsets) mapAttrs';
-  inherit (pkgs.lib.lists) optional optionals;
+  core = import ./core.nix { inherit pkgs onix verbosity; };
 
-  pkgsUnion = l1: l2:
-    let
-      l1Attrs =
-        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
-        { } l1;
-      unionAttrs =
-        foldl' (acc: x: if acc ? x.name then acc else acc // { ${x.name} = x; })
-        l1Attrs l2;
-    in attrValues unionAttrs;
+  # Errors.
+  errInvalidSrc = name:
+    "onix: invalid ${name} argument, must be an attribute set with `url` key";
+  errInvalidRootPath = "onix: path argument must be a path or a null value";
+  errInvalidGitignoreType = "onix: gitignore argument must be a path or a bool";
+  errInvalidGitignoreMissing = path:
+    "onix: provided gitignore file does not exist: ${path}";
+  errInvalidReposType = "onix: repos argument must be a list";
+  errInvalidOpamFilePath =
+    "onix: invalid opam file path, must be opam or end with `.opam`";
+  errInvalidRoots =
+    "onix: roots argument must be a list of paths to opam files";
+  errInvalidDeps = "onix: deps argument must be an attrset";
+  errInvalidDep = name:
+    "onix: invalid dep ${name}: must be a constraint, an opam file, a git src or a pacakge";
+  errInvalidLock = lock:
+    "onix: lock argument must be a path or a null value, found: ${
+      builtins.toJSON lock
+    }";
+  errInvalidFlags =
+    "onix: flags argument must be an attrset with test, doc or dev-setup keys";
+  errInvalidOverlay = "onix: overlay must be a function or a null value";
+  errRequiredRootPath =
+    "onix: path argument is required when opam files are provided in deps or in roots";
 
-  evalDepFlag = version: depFlag:
-    let isRoot = version == "root";
-    in if depFlag == true then
-      isRoot
-    else if depFlag == "deps" then
-      !isRoot
-    else if depFlag == "all" then
-      true
-    else if depFlag == false then
-      false
+  # Classify deps.
+
+  depIsConstraint = isString;
+
+  checkIsOpamPath = path:
+    if isPath path then
+      if lib.strings.hasSuffix "opam" path then
+        true
+      else
+        throw errInvalidOpamFilePath
     else
-      throw "invalid dependency flag value: ${depFlag}";
+      false;
 
-  fetchSrc = { rootDir, name, src }:
-    let urlLen = builtins.stringLength src.url;
-    in if lib.strings.hasPrefix "file://" src.url then
-    # local url
-      let
-        path = builtins.substring 7 (urlLen - 7) src.url;
-        projectPath = if path == "." || path == "./." || path == "./" then
-          rootDir
+  depIsSrc = dep:
+    if isAttrs dep then
+      if builtins.hasAttr "url" dep then true else throw errInvalidSrc "dep"
+    else
+      false;
+
+  depIsDrv = lib.attrsets.isDerivation;
+
+  checkHasOpamDeps = deps:
+    length (lib.attrsets.attrValues
+      (lib.attrsets.filterAttrs (_n: checkIsOpamPath) deps)) > 0;
+
+  # Validate arguments.
+
+  validateSrc = name: src:
+    if isAttrs src && builtins.hasAttr "url" src then
+      src
+    else
+      throw (errInvalidSrc name);
+
+  validateRootPath = hasOpamDeps: rootPath:
+    if (isNull rootPath) && hasOpamDeps then
+      throw errRequiredRootPath
+    else if isPath rootPath then
+      builtins.toString rootPath
+    else if isNull rootPath then
+      rootPath
+    else
+      throw errInvalidRootPath;
+
+  validateGitignore = gitignore:
+    if isPath gitignore then
+      if builtins.pathExists gitignore then
+        gitignore
+      else
+        throw (errInvalidGitignoreMissing gitignore)
+    else if builtins.isBool gitignore then
+      gitignore
+    else
+      throw errInvalidGitignoreType;
+
+  validateRoots = roots:
+    if isNull roots then
+      roots
+    else if isList roots then
+      builtins.map (root:
+        if checkIsOpamPath root then
+          builtins.toString root
         else
-          "${rootDir}/${path}";
-      in (if pathExists "${projectPath}/.gitignore" then
-        pkgs.nix-gitignore.gitignoreSource [ ] projectPath
-      else
-        projectPath)
-    else if lib.strings.hasPrefix "git+" src.url then
-    # git url
-      builtins.fetchGit {
-        url = builtins.substring 4 (urlLen - 4) src.url;
-        inherit (src) rev;
-        allRefs = true;
-      }
-    else if lib.strings.hasPrefix "http" src.url then
-    # http url
-      pkgs.fetchurl src
+          throw errInvalidRoots) roots
     else
-      throw "invalid src for package ${name}: ${builtins.toJSON src}";
+      throw errInvalidRoots;
 
-  getOpamFile = { repoPath, src, name, version }:
-    if version == "root" || version == "dev" then
-      if pathExists "${src}/${name}.opam" then
-        "${src}/${name}.opam"
-      else if pathExists "${src}/opam" then
-        "${src}/opam"
-      else
-        throw "could not find opam file for package ${name} in ${src}"
-    else if version == "dev" then
-      "${src}/${name}.opam"
+  validateRepos = srcList:
+    if isList srcList then
+      builtins.map (validateSrc "repos") srcList
     else
-      "${repoPath}/packages/${name}/${name}.${version}/opam";
+      throw errInvalidReposType;
 
-  # We require that the version does NOT contain any '-' or '~' characters.
-  # - Note that nix will replace '~' to '-' automatically.
-  # The version is parsed with Nix_utils.parse_store_path by splitting bytes
-  # '- ' to obtain the Pkg_ctx.package information.
-  # This is fine because the version in the lock file is mostly informative.
-  normalizeVersion = version:
-    builtins.replaceStrings [ "-" "~" ] [ "+" "+" ] version;
-
-  # Build a package from a lock dependency.
-  buildPkg = { rootDir, repoPath, verbosity, scope, flags }:
-    name: dep:
-    let
-      ocaml = scope.ocaml;
-
-      dependsPkgs = map (dep': scope.${dep'}) (dep.depends or [ ]);
-      buildPkgs = map (dep': scope.${dep'}) (dep.buildDepends or [ ]);
-      testPkgs = map (dep': scope.${dep'}) (dep.testDepends or [ ]);
-      docPkgs = map (dep': scope.${dep'}) (dep.docDepends or [ ]);
-      devSetupPkgs = map (dep': scope.${dep'}) (dep.devSetupDepends or [ ]);
-
-      # Ex: "ocaml-ng.ocamlPackages_4_14.ocaml" -> pkgs.ocaml-ng.ocamlPackages_4_14.ocaml
-      depexts = concatMap (pkgKey:
-        let pkgPath = (lib.strings.splitString "." pkgKey);
-        in lib.lists.toList (lib.attrsets.attrByPath pkgPath [ ] pkgs))
-        (dep.depexts or [ ]);
-
-      src = if dep ? src then
-        fetchSrc {
-          inherit rootDir name;
-          inherit (dep) src;
-        }
-      else
-        null;
-
-      opam = getOpamFile {
-        inherit repoPath src name;
-        inherit (dep) version;
-      };
-
-      onixPathHook = pkgs.makeSetupHook { name = "onix-path-hook"; }
-        (pkgs.writeText "onix-path-hook.sh" ''
-          [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
-
-          addTargetOCamlPath () {
-            local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
-
-            if [[ ! -d "$libdir" ]]; then
-              return 0
-            fi
-
-            addToSearchPath "OCAMLPATH" "$libdir"
-            addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
-          }
-
-          addEnvHooks "$targetOffset" addTargetOCamlPath
-        '');
-
-      dependsAndBuildPkgs = pkgsUnion dependsPkgs buildPkgs;
-
-    in stdenv.mkDerivation {
-      inherit src;
-      pname = name;
-      version = normalizeVersion dep.version;
-      dontUnpack = isNull src;
-      strictDeps = true;
-      dontStrip = false;
-
-      checkInputs = optionals (evalDepFlag dep.version flags.test) testPkgs;
-      nativeBuildInputs = [ onixPathHook ]
-        ++ optionals (evalDepFlag dep.version flags.test) testPkgs
-        ++ optionals (evalDepFlag dep.version flags.doc) docPkgs
-        ++ optionals (evalDepFlag dep.version flags.dev-setup) devSetupPkgs;
-
-      propagatedBuildInputs = dependsAndBuildPkgs ++ depexts;
-      propagatedNativeBuildInputs = buildPkgs ++ depexts;
-
-      ONIX_LOG_LEVEL = verbosity;
-      ONIXPATH = lib.strings.concatStringsSep ":" dependsAndBuildPkgs;
-
-      prePatch = ''
-        ${onix}/bin/onix opam-patch \
-          --ocaml-version=${ocaml.version} \
-          --opam=${opam} \
-          --path=$out \
-          --verbosity=${verbosity} \
-          ${name}.${dep.version}
-      '';
-
-      # Steps:
-      # - preConfigure;
-      # - update NIX_CFLAGS_COMPILE;
-      # - export OCAMLFIND_DESTDIR: for ocamlfind install (FIXME: is this needed?);
-      # - export DUNE_INSTALL_PREFIX: dune does not allow overriding libdir via env.
-      # Notes:
-      # - Do we need export OPAM_SWITCH_PREFIX="$out"?
-      configurePhase = ''
-        runHook preConfigure
-
-        ${optionalString pkgs.stdenv.cc.isClang ''
-          export NIX_CFLAGS_COMPILE="''${NIX_CFLAGS_COMPILE-} -Wno-error=unused-command-line-argument"''}
-        export OCAMLFIND_DESTDIR="$out/lib/ocaml/${ocaml.version}/site-lib"
-        export DUNE_INSTALL_PREFIX=$out
-
-        runHook postConfigure
-      '';
-
-      # Steps:
-      # - preBuild;
-      # - onix opam-build;
-      # - postBuild.
-      buildPhase = ''
-        runHook preBuild
-
-        ${onix}/bin/onix opam-build \
-          --ocaml-version=${ocaml.version} \
-          --opam=${opam} \
-          --with-test=${builtins.toJSON flags.test} \
-          --with-doc=${builtins.toJSON flags.doc} \
-          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
-          --path=$out \
-          --verbosity=${verbosity} \
-          ${name}.${dep.version}
-
-        runHook postBuild
-      '';
-
-      # Steps:
-      # - preInstall;
-      # - create $OCAMLFIND_DESTDIR/pkg: `ocamlfind install` requires the liddir to exist;
-      # - onix opam-install;
-      # - move $out/lib to $OCAMLFIND_DESTDIR (because of dune, see DUNE_INSTALL_PREFIX);
-      # - ~~attempt to remove OCAMLFIND_DESTDIR/pkg if empty.~~
-      #   - should at least contain opam?
-      # - postInstall.
-      # Notes:
-      # - Do we need to rm libdir? At least opam should be always installed?
-      installPhase = ''
-        runHook preInstall
-
-        # .install files
-        ${pkgs.opaline}/bin/opaline \
-          -prefix="$out" \
-          -libdir="$out/lib/ocaml/${ocaml.version}/site-lib"
-
-        # .config files
-        if [[ -e "./${name}.config" ]]; then
-          mkdir -p "$out/etc"
-          cp "./${name}.config" "$out/etc/${name}.config"
-        fi
-
-        mkdir -p "$OCAMLFIND_DESTDIR/${name}"
-
-        ${onix}/bin/onix opam-install \
-          --ocaml-version=${ocaml.version} \
-          --opam=${opam} \
-          --with-test=${builtins.toJSON flags.test} \
-          --with-doc=${builtins.toJSON flags.doc} \
-          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
-          --path=$out \
-          ${name}.${dep.version}
-
-        if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
-          mv "$out/lib/${name}" "$OCAMLFIND_DESTDIR"
-        fi
-
-        runHook postInstall
-      '';
-    };
-
-  # Convert an attrset with resolutions to a cmdline argument.
-  mkResolutionsArg = resolutions:
-    lib.strings.concatStringsSep "," (lib.attrsets.mapAttrsToList (name: value:
-      if value == "*" then
-      # pkg = "*"
-        name
-      else if builtins.elem (builtins.substring 0 1 value) [
-        ">"
-        "<"
-        "="
-        "!"
-      ] then
-      # pkg = ">X", pkg = ">=X", pkg = "<X", pkg = "<=X", pkg = "=X", pkg = "!=X"
-        name + value
-      else
-      # pkg = "X"
-        name + "=" + value) resolutions);
-
-  # Apply default and user-provided overrides to the scope.
-  applyOverrides = scope: overrides:
-    let
-      overlay = if isNull overrides then
-        defaultOverlay
-      else
-        self: super: defaultOverlay self super // overrides self super;
-    in scope.overrideScope' overlay;
-
-  joinRepositories = repositories:
-    if builtins.length repositories == 1 then
-      builtins.fetchGit (builtins.head repositories)
-    else if repositories == [ ] then
-      throw "No opam repositories found!"
+  validateDep = name: dep:
+    if depIsConstraint dep || depIsDrv dep || checkIsOpamPath dep
+    || depIsSrc dep then
+      dep
     else
-      pkgs.symlinkJoin {
-        name = "onix-opam-repository";
-        paths = map builtins.fetchGit repositories;
-      };
+      throw (errInvalidDep name);
 
-  mkLock = { lockPath, opamLockPath, roots, repositories, resolutions, verbosity
-    , flags }:
-    let
-      repositoriesStr = lib.strings.concatStringsSep "," repositories;
-      rootsArg = lib.strings.concatStrings (map (f: " " + f) roots);
-      opamLockPathOpt =
-        if isNull opamLockPath then "" else " --opam-lock-file=${opamLockPath}";
-    in pkgs.mkShell {
-      buildInputs = [ onix ];
-      shellHook = ''
-        onix lock \
-          --repositories='${repositoriesStr}' \
-          --resolutions='${mkResolutionsArg resolutions}' \
-          --lock-file='${lockPath}'${opamLockPathOpt} \
-          --with-test=${builtins.toJSON flags.test} \
-          --with-doc=${builtins.toJSON flags.doc} \
-          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
-          --verbosity='${verbosity}'${rootsArg}
-        exit $?
-      '';
-    };
+  validateDeps = deps:
+    if isAttrs deps then
+      builtins.mapAttrs validateDep deps
+    else
+      throw errInvalidDeps;
 
-  mkScope = { rootDir, onixLock, overrides, verbosity, flags }:
-    let
-      repositories = onixLock.repositories;
-      repoPath = joinRepositories repositories;
-      deps = onixLock.packages;
+  validateLock = lock:
+    if isString lock || isPath lock || isNull lock then
+      lock
+    else
+      throw (errInvalidLock lock);
 
-      # Build a package scope from the locked deps.
-      scope = pkgs.lib.makeScope pkgs.newScope (self:
-        (mapAttrs' (name: dep: {
-          inherit name;
-          value = buildPkg {
-            inherit rootDir repoPath verbosity flags;
-            scope = self;
-          } name dep;
-        }) deps));
-    in applyOverrides scope overrides;
+  validateFlags = flags: if isAttrs flags then flags else throw errInvalidFlags;
+
+  validateOverlay = overlay:
+    if isFunction overlay || isNull overlay then
+      overlay
+    else
+      throw errInvalidOverlay;
+
+  # Process arguments.
+
+  processRootPath = { gitignore, rootPath }:
+    if isPath gitignore then
+      pkgs.nix-gitignore.gitignoreSourcePure [ gitignore ]
+      (builtins.toString rootPath)
+    else if builtins.isBool gitignore && gitignore
+    && builtins.pathExists "${builtins.toString rootPath}/.gitignore" then
+      pkgs.nix-gitignore.gitignoreSource [ ] rootPath
+    else
+      builtins.toString rootPath;
+
+  lookupRoots = rootPath:
+    lib.attrsets.mapAttrsToList (filename: _type: filename)
+    (lib.attrsets.filterAttrs (filename: _type:
+      filename != ".opam" && lib.strings.hasSuffix ".opam" filename)
+      (builtins.readDir rootPath));
+
+  processRoots = rootPath: roots:
+    if isNull rootPath && !(isNull roots) && length roots > 0 then
+    # roots requires path
+      throw errRequiredRootPath
+    else if !(isNull rootPath) && !(isNull roots) && length roots > 0 then
+    # Use provided roots if path is set too.
+      roots
+    else if !(isNull rootPath) && isNull roots then
+    # Lookup roots in path if roots is null (default)
+      lookupRoots rootPath
+    else
+    # No roots otherwise.
+      [ ];
+
+  processLock = rootPath: lock:
+    if isNull lock then
+      null
+    else if isPath lock then
+      builtins.toString lock
+    else if isString lock then
+      rootPath + "/" + lock
+    else
+      lock;
+
+  processFlags = flags:
+    {
+      test = false;
+      doc = false;
+      dev-setup = false;
+    } // flags;
+
+  # Extract opam path deps. The extracted opam file path is relative to the root dir.
+  extractOpamDeps = rootPath: deps:
+    lib.attrsets.mapAttrsToList (_name: dep:
+      lib.strings.removePrefix (rootPath + "/") (builtins.toString dep))
+    (lib.attrsets.filterAttrs (name: dep: checkIsOpamPath dep) deps);
+
+  extractConstraintDeps = deps:
+    (lib.attrsets.filterAttrs (name: dep: depIsConstraint dep) deps);
 
 in {
-  project = rootDirArg:
-    {
-    # The paths of the root opam files.
-    # Will lookup all at the project root dir by default.
-    roots ? [ ],
+  env = {
+    # The repo to use for resolution.
+    repo ? {
+      url = "https://github.com/ocaml/opam-repository.git";
+    }
 
-    # The path of the onix lock file. Must be in the root dir of the project.
-    lock ? "onix-lock.json",
+    # List of additional or alternative repos.
+    , repos ? [ ]
 
-    # The path of the opam lock file. Will not be generated if null.
-    opam-lock ? null,
+      # The path of the project where opam files are looked up.
+    , path ? null
 
-    # The URLs of OPAM package repositories.
-    repositories ? [ "https://github.com/ocaml/opam-repository.git" ],
+      # Apply gitignore to root directory: true|false|path.
+    , gitignore ? true
 
-    # Additional dependency resolutions.
-    resolutions ? { },
+      # The path to project's root opam files. Lookup in path if null.
+    , roots ? null
 
-    # Package overrides.
-    overrides ? null,
+      # List of additional or alternative deps.
+      # A deps value can be:
+      #   - a version constraint string;
+      #   - a local opam file path;
+      #   - a git source (an attrset with "url" name).
+    , deps ? { }
 
-    # Verbosity of the onix tool.
-    verbosity ? "info",
+      # The path to the onix lock file.
+    , lock ? "onix-lock.json"
 
-    # Apply gitignore to root directory: true|false|path
-    gitignore ? true,
+      # The path to the opam lock file.
+    , opam-lock ? null
 
-    flags ? { }, }:
+      # Depencendy resolution flags.
+    , flags ? { }
+
+      # A nix overlay to be applied to the built scope.
+    , overlay ? null }:
 
     let
-      rootDir = if builtins.isBool gitignore && gitignore
-      && builtins.pathExists "${builtins.toString rootDirArg}/.gitignore" then
-        pkgs.nix-gitignore.gitignoreSource [ ] rootDirArg
-      else if builtins.isBool gitignore then
-        builtins.toString rootDirArg
-      else if builtins.isPath gitignore && builtins.pathExists gitignore then
-        pkgs.nix-gitignore.gitignoreSourcePure [ gitignore ]
-        (builtins.toString rootDirArg)
-      else
-        throw "onix.project: gitignore must be either a bool or a path";
-
-      lockPath = if builtins.isPath lock then
-        builtins.toString lock
-      else
-        "${builtins.toString rootDirArg}/${builtins.toString lock}";
-
-      opamLockPath = if builtins.isPath opam-lock then
-        builtins.toString opam-lock
-      else if builtins.isString opam-lock then
-        "${builtins.toString rootDirArg}/${opam-lock}"
-      else
-        null;
-
-      onixLock = lib.importJSON lockPath;
-
-      flags' = {
-        test = false;
-        doc = false;
-        dev-setup = false;
-      } // flags;
-
-      relativeRoots = map (path:
-        lib.strings.removePrefix (builtins.toString rootDirArg + "/")
-        (builtins.toString path)) roots;
-
-      lockPkgs = mkScope {
-        inherit rootDir onixLock overrides verbosity;
-        flags = flags';
+      validatedArgs = {
+        repo = validateSrc "repo" repo;
+        repos = validateRepos repos;
+        rootPath = validateRootPath (checkHasOpamDeps validatedArgs.deps) path;
+        gitignore = validateGitignore gitignore;
+        roots = validateRoots roots;
+        deps = validateDeps deps;
+        lock = validateLock lock;
+        flags = validateFlags flags;
+        opam-lock = validateLock opam-lock;
+        overlay = validateOverlay overlay;
       };
 
-      rootPkgs = lib.attrsets.filterAttrs
-        (n: p: builtins.isAttrs p && p.version == "root") lockPkgs;
-
-    in {
-      # Generate a lock file.
-      lock = mkLock {
-        inherit lockPath opamLockPath repositories resolutions verbosity;
-        roots = relativeRoots;
-        flags = flags';
+      config = {
+        repos = [ validatedArgs.repo ] ++ validatedArgs.repos;
+        rootPath = validatedArgs.rootPath;
+        rootPathWithGitignore =
+          processRootPath { inherit (validatedArgs) gitignore rootPath; };
+        roots = (processRoots validatedArgs.rootPath validatedArgs.roots)
+          ++ extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
+        constraints = extractConstraintDeps validatedArgs.deps;
+        lockPath = processLock validatedArgs.rootPath validatedArgs.lock;
+        opam-lock = processLock validatedArgs.opam-lock;
+        flags = processFlags validatedArgs.flags;
+        overlay = validatedArgs.overlay;
       };
 
-      # All project's packages.
-      pkgs = lockPkgs;
+      scope = core.build {
+        rootPath = config.rootPathWithGitignore;
+        lockPath = config.lockPath;
+        flags = config.flags;
+        overlay = config.overlay;
+      };
 
-      # Build the root packages link farm.
-      all = pkgs.linkFarm (builtins.baseNameOf rootDir + "-roots") (map (r: {
+      rootPkgs =
+        lib.attrsets.filterAttrs (n: p: isAttrs p && p.version == "root") scope;
+
+      # The default build target for the env: all root packages.
+      entrypoint = pkgs.linkFarm (builtins.baseNameOf "onix-roots") (map (r: {
         name = r.name;
         path = r;
       }) (lib.attrsets.attrValues rootPkgs));
 
-      # Create a shell for root packages.
+    in entrypoint // {
+      # Shell for generating a lock file.
+      lock = core.lock {
+        lockPath = config.lockPath;
+        roots = config.roots;
+        opamLockPath = config.opam-lock;
+        repositoryUrls = config.repos;
+        constraints = config.constraints;
+        flags = config.flags;
+      };
+
+      # All packages.
+      pkgs = scope;
+
+      # Root packages.
+      roots = rootPkgs;
+
+      # Create a shell for the root project.
       shell = pkgs.mkShell { inputsFrom = lib.attrsets.attrValues rootPkgs; };
     };
 }

@@ -1,28 +1,12 @@
 module Opam_0install_solver = Opam_0install.Solver.Make (Solver_context)
 
-let resolve_repos repos =
-  let repos = List.map OpamUrl.of_string repos in
-  let resolved_with_path = Nix_utils.fetch_resolve_many repos in
-  let joint_path =
-    match resolved_with_path with
-    | [(_repo_url, path)] -> path
-    | _ ->
-      Nix_utils.symlink_join ~name:"onix-opam-repo"
-        (List.map snd resolved_with_path)
-  in
-  let resolved_urls = List.map fst resolved_with_path in
-  Fmt.epr "@[<v>Repositories:@,%a@]@."
-    Fmt.(list ~sep:cut (any "- " ++ Opam_utils.pp_url))
-    resolved_urls;
-  (joint_path, resolved_urls)
-
-let solve ?(resolutions = []) ~repos ~with_test ~with_doc ~with_dev_setup
-    input_opam_files =
+let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
+    ~with_dev_setup input_paths =
   let resolutions = Resolutions.make resolutions in
   Resolutions.debug resolutions;
 
   (* Packages with .opam files at the root of the project. *)
-  let root_opam_details = Opam_utils.find_root_packages input_opam_files in
+  let root_opam_details = Opam_utils.find_root_packages input_paths in
 
   (* Pin-depends packages found in root_packages. *)
   let pin_opam_details =
@@ -44,13 +28,14 @@ let solve ?(resolutions = []) ~repos ~with_test ~with_doc ~with_dev_setup
       (OpamPackage.Name.Map.keys root_opam_details)
   in
 
-  let repo_dir, resolved_repos = resolve_repos repos in
-
+  let repository_dir, resolved_repository_urls =
+    Nix_utils.resolve_repos repository_urls
+  in
   let constraints = Resolutions.constraints resolutions in
 
   let context =
     Solver_context.make
-      OpamFilename.Op.(repo_dir / "packages")
+      OpamFilename.Op.(repository_dir / "packages")
       ~fixed_opam_details ~constraints ~with_test ~with_doc ~with_dev_setup
   in
 
@@ -59,7 +44,7 @@ let solve ?(resolutions = []) ~repos ~with_test ~with_doc ~with_dev_setup
     try OpamPackage.Name.Map.find name fixed_opam_details
     with Not_found ->
       let opam = Solver_context.get_opam_file context package in
-      let path = Opam_utils.mk_repo_opamfile ~repo_dir package in
+      let path = Opam_utils.mk_repo_opamfile ~repository_dir package in
       { package; path; opam }
   in
 
@@ -99,7 +84,7 @@ let solve ?(resolutions = []) ~repos ~with_test ~with_doc ~with_dev_setup
              None
            | some -> some)
     |> OpamPackage.Name.Map.values
-    |> Lock_file.make ~repos:resolved_repos
+    |> Lock_file.make ~repository_urls:resolved_repository_urls
   | Error err ->
     prerr_endline (Opam_0install_solver.diagnostics err);
     exit 2

@@ -136,3 +136,13 @@
 - [ ] Host's OPAMPATH is used when -i is not passed to develop for shell target.
 - [ ] Formatting dune files is slow with vscode.
     - Which uses `nix develop -i -c $prog $args`.
+- [ ] Can we symlinkJoin an opam root?
+- [ ] How to get compatibility with OCaml Platform? Can we fake opam's CLI?
+- [ ] Pass `verbosity` to top-level onix attrset.
+- [ ] Fetch the repository before passing it to onix lock.
+- [ ] Input path does not currently support `opam` files because the package name cannot be extracted.
+- [ ] Do we need the "root" version or can we use "dev" in the lock file?
+- [ ] It's currently impossible to avoid reading root packages when opam deps are passed.
+- [ ] Deps: support overriding to nixpkgs package and providing remote opam URL.
+- [ ] SIGSEGV when the path contains a large file (during gitignore?).
+- [ ] Better roots tracking (for deps with constraints)?

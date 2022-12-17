@@ -38,14 +38,6 @@ let opam_lock_file_arg =
   let docv = "FILE" in
   Arg.(info ["opam-lock-file"] ~docv ~doc |> opt (some string) None |> value)
 
-let ignore_file_arg =
-  let doc =
-    "The path to the project ignore file (by default .gitignore). Pass \
-     --ignore-file=none if you would like to avoid filtering the root sources."
-  in
-  let docv = "FILE" in
-  Arg.(info ["ignore-file"] ~docv ~doc |> opt string ".gitignore" |> value)
-
 let opam_arg =
   let doc = "Path to the opam file of the package to be built." in
   let docv = "OPAM" in
@@ -63,16 +55,6 @@ let with_test_arg ~absent =
   Arg.info ["with-test"] ~doc ~docv:"VAL"
   |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
-
-let resolutions_arg =
-  let conv =
-    (Onix.Resolutions.parse_resolution, Onix.Resolutions.pp_resolution)
-  in
-  let doc =
-    "Additional packages and version constraints to be used during dependency \
-     resolution."
-  in
-  Arg.info ["resolutions"] ~doc |> Arg.opt (Arg.list conv) [] |> Arg.value
 
 let with_doc_arg ~absent =
   let doc =
@@ -93,18 +75,6 @@ let with_dev_setup_arg ~absent =
   Arg.info ["with-dev-setup"] ~doc ~docv:"VAL"
   |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
   |> Arg.value
-
-let repositories_arg =
-  let doc =
-    "Comma-separated URLs of the OPAM repositories to be used when solving the \
-     dependencies. Use the following format: \
-     https://github.com/ocaml/opam-repository.git[#HASH]"
-  in
-  let docv = "LIST" in
-  Arg.(
-    info ["repositories"] ~docv ~doc
-    |> opt (list string) ["https://github.com/ocaml/opam-repository.git"]
-    |> value)
 
 let mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
   let onix_path = Sys.getenv_opt "ONIXPATH" or "" in
@@ -205,17 +175,66 @@ module Opam_install = struct
 end
 
 module Lock = struct
-  let input_opam_files_arg =
-    Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
+  let input_opam_paths_arg =
+    let doc = "Input opam paths to be used during package resolution." in
+    Arg.(value & pos_all file [] & info [] ~docv:"PATH" ~doc)
 
-  let run style_renderer log_level lock_file_path opam_lock_file_path repos
-      resolutions with_test with_doc with_dev_setup input_opam_files =
+  let repository_urls_arg =
+    let doc =
+      "Comma-separated URLs of the OPAM repositories to be used when solving \
+       the dependencies. Use the following format: \
+       https://github.com/ocaml/opam-repository.git[#HASH]"
+    in
+    let docv = "LIST" in
+    Arg.(
+      info ["repository-urls"] ~docv ~doc
+      |> opt (list string) ["https://github.com/ocaml/opam-repository.git"]
+      |> value)
+
+  let resolutions_arg =
+    let conv =
+      (Onix.Resolutions.parse_resolution, Onix.Resolutions.pp_resolution)
+    in
+    let doc =
+      "Additional packages and version constraints to be used during \
+       dependency resolution."
+    in
+    Arg.info ["resolutions"] ~doc |> Arg.opt (Arg.list conv) [] |> Arg.value
+
+  (* let repository_dir_arg = *)
+  (*   let doc = *)
+  (* "Local path to the OPAm repository that will be used for package lookup \ *)
+     (*      resolution." *)
+  (*   in *)
+  (*   let docv = "LIST" in *)
+  (*   Arg.( *)
+  (*     info ["repository-dir"] ~docv ~doc |> opt (some string) None |> required) *)
+
+  let is_opam_filename filename =
+    String.equal (Filename.extension filename) ".opam"
+    || String.equal (Filename.basename filename) "opam"
+
+  let run style_renderer log_level lock_file_path opam_lock_file_path
+      repository_urls resolutions with_test with_doc with_dev_setup
+      input_opam_paths =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running...");
 
+    let repository_urls = List.map OpamUrl.of_string repository_urls in
+
+    let input_opam_paths =
+      List.map
+        (fun path ->
+          if not (is_opam_filename path) then
+            Fmt.failwith "Provided input path is not an opam file name.";
+          (* IMPORTANT: Do not resolve to absolute path. *)
+          OpamFilename.raw path)
+        input_opam_paths
+    in
+
     let lock_file =
-      Onix.Solver.solve ~repos ~resolutions ~with_test ~with_doc ~with_dev_setup
-        input_opam_files
+      Onix.Solver.solve ~repository_urls ~resolutions ~with_test ~with_doc
+        ~with_dev_setup input_opam_paths
     in
 
     (* Generate onix lock file. *)
@@ -244,66 +263,12 @@ module Lock = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ lock_file_arg
         $ opam_lock_file_arg
-        $ repositories_arg
+        $ repository_urls_arg
         $ resolutions_arg
         $ with_test_arg ~absent:`root
         $ with_doc_arg ~absent:`root
         $ with_dev_setup_arg ~absent:`root
-        $ input_opam_files_arg)
-end
-
-module Gen = struct
-  let input_opam_files_arg =
-    Arg.(value & pos_all file [] & info [] ~docv:"OPAM_FILE")
-
-  let lock_dir_arg =
-    let doc = "The path to the output lock directory." in
-    let docv = "DIR" in
-    Arg.(info ["lock-dir"] ~docv ~doc |> opt file "./onix.lock" |> value)
-
-  let run style_renderer log_level ignore_file lock_dir repos resolutions
-      with_test with_doc with_dev_setup input_opam_files =
-    setup_logs style_renderer log_level;
-    Logs.info (fun log -> log "gen: Running...");
-
-    let ignore_file =
-      if String.equal ignore_file "none" then None
-      else if Sys.file_exists ignore_file then (
-        Logs.debug (fun log ->
-            log "Using %S ignore file to filter root sources." ignore_file);
-        Some ignore_file)
-      else (
-        Logs.warn (fun log ->
-            log
-              "The ignore file %S does not exist, will not filter root sources."
-              ignore_file);
-        None)
-    in
-
-    let lock_file =
-      Onix.Solver.solve ~repos ~resolutions ~with_test ~with_doc ~with_dev_setup
-        input_opam_files
-    in
-    Onix.Gen_drv_tree.gen ~ignore_file ~lock_dir ~with_test ~with_doc
-      ~with_dev_setup lock_file;
-    Logs.info (fun log -> log "Created the nix environment in %S." lock_dir)
-
-  let info = Cmd.info "gen" ~doc:"Generate the derivation tree for packages."
-
-  let cmd =
-    Cmd.v info
-      Term.(
-        const run
-        $ Fmt_cli.style_renderer ()
-        $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
-        $ ignore_file_arg
-        $ lock_dir_arg
-        $ repositories_arg
-        $ resolutions_arg
-        $ with_test_arg ~absent:`root
-        $ with_doc_arg ~absent:`root
-        $ with_dev_setup_arg ~absent:`root
-        $ input_opam_files_arg)
+        $ input_opam_paths_arg)
 end
 
 let () =
@@ -317,7 +282,7 @@ let () =
     let run () = `Help (`Pager, None) in
     Term.(ret (const run $ const ()))
   in
-  [Lock.cmd; Gen.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
+  [Lock.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
   |> Cmdliner.Cmd.group info ~default
   |> Cmdliner.Cmd.eval
   |> Stdlib.exit

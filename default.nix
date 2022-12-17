@@ -1,15 +1,15 @@
 { pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_4_14
-}:
+, verbosity ? "warning" }:
 
 let
   onixPackages = import ./nix/onixPackages { inherit pkgs ocamlPackages; };
-  api = import ./nix/api.nix { inherit pkgs onix; };
+  api = import ./nix/api.nix { inherit pkgs onix verbosity; };
   onix = ocamlPackages.buildDunePackage {
     pname = "onix";
     version = "0.0.1";
     duneVersion = "3";
 
-    passthru = { inherit (api) project; };
+    passthru = { inherit (api) env; };
 
     src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 

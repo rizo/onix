@@ -89,4 +89,4 @@ let pp_packages f deps =
 
 let pp fmt (t : Lock_file.t) =
   Fmt.pf fmt "{@[<v2>@,%a,@,%a,@,%a@]@,}@." pp_version Lib.version pp_repos
-    t.repos pp_packages t.packages
+    t.repository_urls pp_packages t.packages
