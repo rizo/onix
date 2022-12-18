@@ -62,7 +62,7 @@ let collect_from_opam_files project_opam_files =
         (* Ensure the opam file does not have a remote url field. *)
         let opam = OpamFile.OPAM.with_url_opt None opam in
         let package =
-          OpamPackage.create (OpamPackage.name pkg) Opam_utils.root_version
+          OpamPackage.create (OpamPackage.name pkg) Opam_utils.dev_version
         in
         { Opam_utils.package; opam; path })
       else

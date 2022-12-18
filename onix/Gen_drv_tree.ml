@@ -39,10 +39,12 @@ let all_depends_inputs (lock_pkg : Lock_pkg.t) =
   | Some (Http _) -> String_set.add "fetchurl" names
   | _ -> names
 
-let get_gitignore_input_name ~ignore_file lock_pkg =
+let get_gitignore_input_name ~ignore_file (lock_pkg : Lock_pkg.t) =
   match ignore_file with
-  | Some _ when Lock_pkg.is_root lock_pkg -> Some "nix-gitignore"
-  | _ -> None
+  | Some _
+    when Opam_utils.Opam_details.check_has_absolute_path lock_pkg.opam_details
+    -> None
+  | _ -> Some "nix-gitignore"
 
 let default_inputs =
   String_set.empty |> String_set.add "stdenv" |> String_set.add "opam-installer"
@@ -106,20 +108,7 @@ let pp_hash f (kind, hash) =
   | `MD5 -> Fmt.pf f "md5 = %S" hash
 
 let pp_src ~ignore_file f (t : Lock_pkg.t) =
-  if Lock_pkg.is_root t then
-    let path =
-      let opam_path = t.opam_details.Opam_utils.path in
-      let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
-      if String.equal path "." then "./../.." else path
-    in
-    match ignore_file with
-    | Some ".gitignore" ->
-      Fmt.pf f "@ src = nix-gitignore.gitignoreSource [] %s;" path
-    | Some custom ->
-      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] %s;" custom
-        path
-    | None -> Fmt.pf f "@ src = ./../..;"
-  else
+  if Opam_utils.Opam_details.check_has_absolute_path t.opam_details then
     match t.src with
     | None -> ()
     | Some (Git { url; rev }) ->
@@ -139,6 +128,19 @@ let pp_src ~ignore_file f (t : Lock_pkg.t) =
       Fmt.pf f "@ src = @[<v-4>fetchurl {@ url = %a;@ %a;@]@ };"
         (Fmt.quote Opam_utils.pp_url)
         url pp_hash hash
+  else
+    let path =
+      let opam_path = t.opam_details.Opam_utils.path in
+      let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
+      if String.equal path "." then "./../.." else path
+    in
+    match ignore_file with
+    | Some ".gitignore" ->
+      Fmt.pf f "@ src = nix-gitignore.gitignoreSource [] %s;" path
+    | Some custom ->
+      Fmt.pf f "@ src = nix-gitignore.gitignoreSourcePure [ %s ] %s;" custom
+        path
+    | None -> Fmt.pf f "@ src = ./../..;"
 
 let pp_depends_sets name f req =
   let pp_req f =
@@ -238,10 +240,7 @@ let pp_repo_uri f repo_url =
 module Opam_helpers = struct
   let get_extra_files (opam_details : Opam_utils.opam_details) =
     (* We only want this for repo packages. *)
-    if
-      Opam_utils.is_pinned opam_details.package
-      || Opam_utils.is_root opam_details.package
-    then []
+    if Opam_utils.is_pinned opam_details.package then []
     else
       let opamfile = opam_details.path in
       match OpamFile.OPAM.extra_files opam_details.opam with

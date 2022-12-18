@@ -146,3 +146,4 @@
 - [ ] Deps: support overriding to nixpkgs package and providing remote opam URL.
 - [ ] SIGSEGV when the path contains a large file (during gitignore?).
 - [ ] Better roots tracking (for deps with constraints)?
+- [ ] Activate dep flags for a selected list of deps?

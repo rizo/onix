@@ -26,8 +26,6 @@ type t = {
 val src_is_git : src -> bool
 val src_is_http : src -> bool
 val name : t -> OpamTypes.name
-val is_pinned : t -> bool
-val is_root : t -> bool
 
 val of_opam :
   installed:(OpamPackage.Name.t -> bool) ->

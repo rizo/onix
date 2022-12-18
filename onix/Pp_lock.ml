@@ -13,14 +13,8 @@ let pp_hash f (kind, hash) =
   | `MD5 -> Fmt.pf f "\"md5\": %S" hash
 
 let pp_src f (t : Lock_pkg.t) =
-  if Lock_pkg.is_root t then
-    let path =
-      let opam_path = t.opam_details.Opam_utils.path in
-      let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
-      if String.equal path "./." || String.equal path "./" then "." else path
-    in
-    Fmt.pf f ",@,\"src\": { \"url\": \"file://%s\" }" path
-  else
+  if Opam_utils.Opam_details.check_has_absolute_path t.opam_details then
+    (* Absolute path: use src. *)
     match t.src with
     | None -> ()
     | Some (Git { url; rev }) ->
@@ -35,6 +29,14 @@ let pp_src f (t : Lock_pkg.t) =
       Fmt.pf f ",@,@[<v2>\"src\": {@,\"url\": %a,@,%a@]@,}"
         (Fmt.quote Opam_utils.pp_url)
         url pp_hash hash
+  else
+    (* Relative path: use file scheme. *)
+    let path =
+      let opam_path = t.opam_details.Opam_utils.path in
+      let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
+      if String.equal path "./." || String.equal path "./" then "." else path
+    in
+    Fmt.pf f ",@,\"src\": { \"url\": \"file://%s\" }" path
 
 let pp_depends =
   let pp_deps = Fmt.iter ~sep:Fmt.comma Name_set.iter pp_name_quoted in

@@ -15,6 +15,14 @@ type opam_details = {
   opam : OpamFile.OPAM.t;
 }
 
+let root_dir = OpamFilename.Dir.of_string "/"
+
+module Opam_details = struct
+  type t = opam_details
+
+  let check_has_absolute_path t = OpamFilename.starts_with root_dir t.path
+end
+
 type dep_flags = {
   with_test : bool;
   with_doc : bool;
@@ -55,11 +63,8 @@ let is_ocaml_compiler_name name =
   || OpamPackage.Name.equal name ocaml_variants_name
 
 let dev_version = OpamPackage.Version.of_string "dev"
-let root_version = OpamPackage.Version.of_string "root"
 let is_pinned_version version = OpamPackage.Version.equal version dev_version
-let is_root_version version = OpamPackage.Version.equal version root_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)
-let is_root package = is_root_version (OpamPackage.version package)
 
 let opam_package_of_filename filename =
   let base_str = OpamFilename.Base.to_string (OpamFilename.basename filename) in
@@ -67,7 +72,7 @@ let opam_package_of_filename filename =
     let dir_str = OpamFilename.Dir.to_string (OpamFilename.dirname filename) in
     match List.rev (String.split_on_char '/' dir_str) with
     | pkg_dir :: _ ->
-      OpamPackage.create (OpamPackage.Name.of_string pkg_dir) root_version
+      OpamPackage.create (OpamPackage.Name.of_string pkg_dir) dev_version
     | _ ->
       invalid_arg
         ("Could not extract package name from path (must be pkg/opam): "
@@ -76,7 +81,7 @@ let opam_package_of_filename filename =
     let opamname = Filename.remove_extension base_str in
     try OpamPackage.of_string opamname
     with Failure _ ->
-      OpamPackage.create (OpamPackage.Name.of_string opamname) root_version
+      OpamPackage.create (OpamPackage.Name.of_string opamname) dev_version
 
 type dep_flag_scope =
   [ `root
@@ -94,11 +99,11 @@ let pp_dep_flag formatter dep_flag =
   in
   Fmt.pf formatter "%s" str
 
+(* FIXME: rework flag evaluation. *)
 let eval_dep_flag ~version scope =
-  let is_root = is_root_version version in
   match scope with
-  | `root -> is_root
-  | `deps -> not is_root
+  | `root -> true
+  | `deps -> failwith "unimplemented: deps flag evaluation"
   | `all -> true
   | `none -> false
 

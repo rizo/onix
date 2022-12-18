@@ -49,8 +49,10 @@ let pp fmt (lock : Lock_file.t) =
       (fun (pins, deps) (pkg : Lock_pkg.t) ->
         if Opam_utils.is_pinned pkg.opam_details.package then
           (pkg :: pins, pkg :: deps)
-        else if Opam_utils.is_root pkg.opam_details.package then (pins, deps)
-        else (pins, pkg :: deps))
+        else if Opam_utils.Opam_details.check_has_absolute_path pkg.opam_details
+        then (* Absolute path is for non root packages. *)
+          (pins, pkg :: deps)
+        else (pins, deps))
       ([], []) lock.packages
   in
   let pin_depends, depends = (List.rev pin_depends, List.rev depends) in

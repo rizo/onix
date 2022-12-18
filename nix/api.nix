@@ -251,7 +251,7 @@ in {
           ++ extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
         constraints = extractConstraintDeps validatedArgs.deps;
         lockPath = processLock validatedArgs.rootPath validatedArgs.lock;
-        opam-lock = processLock validatedArgs.opam-lock;
+        opam-lock = processLock validatedArgs.rootPath validatedArgs.opam-lock;
         flags = processFlags validatedArgs.flags;
         overlay = validatedArgs.overlay;
       };
@@ -264,15 +264,15 @@ in {
       };
 
       rootPkgs =
-        lib.attrsets.filterAttrs (n: p: isAttrs p && p.version == "root") scope;
+        lib.attrsets.filterAttrs (n: p: isAttrs p && p.version == "dev") scope;
 
       # The default build target for the env: all root packages.
-      entrypoint = pkgs.linkFarm (builtins.baseNameOf "onix-roots") (map (r: {
+      rootLinks = pkgs.linkFarm (builtins.baseNameOf "onix-roots") (map (r: {
         name = r.name;
         path = r;
       }) (lib.attrsets.attrValues rootPkgs));
 
-    in entrypoint // {
+    in rootLinks // {
       # Shell for generating a lock file.
       lock = core.lock {
         lockPath = config.lockPath;

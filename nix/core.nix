@@ -22,19 +22,6 @@ let
         l1Attrs l2;
     in attrValues unionAttrs;
 
-  evalDepFlag = version: depFlag:
-    let isRoot = version == "root";
-    in if depFlag == true then
-      isRoot
-    else if depFlag == "deps" then
-      !isRoot
-    else if depFlag == "all" then
-      true
-    else if depFlag == false then
-      false
-    else
-      throw "invalid dependency flag value: ${depFlag}";
-
   fetchSrc = { rootPath, name, src }:
     let urlLen = builtins.stringLength src.url;
     in if lib.strings.hasPrefix "file://" src.url then
@@ -63,15 +50,13 @@ let
       throw "invalid src for package ${name}: ${builtins.toJSON src}";
 
   getOpamFile = { repoPath, src, name, version }:
-    if version == "root" || version == "dev" then
+    if version == "dev" then
       if pathExists "${src}/${name}.opam" then
         "${src}/${name}.opam"
       else if pathExists "${src}/opam" then
         "${src}/opam"
       else
         throw "could not find opam file for package ${name} in ${src}"
-    else if version == "dev" then
-      "${src}/${name}.opam"
     else
       "${repoPath}/packages/${name}/${name}.${version}/opam";
 
@@ -142,11 +127,9 @@ let
       strictDeps = true;
       dontStrip = false;
 
-      checkInputs = optionals (evalDepFlag dep.version flags.test) testPkgs;
-      nativeBuildInputs = [ onixPathHook ]
-        ++ optionals (evalDepFlag dep.version flags.test) testPkgs
-        ++ optionals (evalDepFlag dep.version flags.doc) docPkgs
-        ++ optionals (evalDepFlag dep.version flags.dev-setup) devSetupPkgs;
+      checkInputs = testPkgs;
+      nativeBuildInputs = [ onixPathHook ] ++ testPkgs ++ docPkgs
+        ++ devSetupPkgs;
 
       propagatedBuildInputs = dependsAndBuildPkgs ++ depexts;
       propagatedNativeBuildInputs = buildPkgs ++ depexts;

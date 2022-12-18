@@ -45,7 +45,8 @@ let all t =
   |> List.of_seq
 
 let debug t =
-  Fmt.epr "Resolutions:@.";
+  if OpamPackage.Name.Map.cardinal t.with_constraint > 0 then
+    Fmt.epr "Resolutions:@.";
   OpamPackage.Name.Map.iter
     (fun n vc ->
       Fmt.epr "- %s@." (OpamFormula.short_string_of_atom (n, Some vc)))

@@ -41,8 +41,6 @@ let check_is_zip_src src =
     Filename.extension basename = ".zip"
 
 let name t = OpamPackage.name t.opam_details.package
-let is_pinned t = Opam_utils.is_pinned t.opam_details.package
-let is_root t = Opam_utils.is_root t.opam_details.package
 
 let prefetch_src_if_md5 ~package src =
   match src with
