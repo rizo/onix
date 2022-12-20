@@ -206,9 +206,6 @@ in {
       # Apply gitignore to root directory: true|false|path.
     , gitignore ? true
 
-      # The path to project's root opam files. Lookup in path if null.
-    , roots ? null
-
       # List of additional or alternative deps.
       # A deps value can be:
       #   - a version constraint string;
@@ -234,7 +231,6 @@ in {
         repos = validateRepos repos;
         rootPath = validateRootPath (checkHasOpamDeps validatedArgs.deps) path;
         gitignore = validateGitignore gitignore;
-        roots = validateRoots roots;
         deps = validateDeps deps;
         lock = validateLock lock;
         flags = validateFlags flags;
@@ -247,8 +243,7 @@ in {
         rootPath = validatedArgs.rootPath;
         rootPathWithGitignore =
           processRootPath { inherit (validatedArgs) gitignore rootPath; };
-        roots = (processRoots validatedArgs.rootPath validatedArgs.roots)
-          ++ extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
+        opamFiles = extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
         constraints = extractConstraintDeps validatedArgs.deps;
         lockPath = processLock validatedArgs.rootPath validatedArgs.lock;
         opam-lock = processLock validatedArgs.rootPath validatedArgs.opam-lock;
@@ -256,40 +251,35 @@ in {
         overlay = validatedArgs.overlay;
       };
 
-      scope = core.build {
+      allPkgs = core.build {
         rootPath = config.rootPathWithGitignore;
         lockPath = config.lockPath;
         flags = config.flags;
         overlay = config.overlay;
       };
 
-      rootPkgs =
-        lib.attrsets.filterAttrs (n: p: isAttrs p && p.version == "dev") scope;
+      targetPkgs =
+        lib.attrsets.mapAttrs (name: _: allPkgs.${name}) validatedArgs.deps;
 
       # The default build target for the env: all root packages.
-      rootLinks = pkgs.linkFarm (builtins.baseNameOf "onix-roots") (map (r: {
+      links = pkgs.linkFarm (builtins.baseNameOf "onix-links") (map (r: {
         name = r.name;
         path = r;
-      }) (lib.attrsets.attrValues rootPkgs));
+      }) (lib.attrsets.attrValues targetPkgs));
 
-    in rootLinks // {
+    in {
       # Shell for generating a lock file.
       lock = core.lock {
         lockPath = config.lockPath;
-        roots = config.roots;
         opamLockPath = config.opam-lock;
         repositoryUrls = config.repos;
         constraints = config.constraints;
         flags = config.flags;
+        opamFiles = config.opamFiles;
       };
 
-      # All packages.
-      pkgs = scope;
+      pkgs = allPkgs;
 
-      # Root packages.
-      roots = rootPkgs;
-
-      # Create a shell for the root project.
-      shell = pkgs.mkShell { inputsFrom = lib.attrsets.attrValues rootPkgs; };
+      targets = targetPkgs;
     };
 }

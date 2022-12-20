@@ -266,7 +266,8 @@ let
       };
 
 in {
-  lock = { lockPath, opamLockPath, roots, repositoryUrls, constraints, flags }:
+  lock =
+    { lockPath, opamLockPath, opamFiles, repositoryUrls, constraints, flags }:
     let
       repositoryUrlsArg = lib.strings.concatStringsSep "," (map (repositoryUrl:
         if repositoryUrl ? "rev" then
@@ -279,9 +280,9 @@ in {
 
       ) repositoryUrls);
 
-      # Opam roots argument.
-      rootsArg = if builtins.length roots > 0 then
-        " " + lib.strings.concatStringsSep " " roots
+      # Opam files argument.
+      opamFilesArg = if builtins.length opamFiles > 0 then
+        " " + lib.strings.concatStringsSep " " opamFiles
       else
         "";
 
@@ -302,7 +303,7 @@ in {
           --with-test=${builtins.toJSON flags.test} \
           --with-doc=${builtins.toJSON flags.doc} \
           --with-dev-setup=${builtins.toJSON flags.dev-setup} \
-          --verbosity='${verbosity}'${rootsArg}
+          --verbosity='${verbosity}'${opamFilesArg}
         exit $?
         set +x
       '';

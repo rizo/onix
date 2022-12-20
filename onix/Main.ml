@@ -175,7 +175,7 @@ module Opam_install = struct
 end
 
 module Lock = struct
-  let input_opam_paths_arg =
+  let opam_file_paths_arg =
     let doc = "Input opam paths to be used during package resolution." in
     Arg.(value & pos_all file [] & info [] ~docv:"PATH" ~doc)
 
@@ -216,25 +216,25 @@ module Lock = struct
 
   let run style_renderer log_level lock_file_path opam_lock_file_path
       repository_urls resolutions with_test with_doc with_dev_setup
-      input_opam_paths =
+      opam_file_paths =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running...");
 
     let repository_urls = List.map OpamUrl.of_string repository_urls in
 
-    let input_opam_paths =
+    let opam_file_paths =
       List.map
         (fun path ->
           if not (is_opam_filename path) then
-            Fmt.failwith "Provided input path is not an opam file name.";
+            Fmt.failwith "Provided input path is not an opam file path.";
           (* IMPORTANT: Do not resolve to absolute path. *)
           OpamFilename.raw path)
-        input_opam_paths
+        opam_file_paths
     in
 
     let lock_file =
       Onix.Solver.solve ~repository_urls ~resolutions ~with_test ~with_doc
-        ~with_dev_setup input_opam_paths
+        ~with_dev_setup opam_file_paths
     in
 
     (* Generate onix lock file. *)
@@ -268,7 +268,7 @@ module Lock = struct
         $ with_test_arg ~absent:`root
         $ with_doc_arg ~absent:`root
         $ with_dev_setup_arg ~absent:`root
-        $ input_opam_paths_arg)
+        $ opam_file_paths_arg)
 end
 
 let () =

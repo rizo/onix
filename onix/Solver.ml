@@ -1,12 +1,12 @@
 module Opam_0install_solver = Opam_0install.Solver.Make (Solver_context)
 
 let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
-    ~with_dev_setup input_paths =
+    ~with_dev_setup opam_file_paths =
   let resolutions = Resolutions.make resolutions in
   Resolutions.debug resolutions;
 
   (* Packages with .opam files at the root of the project. *)
-  let root_opam_details = Opam_utils.find_root_packages input_paths in
+  let root_opam_details = Opam_utils.find_root_packages opam_file_paths in
 
   (* Pin-depends packages found in root_packages. *)
   let pin_opam_details =
