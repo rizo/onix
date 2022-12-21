@@ -147,3 +147,4 @@
 - [ ] SIGSEGV when the path contains a large file (during gitignore?).
 - [ ] Better roots tracking (for deps with constraints)?
 - [ ] Activate dep flags for a selected list of deps?
+- [ ] Allow passing dep flags (test, doc, dev-setup) to each dependency.

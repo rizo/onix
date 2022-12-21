@@ -27,8 +27,8 @@ let
     "onix: lock argument must be a path or a null value, found: ${
       builtins.toJSON lock
     }";
-  errInvalidFlags =
-    "onix: flags argument must be an attrset with test, doc or dev-setup keys";
+  errInvalidVars =
+    "onix: vars argument must be an attrset with test, doc or dev-setup keys";
   errInvalidOverlay = "onix: overlay must be a function or a null value";
   errRequiredRootPath =
     "onix: path argument is required when opam files are provided in deps or in roots";
@@ -124,7 +124,7 @@ let
     else
       throw (errInvalidLock lock);
 
-  validateFlags = flags: if isAttrs flags then flags else throw errInvalidFlags;
+  validateVars = vars: if isAttrs vars then vars else throw errInvalidVars;
 
   validateOverlay = overlay:
     if isFunction overlay || isNull overlay then
@@ -174,12 +174,12 @@ let
     else
       lock;
 
-  processFlags = flags:
+  processVars = vars:
     {
       test = false;
       doc = false;
       dev-setup = false;
-    } // flags;
+    } // vars;
 
   # Extract opam path deps. The extracted opam file path is relative to the root dir.
   extractOpamDeps = rootPath: deps:
@@ -203,6 +203,9 @@ in {
       # The path of the project where opam files are looked up.
     , path ? null
 
+      # The path to project's root opam files. Will be looked up if null.
+    , roots ? null
+
       # Apply gitignore to root directory: true|false|path.
     , gitignore ? true
 
@@ -219,8 +222,8 @@ in {
       # The path to the opam lock file.
     , opam-lock ? null
 
-      # Depencendy resolution flags.
-    , flags ? { }
+      # Package variables.
+    , vars ? { }
 
       # A nix overlay to be applied to the built scope.
     , overlay ? null }:
@@ -230,10 +233,11 @@ in {
         repo = validateSrc "repo" repo;
         repos = validateRepos repos;
         rootPath = validateRootPath (checkHasOpamDeps validatedArgs.deps) path;
+        roots = validateRoots roots;
         gitignore = validateGitignore gitignore;
         deps = validateDeps deps;
         lock = validateLock lock;
-        flags = validateFlags flags;
+        vars = validateVars vars;
         opam-lock = validateLock opam-lock;
         overlay = validateOverlay overlay;
       };
@@ -243,18 +247,17 @@ in {
         rootPath = validatedArgs.rootPath;
         rootPathWithGitignore =
           processRootPath { inherit (validatedArgs) gitignore rootPath; };
-        opamFiles = extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
+        opamFiles = (processRoots validatedArgs.rootPath validatedArgs.roots) ++ extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
         constraints = extractConstraintDeps validatedArgs.deps;
         lockPath = processLock validatedArgs.rootPath validatedArgs.lock;
         opam-lock = processLock validatedArgs.rootPath validatedArgs.opam-lock;
-        flags = processFlags validatedArgs.flags;
+        vars = processVars validatedArgs.vars;
         overlay = validatedArgs.overlay;
       };
 
       allPkgs = core.build {
         rootPath = config.rootPathWithGitignore;
         lockPath = config.lockPath;
-        flags = config.flags;
         overlay = config.overlay;
       };
 
@@ -274,7 +277,7 @@ in {
         opamLockPath = config.opam-lock;
         repositoryUrls = config.repos;
         constraints = config.constraints;
-        flags = config.flags;
+        vars = config.vars;
         opamFiles = config.opamFiles;
       };
 

@@ -23,12 +23,6 @@ module Opam_details = struct
   let check_has_absolute_path t = OpamFilename.starts_with root_dir t.path
 end
 
-type dep_flags = {
-  with_test : bool;
-  with_doc : bool;
-  with_dev_setup : bool;
-}
-
 let opam_name = OpamFile.OPAM.name
 let pp_package = Fmt.using OpamPackage.to_string Fmt.string
 let pp_package_version = Fmt.using OpamPackage.Version.to_string Fmt.string
@@ -83,29 +77,17 @@ let opam_package_of_filename filename =
     with Failure _ ->
       OpamPackage.create (OpamPackage.Name.of_string opamname) dev_version
 
-type dep_flag_scope =
-  [ `root
-  | `deps
-  | `none
-  | `all ]
+type dep_vars = {
+  test : bool;
+  doc : bool;
+  dev_setup : bool;
+}
 
-let pp_dep_flag formatter dep_flag =
-  let str =
-    match dep_flag with
-    | `root -> "root"
-    | `deps -> "deps"
-    | `none -> "none"
-    | `all -> "all"
-  in
-  Fmt.pf formatter "%s" str
+type package_dep_vars = dep_vars OpamPackage.Name.Map.t
 
-(* FIXME: rework flag evaluation. *)
-let eval_dep_flag ~version scope =
-  match scope with
-  | `root -> true
-  | `deps -> failwith "unimplemented: deps flag evaluation"
-  | `all -> true
-  | `none -> false
+let eval_package_dep_vars name package_dep_vars =
+  try OpamPackage.Name.Map.find name package_dep_vars
+  with Not_found -> { test = false; doc = false; dev_setup = false }
 
 let debug_var ?(scope = "unknown") var contents =
   Logs.debug (fun log ->

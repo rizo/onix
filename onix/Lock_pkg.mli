@@ -20,6 +20,7 @@ type t = {
   depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
+  vars : Opam_utils.dep_vars;
   flags : string list;
 }
 
@@ -29,9 +30,9 @@ val name : t -> OpamTypes.name
 
 val of_opam :
   installed:(OpamPackage.Name.t -> bool) ->
-  with_test:Opam_utils.dep_flag_scope ->
-  with_doc:Opam_utils.dep_flag_scope ->
-  with_dev_setup:Opam_utils.dep_flag_scope ->
+  with_test:bool ->
+  with_doc:bool ->
+  with_dev_setup:bool ->
   Opam_utils.opam_details ->
   t option
 (** Create a lock package from an opam representation.

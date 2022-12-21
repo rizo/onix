@@ -50,16 +50,32 @@ let pp_depexts =
     if String_set.is_empty deps then ()
     else Fmt.pf f ",@,@[<v2>\"depexts\": [@ %a@]@ ]" pp_deps deps
 
+let pp_pkg_vars f vars =
+  match vars with
+  | { Opam_utils.test = false; doc = false; dev_setup = false } -> ()
+  | { Opam_utils.test; doc; dev_setup } ->
+    let vars_str =
+      String.concat ", "
+        [
+          (if test then "\"test\": true" else "");
+          (if doc then "\"doc\": true" else "");
+          (if dev_setup then "\"dev-setup\": true" else "");
+        ]
+    in
+    Fmt.pf f ",@,@[<v2>\"vars\": { %s }@]" vars_str
+
 let pp_pkg ppf (t : Lock_pkg.t) =
-  Fmt.pf ppf "\"version\": %S%a%a%a%a%a%a%a"
+  Fmt.pf ppf "\"version\": %S%a%a%a%a%a%a%a%a"
     (OpamPackage.version_to_string t.opam_details.package)
     pp_src t (pp_depends "depends") t.depends
-    (pp_depends "buildDepends")
-    t.depends_build (pp_depends "testDepends") t.depends_test
-    (pp_depends "docDepends") t.depends_doc
-    (pp_depends "devSetupDepends")
+    (pp_depends "build-depends")
+    t.depends_build
+    (pp_depends "test-depends")
+    t.depends_test (pp_depends "doc-depends") t.depends_doc
+    (pp_depends "dev-setup-depends")
     t.depends_dev_setup pp_depexts
     (String_set.union t.depexts_unknown t.depexts_nix)
+    pp_pkg_vars t.vars
 
 (* Lock file printers *)
 

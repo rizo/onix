@@ -4,9 +4,7 @@ val make :
   ?prefer_oldest:bool ->
   ?fixed_opam_details:Opam_utils.opam_details OpamTypes.name_map ->
   constraints:OpamFormula.version_constraint OpamTypes.name_map ->
-  with_test:Opam_utils.dep_flag_scope ->
-  with_doc:Opam_utils.dep_flag_scope ->
-  with_dev_setup:Opam_utils.dep_flag_scope ->
+  package_dep_vars:Opam_utils.package_dep_vars ->
   OpamTypes.dirname ->
   t
 

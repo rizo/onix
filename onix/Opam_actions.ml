@@ -176,10 +176,6 @@ end
 let patch = Patch.run
 
 let build ~with_test ~with_doc ~with_dev_setup (ctx : Pkg_ctx.t) =
-  let version = ctx.self.version in
-  let with_test = Opam_utils.eval_dep_flag ~version with_test in
-  let with_doc = Opam_utils.eval_dep_flag ~version with_doc in
-  let with_dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
   let opam = Opam_utils.read_opam (OpamFilename.of_string ctx.self.opamfile) in
   let commands =
     (OpamFilter.commands
@@ -200,10 +196,6 @@ let build ~with_test ~with_doc ~with_dev_setup (ctx : Pkg_ctx.t) =
 
 module Install = struct
   let run ~with_test ~with_doc ~with_dev_setup (ctx : Pkg_ctx.t) =
-    let version = ctx.self.version in
-    let with_test = Opam_utils.eval_dep_flag ~version with_test in
-    let with_doc = Opam_utils.eval_dep_flag ~version with_doc in
-    let with_dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
     let opam =
       Opam_utils.read_opam (OpamFilename.of_string ctx.self.opamfile)
     in

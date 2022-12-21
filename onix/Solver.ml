@@ -8,6 +8,18 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
   (* Packages with .opam files at the root of the project. *)
   let root_opam_details = Opam_utils.find_root_packages opam_file_paths in
 
+  (* Apply provided dep vars to the root packages. *)
+  let package_dep_vars =
+    OpamPackage.Name.Map.map
+      (fun _ ->
+        {
+          Opam_utils.test = with_test;
+          doc = with_doc;
+          dev_setup = with_dev_setup;
+        })
+      root_opam_details
+  in
+
   (* Pin-depends packages found in root_packages. *)
   let pin_opam_details =
     Pin_depends.collect_from_opam_files root_opam_details
@@ -36,7 +48,7 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
   let context =
     Solver_context.make
       OpamFilename.Op.(repository_dir / "packages")
-      ~fixed_opam_details ~constraints ~with_test ~with_doc ~with_dev_setup
+      ~fixed_opam_details ~constraints ~package_dep_vars
   in
 
   let get_opam_details package =
@@ -48,10 +60,7 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
       { package; path; opam }
   in
 
-  Logs.info (fun log ->
-      log "Solving dependencies... with-test=%a with-doc=%a with-dev-setup=%a"
-        Opam_utils.pp_dep_flag with_test Opam_utils.pp_dep_flag with_doc
-        Opam_utils.pp_dep_flag with_dev_setup);
+  Logs.info (fun log -> log "Solving dependencies...");
   Logs.info (fun log ->
       log "Target packages: %a"
         Fmt.(list ~sep:Fmt.sp Opam_utils.pp_package_name)
@@ -72,9 +81,16 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
       packages;
     let installed name = OpamPackage.Name.Map.mem name packages in
     packages
-    |> OpamPackage.Name.Map.filter_map (fun _ pkg ->
+    |> OpamPackage.Name.Map.filter_map (fun pkg_name pkg ->
            match
              let opam_details = get_opam_details pkg in
+             let {
+               Opam_utils.test = with_test;
+               doc = with_doc;
+               dev_setup = with_dev_setup;
+             } =
+               Opam_utils.eval_package_dep_vars pkg_name package_dep_vars
+             in
              Lock_pkg.of_opam ~installed ~with_test ~with_doc ~with_dev_setup
                opam_details
            with

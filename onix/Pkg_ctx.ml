@@ -93,7 +93,7 @@ module Vars = struct
     |> add_global_vars
     |> add_nixos_vars
 
-  let resolve_dep_flags ?(build = true) ?(post = false) ?(test = false)
+  let resolve_dep_vars ?(build = true) ?(post = false) ?(test = false)
       ?(doc = false) ?(dev_setup = false) var =
     let bool x = Some (OpamVariable.bool x) in
     match OpamVariable.Full.to_string var with

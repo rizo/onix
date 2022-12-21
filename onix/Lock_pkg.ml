@@ -30,6 +30,7 @@ type t = {
   depends_dev_setup : Name_set.t;
   depexts_nix : String_set.t;
   depexts_unknown : String_set.t;
+  vars : Opam_utils.dep_vars;
   flags : string list;
 }
 
@@ -188,7 +189,7 @@ let resolve ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false)
       [
         Pkg_ctx.Vars.resolve_package pkg;
         Pkg_ctx.Vars.resolve_from_base;
-        Pkg_ctx.Vars.resolve_dep_flags ~build ~test ~doc ~dev_setup;
+        Pkg_ctx.Vars.resolve_dep_vars ~build ~test ~doc ~dev_setup;
       ]
       v
   in
@@ -209,14 +210,13 @@ let only_installed ~installed req opt =
 let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let package = opam_details.Opam_utils.package in
   let opam = opam_details.Opam_utils.opam in
-  let version = OpamPackage.version package in
   let src = get_src ~package (OpamFile.OPAM.url opam) in
   let src = Option.map (prefetch_src_if_md5 ~package) src in
 
   let opam_depends = OpamFile.OPAM.depends opam in
   let opam_depopts = OpamFile.OPAM.depopts opam in
 
-  (* Precise extraction of dependencies using dep flags.
+  (* Precise extraction of dependencies using dep vars.
      The flag selection is too general so [~depends] and [~depopts] are used to
      select deps exclusively from a particular group. *)
   let get_deps ?build ?test ?doc ?dev_setup ?(depends = Name_set.empty)
@@ -228,9 +228,9 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
     (Name_set.diff req depends, Name_set.diff opt depopts)
   in
 
-  let test = Opam_utils.eval_dep_flag ~version with_test in
-  let doc = Opam_utils.eval_dep_flag ~version with_doc in
-  let dev_setup = Opam_utils.eval_dep_flag ~version with_dev_setup in
+  let test = with_test in
+  let doc = with_doc in
+  let dev_setup = with_dev_setup in
 
   let depends, depopts = get_deps () in
   let depends_build, depopts_build =
@@ -288,4 +288,5 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
       depexts_nix;
       depexts_unknown;
       flags;
+      vars = { Opam_utils.test; doc; dev_setup };
     }

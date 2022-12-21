@@ -46,35 +46,26 @@ let opam_arg =
 let flag_scopes =
   [("true", `root); ("deps", `deps); ("all", `all); ("false", `none)]
 
-let with_test_arg ~absent =
+let with_test_arg =
   let doc =
     "Include {with-test} constrained packages. Applies to the root packages \
-     only if passed without value. The possible values are: `true', `deps', \
-     `all' or `false'"
+     only."
   in
-  Arg.info ["with-test"] ~doc ~docv:"VAL"
-  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
-  |> Arg.value
+  Arg.(info ["with-test"] ~doc |> opt bool false |> value)
 
-let with_doc_arg ~absent =
+let with_doc_arg =
   let doc =
     "Include {with-doc} constrained packages. Applies to the root packages \
-     only if passed without value. The possible values are: `true', `deps', \
-     `all' or `false'"
+     only."
   in
-  Arg.info ["with-doc"] ~doc ~docv:"VAL"
-  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
-  |> Arg.value
+  Arg.(info ["with-doc"] ~doc |> opt bool false |> value)
 
-let with_dev_setup_arg ~absent =
+let with_dev_setup_arg =
   let doc =
     "Include {with-dev-setup} constrained packages. Applies to the root \
-     packages only if passed without value. The possible values are: `true', \
-     `deps', `all' or `false'"
+     packages only."
   in
-  Arg.info ["with-dev-setup"] ~doc ~docv:"VAL"
-  |> Arg.opt ~vopt:`root (Arg.enum flag_scopes) absent
-  |> Arg.value
+  Arg.(info ["with-dev-setup"] ~doc |> opt bool false |> value)
 
 let mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
   let onix_path = Sys.getenv_opt "ONIXPATH" or "" in
@@ -139,9 +130,9 @@ module Opam_build = struct
         $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
         $ ocaml_version_arg
         $ opam_arg
-        $ with_test_arg ~absent:`none
-        $ with_doc_arg ~absent:`none
-        $ with_dev_setup_arg ~absent:`none
+        $ with_test_arg
+        $ with_doc_arg
+        $ with_dev_setup_arg
         $ package_prefix_arg
         $ opam_package_arg)
 end
@@ -167,9 +158,9 @@ module Opam_install = struct
         const run
         $ ocaml_version_arg
         $ opam_arg
-        $ with_test_arg ~absent:`none
-        $ with_doc_arg ~absent:`none
-        $ with_dev_setup_arg ~absent:`none
+        $ with_test_arg
+        $ with_doc_arg
+        $ with_dev_setup_arg
         $ package_prefix_arg
         $ opam_package_arg)
 end
@@ -265,9 +256,9 @@ module Lock = struct
         $ opam_lock_file_arg
         $ repository_urls_arg
         $ resolutions_arg
-        $ with_test_arg ~absent:`root
-        $ with_doc_arg ~absent:`root
-        $ with_dev_setup_arg ~absent:`root
+        $ with_test_arg
+        $ with_doc_arg
+        $ with_dev_setup_arg
         $ opam_file_paths_arg)
 end
 

@@ -23,14 +23,14 @@ module Vars : sig
   (** Base variables consist of native system variables, global variables
       and nixos-specific variables. *)
 
-  val resolve_dep_flags :
+  val resolve_dep_vars :
     ?build:bool ->
     ?post:bool ->
     ?test:bool ->
     ?doc:bool ->
     ?dev_setup:bool ->
     OpamFilter.env
-  (** The opam filter env for resolving dependencies based on flags. *)
+  (** The opam filter env for resolving dependencies based on vars. *)
 
   val resolve_package : OpamPackage.t -> OpamFilter.env
   val resolve_from_stdenv : OpamFilter.env

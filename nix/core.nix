@@ -69,16 +69,22 @@ let
     builtins.replaceStrings [ "-" "~" ] [ "+" "+" ] version;
 
   # Build a package from a lock dependency.
-  buildPkg = { rootPath, repoPath, scope, flags }:
+  buildPkg = { rootPath, repoPath, scope }:
     name: dep:
     let
       ocaml = scope.ocaml;
 
+      vars = {
+        test = false;
+        doc = false;
+        dev-setup = false;
+      } // (if dep ? "vars" then dep.vars else { });
+
       dependsPkgs = map (dep': scope.${dep'}) (dep.depends or [ ]);
-      buildPkgs = map (dep': scope.${dep'}) (dep.buildDepends or [ ]);
-      testPkgs = map (dep': scope.${dep'}) (dep.testDepends or [ ]);
-      docPkgs = map (dep': scope.${dep'}) (dep.docDepends or [ ]);
-      devSetupPkgs = map (dep': scope.${dep'}) (dep.devSetupDepends or [ ]);
+      buildPkgs = map (dep': scope.${dep'}) (dep.build-depends or [ ]);
+      testPkgs = map (dep': scope.${dep'}) (dep.test-depends or [ ]);
+      docPkgs = map (dep': scope.${dep'}) (dep.doc-depends or [ ]);
+      devSetupPkgs = map (dep': scope.${dep'}) (dep.dev-setup-depends or [ ]);
 
       # Ex: "ocaml-ng.ocamlPackages_4_14.ocaml" -> pkgs.ocaml-ng.ocamlPackages_4_14.ocaml
       depexts = concatMap (pkgKey:
@@ -174,9 +180,9 @@ let
         ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON flags.test} \
-          --with-doc=${builtins.toJSON flags.doc} \
-          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
+          --with-test=${builtins.toJSON vars.test} \
+          --with-doc=${builtins.toJSON vars.doc} \
+          --with-dev-setup=${builtins.toJSON vars.dev-setup} \
           --path=$out \
           --verbosity=${verbosity} \
           ${name}.${dep.version}
@@ -213,9 +219,9 @@ let
         ${onix}/bin/onix opam-install \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON flags.test} \
-          --with-doc=${builtins.toJSON flags.doc} \
-          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
+          --with-test=${builtins.toJSON vars.test} \
+          --with-doc=${builtins.toJSON vars.doc} \
+          --with-dev-setup=${builtins.toJSON vars.dev-setup} \
           --path=$out \
           ${name}.${dep.version}
 
@@ -267,7 +273,7 @@ let
 
 in {
   lock =
-    { lockPath, opamLockPath, opamFiles, repositoryUrls, constraints, flags }:
+    { lockPath, opamLockPath, opamFiles, repositoryUrls, constraints, vars }:
     let
       repositoryUrlsArg = lib.strings.concatStringsSep "," (map (repositoryUrl:
         if repositoryUrl ? "rev" then
@@ -296,20 +302,18 @@ in {
     in pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = ''
-        set -x
         onix lock${lockPathOpt}${opamLockPathOpt} \
           --repository-urls='${repositoryUrlsArg}' \
           --resolutions='${mkResolutionsArg constraints}' \
-          --with-test=${builtins.toJSON flags.test} \
-          --with-doc=${builtins.toJSON flags.doc} \
-          --with-dev-setup=${builtins.toJSON flags.dev-setup} \
+          --with-test=${builtins.toJSON vars.test} \
+          --with-doc=${builtins.toJSON vars.doc} \
+          --with-dev-setup=${builtins.toJSON vars.dev-setup} \
           --verbosity='${verbosity}'${opamFilesArg}
         exit $?
-        set +x
       '';
     };
 
-  build = { rootPath, lockPath, overlay, flags }:
+  build = { rootPath, lockPath, overlay }:
     let
       lock = lib.importJSON lockPath;
       repositories = lock.repositories;
@@ -321,7 +325,7 @@ in {
         (mapAttrs' (name: dep: {
           inherit name;
           value = buildPkg {
-            inherit rootPath repoPath flags;
+            inherit rootPath repoPath;
             scope = self;
           } name dep;
         }) deps));
