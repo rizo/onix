@@ -56,11 +56,13 @@ let pp_pkg_vars f vars =
   | { Opam_utils.test; doc; dev_setup } ->
     let vars_str =
       String.concat ", "
-        [
-          (if test then "\"test\": true" else "");
-          (if doc then "\"doc\": true" else "");
-          (if dev_setup then "\"dev-setup\": true" else "");
-        ]
+        (List.filter
+           (fun str -> String.length str > 0)
+           [
+             (if test then "\"test\": true" else "");
+             (if doc then "\"doc\": true" else "");
+             (if dev_setup then "\"dev-setup\": true" else "");
+           ])
     in
     Fmt.pf f ",@,@[<v2>\"vars\": { %s }@]" vars_str
 

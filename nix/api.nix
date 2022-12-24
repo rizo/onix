@@ -2,7 +2,8 @@
 
 let
   inherit (pkgs) lib;
-  inherit (builtins) isNull isList isAttrs isString isPath isFunction length;
+  inherit (builtins)
+    isNull isList isAttrs isBool isString isPath isFunction length;
 
   debug = data: x: builtins.trace "onix: [DEBUG] ${builtins.toJSON data}" x;
 
@@ -136,13 +137,16 @@ let
 
   processRootPath = { gitignore, rootPath }:
     if isPath gitignore then
-      pkgs.nix-gitignore.gitignoreSourcePure [ gitignore ]
-      (builtins.toString rootPath)
-    else if builtins.isBool gitignore && gitignore
-    && builtins.pathExists "${builtins.toString rootPath}/.gitignore" then
-      pkgs.nix-gitignore.gitignoreSource [ ] rootPath
+      pkgs.nix-gitignore.gitignoreSourcePure [ gitignore ] (toString rootPath)
+    else if isBool gitignore && gitignore then
+      let gitignorePath = toString rootPath + "/.gitignore";
+      in if builtins.pathExists gitignorePath then
+        pkgs.nix-gitignore.gitignoreSourcePure [ (/. + gitignorePath) ]
+        (toString rootPath)
+      else
+        toString rootPath
     else
-      builtins.toString rootPath;
+      toString rootPath;
 
   lookupRoots = rootPath:
     lib.attrsets.mapAttrsToList (filename: _type: filename)
@@ -242,12 +246,14 @@ in {
         overlay = validateOverlay overlay;
       };
 
+      # config = builtins.trace "config: ${builtins.toJSON config_}" config_;
       config = {
         repos = [ validatedArgs.repo ] ++ validatedArgs.repos;
         rootPath = validatedArgs.rootPath;
         rootPathWithGitignore =
           processRootPath { inherit (validatedArgs) gitignore rootPath; };
-        opamFiles = (processRoots validatedArgs.rootPath validatedArgs.roots) ++ extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
+        opamFiles = (processRoots validatedArgs.rootPath validatedArgs.roots)
+          ++ extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
         constraints = extractConstraintDeps validatedArgs.deps;
         lockPath = processLock validatedArgs.rootPath validatedArgs.lock;
         opam-lock = processLock validatedArgs.rootPath validatedArgs.opam-lock;
@@ -260,17 +266,19 @@ in {
         lockPath = config.lockPath;
         overlay = config.overlay;
       };
-
-      targetPkgs =
+      devPkgs = lib.attrsets.filterAttrs (n: p: isAttrs p && p.version == "dev")
+        allPkgs;
+      depPkgs =
         lib.attrsets.mapAttrs (name: _: allPkgs.${name}) validatedArgs.deps;
+      targetPkgs = devPkgs // depPkgs;
 
       # The default build target for the env: all root packages.
-      links = pkgs.linkFarm (builtins.baseNameOf "onix-links") (map (r: {
+      devLinks = pkgs.linkFarm (builtins.baseNameOf "onix-links") (map (r: {
         name = r.name;
         path = r;
-      }) (lib.attrsets.attrValues targetPkgs));
+      }) (lib.attrsets.attrValues devPkgs));
 
-    in {
+    in devLinks // {
       # Shell for generating a lock file.
       lock = core.lock {
         lockPath = config.lockPath;
@@ -284,5 +292,7 @@ in {
       pkgs = allPkgs;
 
       targets = targetPkgs;
+
+      shell = pkgs.mkShell { inputsFrom = (builtins.attrValues targetPkgs); };
     };
 }

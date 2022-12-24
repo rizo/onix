@@ -26,9 +26,9 @@ let opam_package_arg =
   Arg.(info [] ~docv ~doc |> pos 0 (some string) None |> required)
 
 let lock_file_arg =
-  let doc = "The path to the lock file (by default ./onix-lock.nix)." in
+  let doc = "The path to the lock file (by default ./onix-lock.json)." in
   let docv = "FILE" in
-  Arg.(info ["lock-file"] ~docv ~doc |> opt string "./onix-lock.nix" |> value)
+  Arg.(info ["lock-file"] ~docv ~doc |> opt string "./onix-lock.json" |> value)
 
 let opam_lock_file_arg =
   let doc =
