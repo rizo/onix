@@ -5,19 +5,43 @@ let
 
   common = {
     ocamlfind = super.ocamlfind.overrideAttrs (oldAttrs: {
-      patches = lib.optional (lib.versionOlder oldAttrs.version "1.9.3")
-        ./ocamlfind/onix_install_topfind_192.patch
-        ++ lib.optional (oldAttrs.version == "1.9.3")
-        ./ocamlfind/onix_install_topfind_193.patch
-        ++ lib.optional (oldAttrs.version == "1.9.4")
-        ./ocamlfind/onix_install_topfind_194.patch
-        ++ lib.optional (lib.versionAtLeast oldAttrs.version "1.9.5")
-        ./ocamlfind/onix_install_topfind_195.patch;
+      # patches = lib.optional (lib.versionOlder oldAttrs.version "1.9.3")
+      #   ./ocamlfind/onix_install_topfind_192.patch
+      #   ++ lib.optional (oldAttrs.version == "1.9.3")
+      #   ./ocamlfind/onix_install_topfind_193.patch
+      #   ++ lib.optional (oldAttrs.version == "1.9.4")
+      #   ./ocamlfind/onix_install_topfind_194.patch
+      #   ++ lib.optional (lib.versionAtLeast oldAttrs.version "1.9.5")
+      #   ./ocamlfind/onix_install_topfind_195.patch;
 
       setupHook = nixpkgs.writeText "ocamlfind-setup-hook.sh" ''
-        export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${self.ocaml.version}/site-lib/toplevel"
+        [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
+
+        addTargetOCamlPath () {
+          local libdir="$1/lib/ocaml/${super.ocaml.version}/site-lib"
+
+          if [[ ! -d "$libdir" ]]; then
+            return 0
+          fi
+
+          echo "+ onix-ocamlfind-setup-hook.sh/addTargetOCamlPath: $*"
+
+          addToSearchPath "OCAMLPATH" "$libdir"
+          addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
+        }
+
+        addEnvHooks "$targetOffset" addTargetOCamlPath
+
+        export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${super.ocaml.version}/site-lib/toplevel"
       '';
     });
+
+    # topkg = super.topkg.overrideAttrs (oldAttrs: {
+    #   setupHook = nixpkgs.writeText "topkg-setup-hook.sh" ''
+    #     echo ">>> topkg-setup-hook: $1"
+    #     addToSearchPath "OCAMLPATH" "$1/lib/ocaml/${self.ocaml.version}/site-lib"
+    #   '';
+    # });
 
     ocb-stubblr = super.ocb-stubblr.overrideAttrs
       (_oldAttrs: { patches = [ ./ocb-stubblr/onix_disable_opam.patch ]; });

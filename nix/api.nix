@@ -28,8 +28,7 @@ let
     "onix: lock argument must be a path or a null value, found: ${
       builtins.toJSON lock
     }";
-  errInvalidVars =
-    "onix: vars argument must be an attrset with test, doc or dev-setup keys";
+  errInvalidVars = "onix: vars argument must be an attrset";
   errInvalidOverlay = "onix: overlay must be a function or a null value";
   errRequiredRootPath =
     "onix: path argument is required when opam files are provided in deps or in roots";
@@ -180,9 +179,9 @@ let
 
   processVars = vars:
     {
-      test = false;
-      doc = false;
-      dev-setup = false;
+      "with-test" = false;
+      "with-doc" = false;
+      "with-dev-setup" = false;
     } // vars;
 
   # Extract opam path deps. The extracted opam file path is relative to the root dir.
@@ -270,7 +269,6 @@ in {
         allPkgs;
       depPkgs =
         lib.attrsets.mapAttrs (name: _: allPkgs.${name}) validatedArgs.deps;
-      targetPkgs = devPkgs // depPkgs;
 
       # The default build target for the env: all root packages.
       devLinks = pkgs.linkFarm (builtins.baseNameOf "onix-links") (map (r: {
@@ -291,8 +289,12 @@ in {
 
       pkgs = allPkgs;
 
-      targets = targetPkgs;
-
-      shell = pkgs.mkShell { inputsFrom = (builtins.attrValues targetPkgs); };
+      shell = pkgs.mkShell {
+        inputsFrom = (builtins.attrValues devPkgs);
+        buildInputs = (builtins.attrValues depPkgs);
+        shellHook = ''
+          echo "PATH=$PATH" > ${config.rootPath}/.onix.env
+        '';
+      };
     };
 }

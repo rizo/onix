@@ -24,3 +24,25 @@ let build_depends_names =
       cppo_name;
       menhir_name;
     ]
+
+let ocamlfind_setup_hook =
+  {|
+    [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
+
+    addTargetOCamlPath () {
+      local libdir="$1/lib/ocaml/${ocaml.version}/site-lib"
+
+      if [[ ! -d "$libdir" ]]; then
+        return 0
+      fi
+
+      echo "+ onix-ocamlfind-setup-hook.sh/addTargetOCamlPath: $*"
+
+      addToSearchPath "OCAMLPATH" "$libdir"
+      addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
+    }
+
+    addEnvHooks "$targetOffset" addTargetOCamlPath
+
+    export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${ocaml.version}/site-lib/toplevel"
+|}

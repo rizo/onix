@@ -255,6 +255,12 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
         if Name_set.mem name depends then Name_set.add name acc else acc)
       depends_build Overrides.build_depends_names
   in
+  (* Add ocamlfind to all packages that depend on dune or topkg. *)
+  let depends_build =
+    if Name_set.mem Opam_utils.dune_name depends_build then
+      Name_set.add Opam_utils.ocamlfind_name depends_build
+    else depends_build
+  in
 
   let depopts_build =
     List.fold_left

@@ -68,7 +68,8 @@ module Vars = struct
     in
     vars
     |> add "opam-version" (string (OpamVersion.to_string OpamVersion.current))
-    |> add "jobs" (string (Nix_utils.get_nix_build_jobs ()))
+    (* FIXME: allow deciding when evaluation should happen *)
+    |> add "jobs" (string "$NIX_BUILD_CORES")
     |> add "make" (string "make")
     |> add "os-version" (string "unknown")
     |> add_pkg "ocaml" "preinstalled" (bool true)

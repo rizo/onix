@@ -120,3 +120,24 @@ let make_opam_files_path ~opamfile file =
   let file = OpamFilename.Base.to_string file in
   let base = OpamFilename.Base.of_string ("files/" ^ file) in
   OpamFilename.create opam_dir base
+
+type extra_file_status =
+  | Undeclared
+  | Ok_hash
+  | Bad_hash
+
+(* Undeclared extra-files are looked up in ./files in the opam file directory. *)
+let lookup_undeclared_opam_extra_files ~opamfile =
+  let ( </> ) = OpamFilename.Op.( / ) in
+  let files_dir = OpamFilename.(dirname opamfile </> "files") in
+  OpamFilename.files files_dir
+
+(* Check hashes for opam's extra files.
+   Returns a tuple (files_with_bad_hashes, files_with_good_hashes). *)
+let check_extra_files_hashes ~opamfile extra_files =
+  List.partition_map
+    (fun (basename, hash) ->
+      let file = make_opam_files_path ~opamfile basename in
+      if OpamHash.check_file (OpamFilename.to_string file) hash then Right file
+      else Left file)
+    extra_files

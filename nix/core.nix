@@ -2,7 +2,7 @@
 
 let
   debug = data: x: builtins.trace "onix: [DEBUG] ${builtins.toJSON data}" x;
-  defaultOverlay = import ./overlays/default.nix pkgs;
+  defaultOverlay = import ./overlay/default.nix pkgs;
 
   inherit (builtins)
     filter trace hasAttr getAttr setAttr attrNames attrValues concatMap
@@ -75,9 +75,9 @@ let
       ocaml = scope.ocaml;
 
       vars = {
-        test = false;
-        doc = false;
-        dev-setup = false;
+        "with-test" = false;
+        "with-doc" = false;
+        "with-dev-setup" = false;
       } // (if dep ? "vars" then dep.vars else { });
 
       dependsPkgs = map (dep': scope.${dep'}) (dep.depends or [ ]);
@@ -149,7 +149,7 @@ let
           --opam=${opam} \
           --path=$out \
           --verbosity=${verbosity} \
-          ${name}.${dep.version}
+          ${name}.${dep.version} | tee /dev/stderr | bash
       '';
 
       # Steps:
@@ -180,12 +180,12 @@ let
         ${onix}/bin/onix opam-build \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON vars.test} \
-          --with-doc=${builtins.toJSON vars.doc} \
-          --with-dev-setup=${builtins.toJSON vars.dev-setup} \
+          --with-test=${builtins.toJSON vars.with-test} \
+          --with-doc=${builtins.toJSON vars.with-doc} \
+          --with-dev-setup=${builtins.toJSON vars.with-dev-setup} \
           --path=$out \
           --verbosity=${verbosity} \
-          ${name}.${dep.version}
+          ${name}.${dep.version} | tee /dev/stderr | bash
 
         runHook postBuild
       '';
@@ -219,11 +219,11 @@ let
         ${onix}/bin/onix opam-install \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \
-          --with-test=${builtins.toJSON vars.test} \
-          --with-doc=${builtins.toJSON vars.doc} \
-          --with-dev-setup=${builtins.toJSON vars.dev-setup} \
+          --with-test=${builtins.toJSON vars.with-test} \
+          --with-doc=${builtins.toJSON vars.with-doc} \
+          --with-dev-setup=${builtins.toJSON vars.with-dev-setup} \
           --path=$out \
-          ${name}.${dep.version}
+          ${name}.${dep.version} | tee /dev/stderr | bash
 
         if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
           mv "$out/lib/${name}" "$OCAMLFIND_DESTDIR"
@@ -305,9 +305,9 @@ in {
         onix lock${lockPathOpt}${opamLockPathOpt} \
           --repository-urls='${repositoryUrlsArg}' \
           --resolutions='${mkResolutionsArg constraints}' \
-          --with-test=${builtins.toJSON vars.test} \
-          --with-doc=${builtins.toJSON vars.doc} \
-          --with-dev-setup=${builtins.toJSON vars.dev-setup} \
+          --with-test=${builtins.toJSON vars.with-test} \
+          --with-doc=${builtins.toJSON vars.with-doc} \
+          --with-dev-setup=${builtins.toJSON vars.with-dev-setup} \
           --verbosity='${verbosity}'${opamFilesArg}
         exit $?
       '';

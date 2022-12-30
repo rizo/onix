@@ -13,7 +13,7 @@ let
 
     src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 
-    nativeBuildInputs = [ pkgs.git ];
+    nativeBuildInputs = [ pkgs.git onixPackages.crunch ];
     propagatedBuildInputs = with onixPackages; [
       bos
       cmdliner

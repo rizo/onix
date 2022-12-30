@@ -30,3 +30,23 @@
   onix
   opam-core
   opam-format))
+
+; Static files
+
+(rule
+ (alias static)
+ (deps
+  (:output Overlay_files.ml)
+  (source_tree ../nix/overlay))
+ (action
+  (setenv
+   SOURCE_DATE_EPOCH
+   0
+   (progn
+    (run
+     %{bin:ocaml-crunch}
+     --mode=plain
+     -o
+     %{output}.corrected
+     ../../../nix/overlay)
+    (diff? %{output} %{output}.corrected)))))
