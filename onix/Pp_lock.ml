@@ -59,9 +59,9 @@ let pp_pkg_vars f vars =
         (List.filter
            (fun str -> String.length str > 0)
            [
-             (if test then "\"test\": true" else "");
-             (if doc then "\"doc\": true" else "");
-             (if dev_setup then "\"dev-setup\": true" else "");
+             (if test then "\"with-test\": true" else "");
+             (if doc then "\"with-doc\": true" else "");
+             (if dev_setup then "\"with-dev-setup\": true" else "");
            ])
     in
     Fmt.pf f ",@,@[<v2>\"vars\": { %s }@]" vars_str
