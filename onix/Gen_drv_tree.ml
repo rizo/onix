@@ -3,17 +3,11 @@ let ( <//> ) = OpamFilename.Op.( // )
 
 open Utils
 
-open struct
-  let name_set_to_string_set name_set =
-    Name_set.fold
-      (fun name acc -> String_set.add (OpamPackage.Name.to_string name) acc)
-      name_set String_set.empty
-end
-
 type pkg_drv = {
   lock_pkg : Lock_pkg.t;
   pkg_ctx : Pkg_ctx.t;
   opam_details : Opam_utils.Opam_details.t;
+  inputs : String_set.t;
   check_inputs : String_set.t;
   propagated_build_inputs : String_set.t;
   propagated_native_build_inputs : String_set.t;
@@ -21,7 +15,6 @@ type pkg_drv = {
   build_phase : string list list;
   install_phase : string list list;
   files_to_copy : OpamFilename.Base.t list;
-  setup_hook : string option;
   patches : OpamFilename.Base.t list;
 }
 
@@ -129,6 +122,12 @@ end
 module Pkg_drv = struct
   type t = pkg_drv
 
+  let add_nixpkgs_prefix_to_depexts (lock_pkg : Lock_pkg.t) =
+    let depexts_nix =
+      String_set.map (fun name -> "nixpkgs." ^ name) lock_pkg.depexts_nix
+    in
+    { lock_pkg with depexts_nix }
+
   let get_propagated_build_inputs (lock_pkg : Lock_pkg.t) =
     List.fold_left
       (fun acc names ->
@@ -153,15 +152,44 @@ module Pkg_drv = struct
         lock_pkg.depends_dev_setup;
       ]
 
-  let default_install_commands = [["mkdir"; "$out"]]
+  let default_install_commands =
+    [["mkdir"; "-p"; "$out/lib/ocaml/4.14.0/site-lib"]]
+
+  let default_configure_commands =
+    [["export"; (* FIXME *) "OCAMLFIND_DESTDIR=$out/lib/ocaml/4.14.0/site-lib"]]
+
+  let default_inputs = String_set.singleton "nixpkgs"
+
+  let get_inputs (lock_pkg : Lock_pkg.t) =
+    List.fold_left
+      (fun acc names ->
+        Name_set.fold
+          (fun name acc -> String_set.add (OpamPackage.Name.to_string name) acc)
+          names acc)
+      default_inputs
+      [
+        lock_pkg.depends;
+        lock_pkg.depends_build;
+        lock_pkg.depends_test;
+        lock_pkg.depends_doc;
+        lock_pkg.depends_dev_setup;
+      ]
 
   let of_lock_pkg ~with_test ~with_doc ~with_dev_setup (lock_pkg : Lock_pkg.t) =
-    let check_inputs = name_set_to_string_set lock_pkg.depends_test in
+    let lock_pkg = add_nixpkgs_prefix_to_depexts lock_pkg in
+
+    let inputs = get_inputs lock_pkg in
+
+    let check_inputs =
+      Opam_utils.name_set_to_string_set lock_pkg.depends_test
+    in
     let propagated_build_inputs = get_propagated_build_inputs lock_pkg in
     let propagated_native_build_inputs =
       get_propagated_native_build_inputs lock_pkg
     in
+
     let pkg_ctx = pkg_ctx_for_lock_pkg lock_pkg in
+
     let opam_build_commands =
       Opam_actions.build ~with_test ~with_doc ~with_dev_setup pkg_ctx
     in
@@ -169,24 +197,18 @@ module Pkg_drv = struct
       Opam_actions.install ~with_test ~with_doc ~with_dev_setup pkg_ctx
     in
 
-    let setup_hook =
-      match OpamPackage.name_to_string lock_pkg.opam_details.package with
-      | "ocamlfind" -> Some Overrides.ocamlfind_setup_hook
-      | _ -> None
-    in
-
     {
       lock_pkg;
       pkg_ctx;
       opam_details = lock_pkg.opam_details;
+      inputs;
       check_inputs;
       propagated_build_inputs;
       propagated_native_build_inputs;
-      configure_phase = [];
+      configure_phase = default_configure_commands;
       build_phase = opam_build_commands;
       install_phase = List.append default_install_commands opam_install_commands;
       files_to_copy = [];
-      setup_hook;
       patches = [];
     }
 
@@ -255,8 +277,8 @@ module Pkg_drv = struct
 
   let resolve_files ~lock_dir (pkg_drv : t) =
     let name_str = OpamPackage.name_to_string pkg_drv.opam_details.package in
-    let pkg_lock_dir = lock_dir </> name_str in
-    OpamFilename.mkdir pkg_lock_dir;
+    (* pkg_lock_dir is assumed to exist. *)
+    let pkg_lock_dir = lock_dir </> "packages" </> name_str in
     let extra_files = get_extra_files pkg_drv in
     copy_extra_files ~pkg_lock_dir extra_files;
 
@@ -274,80 +296,31 @@ module Pkg_drv = struct
 
     {
       pkg_drv with
-      configure_phase = List.append copy_files_commands pkg_drv.configure_phase;
+      configure_phase = List.append pkg_drv.configure_phase copy_files_commands;
       patches;
     }
 end
 
-let all_depends_inputs (lock_pkg : Lock_pkg.t) =
-  let names =
-    List.fold_left
-      (fun acc names ->
-        Name_set.fold
-          (fun name acc -> String_set.add (OpamPackage.Name.to_string name) acc)
-          names acc)
-      lock_pkg.depexts_nix
-      [
-        lock_pkg.depends;
-        lock_pkg.depends_build;
-        lock_pkg.depends_test;
-        lock_pkg.depends_doc;
-        lock_pkg.depends_dev_setup;
-      ]
-  in
-  match lock_pkg.src with
-  | Some (Git _) -> String_set.add "fetchGit" names
-  | Some (Http _) -> String_set.add "fetchurl" names
-  | _ -> names
+module Pp = struct
+  let install_phase_str_for_install_files ~ocaml_version =
+    Fmt.str
+      {|
 
-let get_additional_pkg_inputs ~gitignore (lock_pkg : Lock_pkg.t) =
-  let name_str = OpamPackage.name_to_string lock_pkg.opam_details.package in
-  let version_str =
-    OpamPackage.version_to_string lock_pkg.opam_details.package
-  in
-  let inputs = [] in
-  let inputs =
-    match (version_str, gitignore) with
-    | "dev", true -> "nix-gitignore" :: inputs
-    | _ -> inputs
-  in
-  let inputs =
-    match name_str with
-    | "ocamlfind" -> "writeText" :: inputs
-    | _ -> inputs
-  in
-  inputs
-
-let default_inputs =
-  String_set.empty |> String_set.add "stdenv" |> String_set.add "opaline"
-
-let install_phase_str_for_install_files ~ocaml_version =
-  Fmt.str
-    {|
-
-    ${opaline}/bin/opaline \
+    ${nixpkgs.opaline}/bin/opaline \
       -prefix="$out" \
       -libdir="$out/lib/ocaml/%s/site-lib"|}
-    (OpamPackage.Version.to_string ocaml_version)
+      (OpamPackage.Version.to_string ocaml_version)
 
-let install_phase_str_for_config_files ~package_name =
-  Fmt.str
-    {|
+  let install_phase_str_for_config_files ~package_name =
+    Fmt.str
+      {|
     if [[ -e "./%s.config" ]]; then
       mkdir -p "$out/etc"
       cp "./%s.config" "$out/etc/%s.config"
     fi|}
-    (OpamPackage.Name.to_string package_name)
-    (OpamPackage.Name.to_string package_name)
-    (OpamPackage.Name.to_string package_name)
-
-(* Lock pkg printers *)
-
-module Pp = struct
-  let command_to_line cmd =
-    cmd
-    |> List.map (fun x -> String.concat "" ["\""; x; "\""])
-    |> String.concat " "
+      (OpamPackage.Name.to_string package_name)
+      (OpamPackage.Name.to_string package_name)
+      (OpamPackage.Name.to_string package_name)
 
   let pp_string_escape_with_enderscore formatter str =
     if Utils.String.starts_with_number str then Fmt.string formatter ("_" ^ str)
@@ -389,7 +362,8 @@ module Pp = struct
       | Some (Git { url; rev }) ->
         Fmt.pf f
           "@,\
-           src = @[<v-4>fetchGit {@ url = %S;@ rev = %S;@ allRefs = true;@]@ };"
+           src = @[<v-4>builtins.fetchGit {@ url = %S;@ rev = %S;@ allRefs = \
+           true;@]@ };"
           url rev
       (* MD5 hashes are not supported by Nix fetchers. Fetch without hash.
          This normally would not happen as we try to prefetch_src_if_md5. *)
@@ -401,18 +375,18 @@ module Pp = struct
           (Fmt.quote Opam_utils.pp_url)
           url
       | Some (Http { url; hash }) ->
-        Fmt.pf f "@,src = @[<v-4>fetchurl {@ url = %a;@ %a;@]@ };"
+        Fmt.pf f "@,src = @[<v-4>nixpkgs.fetchurl {@ url = %a;@ %a;@]@ };"
           (Fmt.quote Opam_utils.pp_url)
           url pp_hash hash
     else
       let path =
         let opam_path = t.opam_details.Opam_utils.path in
         let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
-        if String.equal path "." then "./../.." else path
+        if String.equal path "." then "./../../.." else path
       in
       if gitignore then
-        Fmt.pf f "@,src = nix-gitignore.gitignoreSource [] %s;" path
-      else Fmt.pf f "@,src = ./../..;"
+        Fmt.pf f "@,src = nixpkgs.nix-gitignore.gitignoreSource [] %s;" path
+      else Fmt.pf f "@,src = ./../../..;"
 
   let pp_depends_sets name f req =
     let pp_req f =
@@ -422,20 +396,8 @@ module Pp = struct
     if String_set.is_empty req then ()
     else Fmt.pf f "@ %s = [@[<hov1>%a@ @]];" name pp_req req
 
-  let pp_depexts_sets name f (req, opt) =
-    let pp_req f =
-      String_set.iter (fun dep ->
-          Fmt.pf f "@ pkgs.%a" pp_string_escape_quotted dep)
-    in
-    let pp_opt f =
-      String_set.iter (fun dep ->
-          Fmt.pf f "@ (pkgs.%a or null)" pp_string_escape_quotted dep)
-    in
-    if String_set.is_empty req && String_set.is_empty opt then ()
-    else Fmt.pf f "@ %s = [@[<hov1>%a%a@ @]];" name pp_req req pp_opt opt
-
-  let pp_nix_list pp_elt = Fmt.brackets (Fmt.list ~sep:Fmt.sp (Fmt.box pp_elt))
-  let pp_commands = Fmt.list ~sep:Fmt.cut (Fmt.using command_to_line Fmt.string)
+  let pp_commands =
+    Fmt.list ~sep:Fmt.cut (Fmt.using Utils.command_to_string Fmt.string)
 
   let pp_phase name f commands =
     if List.is_empty commands then Fmt.pf f "@,%s = \"true\";" name
@@ -447,17 +409,6 @@ module Pp = struct
       Fmt.pf f "@,@[<v2>installPhase = ''@,%a%s@,%s@]@,'';" pp_commands commands
         (install_phase_str_for_install_files ~ocaml_version)
         (install_phase_str_for_config_files ~package_name)
-
-  let pp_extra_files f files =
-    if List.is_empty files then ()
-    else
-      let p =
-        pp_nix_list
-          (Fmt.using
-             (fun (file, _) -> OpamFilename.to_string file)
-             Fmt.Dump.string)
-      in
-      Fmt.pf f "@ extraFiles = %a;" p files
 
   let pp_file_inputs f inputs =
     let pp_inputs =
@@ -481,21 +432,14 @@ module Pp = struct
 
   let pp_pkg ~gitignore f (pkg_drv : Pkg_drv.t) =
     let lock_pkg = pkg_drv.lock_pkg in
-    let inputs =
-      all_depends_inputs lock_pkg |> String_set.union default_inputs
-    in
-    let inputs =
-      let additional_inputs = get_additional_pkg_inputs ~gitignore lock_pkg in
-      String_set.add_seq (List.to_seq additional_inputs) inputs
-    in
     let name = OpamPackage.name_to_string lock_pkg.opam_details.package in
     let version = OpamPackage.version lock_pkg.opam_details.package in
     Format.fprintf f
-      "%a:@.@.@[<v2>stdenv.mkDerivation {@ pname = %S;@ version = %a;%a%a@,\
+      "%a:@.@.@[<v2>nixpkgs.stdenv.mkDerivation {@ pname = %S;@ version = \
+       %a;%a%a@,\
        %a%a%a@,\
-       %a%a%a@,\
-       %a@]@ }@." (* inputs *) pp_file_inputs inputs (* name and version *)
-      name pp_version version
+       %a%a%a@]@ }@." (* inputs *) pp_file_inputs pkg_drv.inputs
+      (* name and version *) name pp_version version
       (* src *)
       (pp_src ~gitignore)
       lock_pkg (* patches *)
@@ -519,7 +463,7 @@ module Pp = struct
       (pp_install_phase
          ~package_name:(OpamPackage.name lock_pkg.opam_details.package)
          ~ocaml_version:(OpamPackage.Version.of_string "4.14.0"))
-      pkg_drv.install_phase pp_ocamlfind_setup_hook pkg_drv.setup_hook
+      pkg_drv.install_phase
 
   (* Lock file printers *)
 
@@ -534,21 +478,38 @@ module Pp = struct
         rev
     | None ->
       Fmt.invalid_arg "Repo URI without fragment: %a" Opam_utils.pp_url repo_url
-end
 
-let get_pkgs_in_dir ~lock_dir =
-  let dirs = OpamFilename.dirs lock_dir in
-  List.fold_left
-    (fun acc dir ->
-      let pkg_name = OpamFilename.(Base.to_string (basename_dir dir)) in
-      String_set.add pkg_name acc)
-    String_set.empty dirs
+  let pp_index_pkg formatter (lock_pkg : Lock_pkg.t) =
+    let name_str = OpamPackage.name_to_string lock_pkg.opam_details.package in
+    let version = OpamPackage.version lock_pkg.opam_details.package in
+    match name_str with
+    | "ocaml-system" ->
+      let nixpkgs_ocaml = Nix_utils.make_ocaml_packages_path version in
+      Fmt.pf formatter "\"ocaml-system\" = nixpkgs.%s;" nixpkgs_ocaml
+    | _ ->
+      Fmt.pf formatter "%S = self.callPackage ./packages/%s { };" name_str
+        name_str
+
+  let pp_index f lock_pkgs =
+    Fmt.pf f
+      {|{ nixpkgs ? import <nixpkgs> { }, overlay ? import ./overlay nixpkgs }:
+
+let
+  newScope = onixpkgs:
+    nixpkgs.lib.callPackageWith ({ inherit nixpkgs; } // onixpkgs);
+
+  packages = nixpkgs.lib.makeScope newScope (self: {@[<v4>    %a@]@,});
+
+in packages.overrideScope' overlay@.|}
+      Fmt.(list ~sep:cut pp_index_pkg)
+      lock_pkgs
+end
 
 let gen_pkg ~lock_dir ~gitignore ~with_test ~with_doc ~with_dev_setup
     (lock_pkg : Lock_pkg.t) =
   let pkg_default_nix =
     let pkg_name = OpamPackage.name_to_string lock_pkg.opam_details.package in
-    let pkg_lock_dir = lock_dir </> pkg_name in
+    let pkg_lock_dir = lock_dir </> "packages" </> pkg_name in
     OpamFilename.mkdir pkg_lock_dir;
     OpamFilename.to_string (pkg_lock_dir <//> "default.nix")
   in
@@ -560,37 +521,27 @@ let gen_pkg ~lock_dir ~gitignore ~with_test ~with_doc ~with_dev_setup
   let out = Format.formatter_of_out_channel chan in
   Fmt.pf out "%a" (Pp.pp_pkg ~gitignore) pkg_drv
 
-let pp_index_pkg formatter (lock_pkg : Lock_pkg.t) =
-  let name_str = OpamPackage.name_to_string lock_pkg.opam_details.package in
-  let version = OpamPackage.version lock_pkg.opam_details.package in
-  match name_str with
-  | "ocaml-system" ->
-    let nixpkgs_ocaml = Nix_utils.make_ocaml_packages_path version in
-    Fmt.pf formatter "\"ocaml-system\" = nixpkgs.%s;" nixpkgs_ocaml
-  | _ -> Fmt.pf formatter "%S = self.callPackage ./%s { };" name_str name_str
-
 let gen_overlay ~lock_dir =
-  let overlay_file =
-    OpamFilename.Op.(lock_dir // "overlay.nix") |> OpamFilename.to_string
-  in
-  match Overlay_files.read "default.nix" with
-  | None -> failwith "internal error: could not read embedded overlay file"
-  | Some overlay_content ->
-    Out_channel.with_open_text overlay_file @@ fun chan ->
-    output_string chan overlay_content
+  let overlay_dir = lock_dir </> "overlay" in
+  List.iter
+    (fun relpath ->
+      let file = OpamFilename.(create overlay_dir (Base.of_string relpath)) in
+      let dir = OpamFilename.dirname file in
+      OpamFilename.mkdir dir;
+      match Overlay_files.read relpath with
+      | None ->
+        Fmt.failwith "internal error: could not read embedded overlay file: %a"
+          Opam_utils.pp_filename file
+      | Some file_content -> OpamFilename.write file file_content)
+    Overlay_files.file_list
 
 let gen_index ~lock_dir lock_pkgs =
   let index_file =
     OpamFilename.Op.(lock_dir // "default.nix") |> OpamFilename.to_string
   in
   Out_channel.with_open_text index_file @@ fun chan ->
-  let out = Format.formatter_of_out_channel chan in
-  Fmt.pf out
-    {|{ nixpkgs ? import <nixpkgs> { }, overlay ? import ./overlay.nix nixpkgs }:
-
-(nixpkgs.lib.makeScope nixpkgs.newScope (self: {@[<v2>  %a@]@,})).overrideScope' overlay@.|}
-    Fmt.(list ~sep:cut pp_index_pkg)
-    lock_pkgs
+  let f = Format.formatter_of_out_channel chan in
+  Pp.pp_index f lock_pkgs
 
 let gen ~gitignore ~lock_dir ~with_test ~with_doc ~with_dev_setup
     (lock_file : Lock_file.t) =

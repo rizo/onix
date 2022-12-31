@@ -148,3 +148,6 @@
 - [ ] Better roots tracking (for deps with constraints)?
 - [ ] Activate dep flags for a selected list of deps?
 - [ ] Allow passing dep flags (test, doc, dev-setup) to each dependency.
+- [ ] Changing the repo hash invalidates cache even if opam files did not change? Is it possible to depend on opam file contents?
+- [ ] Fix lock var generation when not all vars are passed.
+- [ ] When evaluating `arch` use a "delayed" env var version.

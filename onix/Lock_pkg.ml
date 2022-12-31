@@ -152,7 +152,7 @@ let get_opam_depexts ~env depexts =
   in
   loop String_set.empty depexts
 
-(* Try to: get nixos depexts, lookup [Depexts] and optionally add unzip for
+(* Try to: get nixos depexts, lookup [Overrides] and optionally add unzip for
    zip src unpacking. *)
 let get_depexts ~package ~is_zip_src ~env depexts =
   let package_name = OpamPackage.name package in

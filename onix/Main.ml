@@ -43,9 +43,6 @@ let opam_arg =
   let docv = "OPAM" in
   Arg.(info ["opam"] ~docv ~doc |> opt (some string) None |> required)
 
-let flag_scopes =
-  [("true", `root); ("deps", `deps); ("all", `all); ("false", `none)]
-
 let with_test_arg =
   let doc =
     "Include {with-test} constrained packages. Applies to the root packages \

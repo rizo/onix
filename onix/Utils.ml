@@ -97,10 +97,15 @@ module Result = struct
     | Error (`Msg err) -> failwith err
 end
 
-let print_command cmd =
-  let cmd = List.map String.escaped cmd in
-  let cmd = String.concat " " cmd in
-  print_endline cmd
+let command_to_string cmd =
+  let cmd =
+    List.map
+      (fun word -> String.concat "" ["\""; String.escaped word; "\""])
+      cmd
+  in
+  String.concat " " cmd
+
+let print_command cmd = print_endline (command_to_string cmd)
 
 module Os = struct
   let run_command cmd =

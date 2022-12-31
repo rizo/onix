@@ -141,3 +141,8 @@ let check_extra_files_hashes ~opamfile extra_files =
       if OpamHash.check_file (OpamFilename.to_string file) hash then Right file
       else Left file)
     extra_files
+
+let name_set_to_string_set name_set =
+  Name_set.fold
+    (fun name acc -> String_set.add (OpamPackage.Name.to_string name) acc)
+    name_set String_set.empty
