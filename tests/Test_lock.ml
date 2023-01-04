@@ -84,7 +84,21 @@ let eq ~actual ~expected =
     Fmt.pr "--- EXPECTED ---\n%s\n\n--- ACTUAL ---\n%s@." expected actual;
     raise Exit)
 
-let installed _ = true
+let installed pkg_name =
+  match OpamPackage.Name.to_string pkg_name with
+  | "opt1"
+  | "opt2"
+  | "opt-build-1"
+  | "opt-build-2"
+  | "opt-test-1"
+  | "opt-test-2"
+  | "opt-doc-1"
+  | "opt-doc-2"
+  | "opt-tool-1"
+  | "opt-tool-2"
+  | "opt-test-o-doc-1"
+  | "opt-test-n-doc-1" -> false
+  | _ -> true
 
 let mk_lock ~name str =
   let package = OpamPackage.of_string name in
@@ -97,66 +111,100 @@ let mk_lock ~name str =
 
 let test_complex_opam () =
   let lock_pkg = mk_lock ~name:"complex.root" complex_opam in
-  let actual = Fmt.str "%a@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
   let expected =
-    {|name = "complex"; version = "root"; src = ./.; opam = "${src}/complex.opam";
-depends = with self; [ bos cmdliner dune easy-format fmt fpath logs ocaml
-                       opam-0install yojson ];
-buildDepends = with self; [ dune ocaml ]; docDepends = with self; [ odoc ];
-depexts = with pkgs; [ libogg ];
+    {|"version": "root",
+"depends": [
+  "bos",
+  "cmdliner",
+  "dune",
+  "easy-format",
+  "fmt",
+  "fpath",
+  "logs",
+  "ocaml",
+  "opam-0install",
+  "yojson"
+],
+"build-depends": [
+  "dune",
+  "ocamlfind"
+],
+"doc-depends": [
+  "odoc"
+],
+"depexts": [
+  "libogg"
+],
+"vars": { "with-test": true, "with-doc": true, "with-dev-setup": true }
 |}
   in
   eq ~actual ~expected
 
 let test_dev_opam () =
   let lock_pkg = mk_lock ~name:"dev.dev" dev_opam in
-  let actual = Fmt.str "%a@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
   let expected =
-    {|name = "dev"; version = "dev";
-src = builtins.fetchGit {
-  url = "https://github.com/odis-labs/options.git";
-  rev = "5b1165d99aba112d550ddc3133a8eb1d174441ec";
-  allRefs = true; };
-opam = "${src}/dev.opam";
+    {|"version": "dev",
+"src": {
+  "url": "git+https://github.com/odis-labs/options.git",
+  "rev": "5b1165d99aba112d550ddc3133a8eb1d174441ec"
+},
+"vars": { "with-test": true, "with-doc": true, "with-dev-setup": true }
 |}
   in
   eq ~actual ~expected
 
 let test_zip_src_opam () =
   let lock_pkg = mk_lock ~name:"zip.1.0.2" zip_src_opam in
-  let actual = Fmt.str "%a@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
   let expected =
-    {|name = "zip"; version = "1.0.2";
-src = pkgs.fetchurl {
-  url = "https://github.com/xavierleroy/camlzip/archive/rel110.zip";
-  sha256 = "a5541cbc38c14467a8abcbdcb54c1d2ed12515c1c4c6da0eb3bdafb44aff7996";
-}; opam = "${repo}/packages/zip/zip.1.0.2/opam";
-depexts = with pkgs; [ unzip ];
+    {|"version": "1.0.2",
+"src": {
+  "url": "https://github.com/xavierleroy/camlzip/archive/rel110.zip",
+  "sha256": "a5541cbc38c14467a8abcbdcb54c1d2ed12515c1c4c6da0eb3bdafb44aff7996"
+},
+"depexts": [
+  "unzip"
+],
+"vars": { "with-test": true, "with-doc": true, "with-dev-setup": true }
 |}
   in
   eq ~actual ~expected
 
 let test_other_deps_opam () =
   let lock_pkg = mk_lock ~name:"other-deps.1.0.1" other_deps_opam in
-  let actual = Fmt.str "%a@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
   let expected =
-    {|name = "other-deps"; version = "1.0.1";
-opam = "${repo}/packages/other-deps/other-deps.1.0.1/opam";
-depends = with self; [ dep1 dep2 (self.opt1 or null) (self.opt2 or null) ];
-buildDepends = with self; [ dep-build-1 dep-build-2
-                            (self.opt-build-1 or null)
-                            (self.opt-build-2 or null) ];
-testDepends = with self; [ dep-test-1 dep-test-2 dep-test-o-doc-1
-                           (self.opt-test-1 or null)
-                           (self.opt-test-2 or null)
-                           (self.opt-test-o-doc-1 or null) ];
-docDepends = with self; [ dep-doc-1 dep-doc-2 dep-test-o-doc-1
-                          (self.opt-doc-1 or null) (self.opt-doc-2 or null)
-                          (self.opt-test-o-doc-1 or null) ];
-devSetupDepends = with self; [ dep-tool-1 dep-tool-2 (self.opt-tool-1 or null)
-                            (self.opt-tool-2 or null) ];
-depexts = with pkgs; [ (pkgs.opt-ext-1 or null) (pkgs.opt-ext-2 or null)
-                       (pkgs.opt-ext-3 or null) ];
+    {|"version": "1.0.1",
+"depends": [
+  "dep1",
+  "dep2"
+],
+"build-depends": [
+  "dep-build-1",
+  "dep-build-2"
+],
+"test-depends": [
+  "dep-test-1",
+  "dep-test-2",
+  "dep-test-o-doc-1"
+],
+"doc-depends": [
+  "dep-doc-1",
+  "dep-doc-2",
+  "dep-test-o-doc-1"
+],
+"dev-setup-depends": [
+  "dep-tool-1",
+  "dep-tool-2"
+],
+"depexts": [
+  "opt-ext-1",
+  "opt-ext-2",
+  "opt-ext-3"
+],
+"vars": { "with-test": true, "with-doc": true, "with-dev-setup": true }
 |}
   in
   eq ~actual ~expected

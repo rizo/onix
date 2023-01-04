@@ -5,7 +5,7 @@ open Utils
 
 type pkg_drv = {
   lock_pkg : Lock_pkg.t;
-  pkg_ctx : Pkg_ctx.t;
+  pkg_scope : Pkg_scope.t;
   opam_details : Opam_utils.Opam_details.t;
   inputs : String_set.t;
   check_inputs : String_set.t;
@@ -18,18 +18,35 @@ type pkg_drv = {
   patches : OpamFilename.Base.t list;
 }
 
-let pkg_ctx_for_lock_pkg (lock_pkg : Lock_pkg.t) =
+let resolve_actions =
+  let jobs = Nix_utils.get_nix_build_jobs () in
+  let arch = OpamSysPoll.arch () in
+  let os = OpamSysPoll.os () in
+  let user = Unix.getlogin () in
+  let group = Utils.Os.get_group () in
+  let build_dir = Sys.getcwd () in
+  fun ?(local = OpamVariable.Map.empty) pkg_scope ->
+    Pkg_scope.resolve_many
+      [
+        Pkg_scope.resolve_stdenv;
+        Pkg_scope.resolve_local local;
+        Pkg_scope.resolve_config pkg_scope;
+        Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group;
+        Pkg_scope.resolve_pkg ~build_dir pkg_scope;
+      ]
+
+let pkg_scope_for_lock_pkg (lock_pkg : Lock_pkg.t) =
   let name = OpamPackage.name lock_pkg.opam_details.package in
   let version = OpamPackage.version lock_pkg.opam_details.package in
   let dependencies_names =
     Name_set.union lock_pkg.depends lock_pkg.depends_build
   in
-  let dependencies =
+  let deps =
     Name_set.fold
       (fun name acc ->
         let build_pkg =
           {
-            Pkg_ctx.name;
+            Pkg_scope.name;
             version = OpamPackage.Version.of_string "version_todo";
             opamfile = "FIXME_OPAMFILE";
             prefix =
@@ -41,13 +58,13 @@ let pkg_ctx_for_lock_pkg (lock_pkg : Lock_pkg.t) =
   in
   let self =
     {
-      Pkg_ctx.name;
+      Pkg_scope.name;
       version;
       opamfile = OpamFilename.to_string lock_pkg.opam_details.path;
       prefix = "$out";
     }
   in
-  Pkg_ctx.make ~dependencies ~ocaml_version:"4.14.0" self
+  Pkg_scope.make ~deps ~ocaml_version:"4.14.0" self
 
 module Subst_and_patch = struct
   let print_subst ~nv basename =
@@ -188,18 +205,18 @@ module Pkg_drv = struct
       get_propagated_native_build_inputs lock_pkg
     in
 
-    let pkg_ctx = pkg_ctx_for_lock_pkg lock_pkg in
+    let pkg_scope = pkg_scope_for_lock_pkg lock_pkg in
 
     let opam_build_commands =
-      Opam_actions.build ~with_test ~with_doc ~with_dev_setup pkg_ctx
+      Opam_actions.build ~with_test ~with_doc ~with_dev_setup pkg_scope
     in
     let opam_install_commands =
-      Opam_actions.install ~with_test ~with_doc ~with_dev_setup pkg_ctx
+      Opam_actions.install ~with_test ~with_doc ~with_dev_setup pkg_scope
     in
 
     {
       lock_pkg;
-      pkg_ctx;
+      pkg_scope;
       opam_details = lock_pkg.opam_details;
       inputs;
       check_inputs;
@@ -283,7 +300,7 @@ module Pkg_drv = struct
     copy_extra_files ~pkg_lock_dir extra_files;
 
     let subst_files, patches =
-      let env = Pkg_ctx.resolve pkg_drv.pkg_ctx in
+      let env = resolve_actions pkg_drv.pkg_scope in
       Subst_and_patch.get_subst_and_patches ~env ~pkg_lock_dir
         pkg_drv.opam_details
     in
@@ -339,7 +356,7 @@ module Pp = struct
     (* We require that the version does NOT contain any '-' or '~' characters.
        - Note that nix will replace '~' to '-' automatically.
        The version is parsed with Nix_utils.parse_store_path by splitting bytes
-       '- ' to obtain the Pkg_ctx.package information.
+       '- ' to obtain the Pkg_scope.package information.
        This is fine because the version in the lock file is mostly informative. *)
     let set_valid_char i =
       match String.get version i with

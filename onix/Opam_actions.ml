@@ -1,6 +1,6 @@
 open Utils
 
-let local_vars ~with_test ~with_doc ~with_dev_setup =
+let mk_dep_vars ~with_test ~with_doc ~with_dev_setup =
   let open OpamVariable in
   Map.of_list
     [
@@ -8,6 +8,23 @@ let local_vars ~with_test ~with_doc ~with_dev_setup =
       (of_string "with-doc", Some (B with_doc));
       (of_string "with-dev-setup", Some (B with_dev_setup));
     ]
+
+let resolve_actions =
+  let jobs = Nix_utils.get_nix_build_jobs () in
+  let arch = OpamSysPoll.arch () in
+  let os = OpamSysPoll.os () in
+  let user = Unix.getlogin () in
+  let group = Utils.Os.get_group () in
+  let build_dir = Sys.getcwd () in
+  fun ?(local = OpamVariable.Map.empty) pkg_scope ->
+    Pkg_scope.resolve_many
+      [
+        Pkg_scope.resolve_stdenv;
+        Pkg_scope.resolve_local local;
+        Pkg_scope.resolve_config pkg_scope;
+        Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group;
+        Pkg_scope.resolve_pkg ~build_dir pkg_scope;
+      ]
 
 module Patch = struct
   (* https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L343 *)
@@ -153,8 +170,8 @@ module Patch = struct
 
   (* TODO: implement extra file fetching via lock-file?:
      - https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L455 *)
-  let run (ctx : Pkg_ctx.t) =
-    let opamfile = OpamFilename.of_string ctx.self.opamfile in
+  let run (pkg_scope : Pkg_scope.t) =
+    let opamfile = OpamFilename.of_string pkg_scope.self.opamfile in
     let opam = Opam_utils.read_opam opamfile in
     let () =
       let build_dir = OpamFilename.Dir.of_string (Sys.getcwd ()) in
@@ -165,44 +182,54 @@ module Patch = struct
         copy_undeclared_files ~opamfile ~build_dir ()
       | Some extra_files -> copy_extra_files ~opamfile ~build_dir extra_files
     in
-    let lookup_env = Pkg_ctx.resolve ctx in
+    let resolve = resolve_actions pkg_scope in
     let cwd = OpamFilename.Dir.of_string (Sys.getcwd ()) in
-    let pkg = OpamPackage.create ctx.self.name ctx.self.version in
-    prepare_package_build lookup_env opam pkg cwd
+    let pkg = OpamPackage.create pkg_scope.self.name pkg_scope.self.version in
+    prepare_package_build resolve opam pkg cwd
     |> OpamProcess.Job.run
     |> Option.if_some raise
 end
 
 let patch = Patch.run
 
-let build ~with_test ~with_doc ~with_dev_setup (ctx : Pkg_ctx.t) =
-  let opam = Opam_utils.read_opam (OpamFilename.of_string ctx.self.opamfile) in
+let build ~with_test ~with_doc ~with_dev_setup (pkg_scope : Pkg_scope.t) =
+  let opam =
+    Opam_utils.read_opam (OpamFilename.of_string pkg_scope.self.opamfile)
+  in
+  let resolve_with_dep_vars =
+    resolve_actions
+      ~local:(mk_dep_vars ~with_test ~with_doc ~with_dev_setup)
+      pkg_scope
+  in
+  let resolve =
+    resolve_actions
+      ~local:(mk_dep_vars ~with_test ~with_doc ~with_dev_setup)
+      pkg_scope
+  in
   let commands =
-    (OpamFilter.commands
-       (Pkg_ctx.resolve ctx
-          ~local:(local_vars ~with_test ~with_doc ~with_dev_setup))
-       (OpamFile.OPAM.build opam)
+    (OpamFilter.commands resolve_with_dep_vars (OpamFile.OPAM.build opam)
     @ (if with_test then
-       OpamFilter.commands (Pkg_ctx.resolve ctx) (OpamFile.OPAM.run_test opam)
+       OpamFilter.commands resolve (OpamFile.OPAM.run_test opam)
       else [])
     @
     if with_doc then
-      OpamFilter.commands (Pkg_ctx.resolve ctx)
-        (OpamFile.OPAM.deprecated_build_doc opam)
+      OpamFilter.commands resolve (OpamFile.OPAM.deprecated_build_doc opam)
     else [])
     |> List.filter List.is_not_empty
   in
   commands
 
 module Install = struct
-  let run ~with_test ~with_doc ~with_dev_setup (ctx : Pkg_ctx.t) =
+  let run ~with_test ~with_doc ~with_dev_setup (pkg_scope : Pkg_scope.t) =
     let opam =
-      Opam_utils.read_opam (OpamFilename.of_string ctx.self.opamfile)
+      Opam_utils.read_opam (OpamFilename.of_string pkg_scope.self.opamfile)
     in
-    OpamFilter.commands
-      (Pkg_ctx.resolve ctx
-         ~local:(local_vars ~with_test ~with_doc ~with_dev_setup))
-      (OpamFile.OPAM.install opam)
+    let resolve_with_dep_vars =
+      resolve_actions
+        ~local:(mk_dep_vars ~with_test ~with_doc ~with_dev_setup)
+        pkg_scope
+    in
+    OpamFilter.commands resolve_with_dep_vars (OpamFile.OPAM.install opam)
     |> List.filter List.is_not_empty
 end
 

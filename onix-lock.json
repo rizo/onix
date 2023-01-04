@@ -18,7 +18,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "astring": {
@@ -50,7 +51,8 @@
        ],
        "build-depends": [
          "dune",
-         "dune-configurator"
+         "dune-configurator",
+         "ocamlfind"
        ]
      },
      "base-bigarray": {
@@ -104,7 +106,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "chrome-trace": {
@@ -118,7 +121,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "cmdliner": {
@@ -143,7 +147,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "csexp": {
@@ -157,7 +162,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "dune": {
@@ -183,7 +189,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "dune-configurator": {
@@ -199,7 +206,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "dune-rpc": {
@@ -218,7 +226,8 @@
          "xdg"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "dyn": {
@@ -234,7 +243,8 @@
          "pp"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "easy-format": {
@@ -248,7 +258,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "either": {
@@ -261,7 +272,8 @@
          "dune"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "fiber": {
@@ -277,7 +289,8 @@
          "stdune"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "fix": {
@@ -291,7 +304,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "fmt": {
@@ -358,7 +372,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "menhirLib": {
@@ -372,7 +387,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "menhirSdk": {
@@ -386,7 +402,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "ocaml": {
@@ -437,7 +454,8 @@
          "yojson"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "ocaml-system": {
@@ -457,7 +475,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "ocamlbuild": {
@@ -509,7 +528,8 @@
        ],
        "build-depends": [
          "dune",
-         "menhir"
+         "menhir",
+         "ocamlfind"
        ]
      },
      "ocamlformat-rpc-lib": {
@@ -524,7 +544,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "ocamlgraph": {
@@ -539,7 +560,8 @@
          "stdlib-shims"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "ocp-indent": {
@@ -571,7 +593,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "odoc-parser": {
@@ -588,7 +611,8 @@
          "result"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "omd": {
@@ -604,7 +628,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "onix": {
@@ -622,13 +647,14 @@
          "yojson"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ],
        "dev-setup-depends": [
          "ocaml-lsp-server",
          "ocamlformat"
        ],
-       "vars": { "dev-setup": true }
+       "vars": { "with-dev-setup": true }
      },
      "opam-0install": {
        "version": "0.4.3",
@@ -646,7 +672,8 @@
          "opam-state"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "opam-core": {
@@ -665,7 +692,8 @@
        ],
        "build-depends": [
          "cppo",
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "opam-file-format": {
@@ -696,7 +724,8 @@
          "re"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "opam-repository": {
@@ -711,7 +740,8 @@
          "opam-format"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "opam-state": {
@@ -726,7 +756,8 @@
          "opam-repository"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "ordering": {
@@ -740,7 +771,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "pp": {
@@ -754,7 +786,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "ppx_yojson_conv_lib": {
@@ -769,7 +802,8 @@
          "yojson"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "re": {
@@ -784,7 +818,8 @@
          "seq"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "result": {
@@ -798,7 +833,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "rresult": {
@@ -833,7 +869,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "spawn": {
@@ -847,7 +884,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "stdio": {
@@ -862,7 +900,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "stdlib-shims": {
@@ -876,7 +915,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "stdune": {
@@ -895,7 +935,8 @@
          "pp"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "topkg": {
@@ -975,7 +1016,8 @@
          "ocaml"
        ],
        "build-depends": [
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      },
      "yojson": {
@@ -991,7 +1033,8 @@
        ],
        "build-depends": [
          "cppo",
-         "dune"
+         "dune",
+         "ocamlfind"
        ]
      }
    }

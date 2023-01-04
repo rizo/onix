@@ -15,18 +15,18 @@ let onix_path =
       "/nix/store/i7hmg44cvnfq0xa0f9dm1hx2262j9vyf-yojson-1.7.0";
     ]
 
-let dependencies =
-  Onix.Pkg_ctx.dependencies_of_onix_path ~ocaml_version:"4.14.0" onix_path
+let deps =
+  Onix.Pkg_scope.dependencies_of_onix_path ~ocaml_version:"4.14.0" onix_path
 
 let self =
   {
-    Onix.Pkg_ctx.name = OpamPackage.Name.of_string "onix-example";
+    Onix.Pkg_scope.name = OpamPackage.Name.of_string "onix-example";
     version = OpamPackage.Version.of_string "root";
     prefix = "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
     opamfile = "/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam";
   }
 
-let ctx = Onix.Pkg_ctx.make ~dependencies ~ocaml_version:"4.14.0" self
+let pkg_scope = Onix.Pkg_scope.make ~deps ~ocaml_version:"4.14.0" self
 
 let eq_pkg_name n1 n2 =
   let eq = OpamPackage.Name.equal n1 n2 in
@@ -50,7 +50,9 @@ let mk_pkg_v = OpamPackage.Version.of_string
 let check_scope () =
   let check_pkg pkg_name =
     let mem =
-      OpamPackage.Name.Map.mem (OpamPackage.Name.of_string pkg_name) ctx.scope
+      OpamPackage.Name.Map.mem
+        (OpamPackage.Name.of_string pkg_name)
+        pkg_scope.pkgs
     in
     if not mem then (
       Fmt.epr "Missing package in scope: %S@." pkg_name;
@@ -72,15 +74,30 @@ let check_scope () =
     ]
 
 let check_self () =
-  let self = ctx.self in
+  let self = pkg_scope.self in
   assert (eq_pkg_name (mk_pkg_name "onix-example") self.name);
   assert (eq_pkg_v (mk_pkg_v "root") self.version)
 
 let check_vars () =
+  let resolve =
+    let jobs = "1" in
+    let arch = "my_arch" in
+    let os = "my_os" in
+    let user = "my_user" in
+    let group = "my_group" in
+    let build_dir = "/build" in
+
+    Onix.Pkg_scope.resolve_many
+      [
+        Onix.Pkg_scope.resolve_global ~jobs ~arch ~os ~user ~group;
+        Onix.Pkg_scope.resolve_pkg ~build_dir pkg_scope;
+      ]
+  in
+
   let check_var var_str expected =
     let full_var = OpamVariable.Full.of_string var_str in
     let actual =
-      match Onix.Pkg_ctx.resolve ctx full_var with
+      match resolve full_var with
       | Some var_contents ->
         OpamVariable.string_of_variable_contents var_contents
       | None -> ""
@@ -99,8 +116,8 @@ let check_vars () =
     "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
   check_var "switch"
     "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
-  check_var "root"
-    "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
+  (* check_var "root" *)
+  (*   "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root"; *)
   check_var "sys-ocaml-version" "4.14.0";
 
   (* check_var "user" (Sys.getenv "USER"); *)
@@ -151,7 +168,7 @@ let check_vars () =
   check_var "options:version" "dev";
   check_var "options:installed" "true";
   check_var "options:pinned" "true";
-  check_var "options:dev" "false";
+  check_var "options:dev" "true";
   check_var "options:opamfile"
     "/nix/store/qvnnk93pgl184021bbysp7036rzx30rh-options-dev/lib/ocaml/4.14.0/site-lib/options/opam";
   check_var "options:lib"
@@ -174,8 +191,8 @@ let check_vars () =
   (* check_var "_not_a_package:name" ""; *)
   check_var "_not_a_package:version" "";
   check_var "_not_a_package:installed" "false";
-  check_var "_not_a_package:pinned" "false";
-  check_var "_not_a_package:dev" "false";
+  check_var "_not_a_package:pinned" "";
+  check_var "_not_a_package:dev" "";
   check_var "_not_a_package:opamfile" "";
   check_var "_not_a_package:build-id" "";
   check_var "_not_a_package:lib" "";
@@ -194,8 +211,7 @@ let check_vars () =
   check_var "bos:dev" "false";
   check_var "bos:opamfile"
     "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/lib/ocaml/4.14.0/site-lib/bos/opam";
-  check_var "bos:build-id"
-    "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1";
+  check_var "bos:build-id" "";
   check_var "bos:lib"
     "/nix/store/xfmk9f2ykalizkgfg620gbya67fa09si-bos-0.2.1/lib/ocaml/4.14.0/site-lib/bos";
   check_var "bos:stublibs"

@@ -117,6 +117,13 @@ module Os = struct
       Fmt.failwith "Command terminated with a non-zero code: %d@." n
     | Ok (`Signaled n) -> Fmt.failwith "Command terminated by signal: %d@." n
     | Error (`Msg err) -> Fmt.failwith "Could not run command: %s" err
+
+  let get_group () =
+    try
+      let gid = Unix.getgid () in
+      let gname = (Unix.getgrgid gid).gr_name in
+      Some gname
+    with Not_found -> None
 end
 
 module Name_set = OpamPackage.Name.Set

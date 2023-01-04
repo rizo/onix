@@ -66,19 +66,19 @@ let with_dev_setup_arg =
 
 let mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
   let onix_path = Sys.getenv_opt "ONIXPATH" or "" in
-  let dependencies =
-    Onix.Pkg_ctx.dependencies_of_onix_path ~ocaml_version onix_path
+  let deps =
+    Onix.Pkg_scope.dependencies_of_onix_path ~ocaml_version onix_path
   in
   let opam_pkg = OpamPackage.of_string opam_pkg in
   let self =
     {
-      Onix.Pkg_ctx.name = opam_pkg.name;
+      Onix.Pkg_scope.name = opam_pkg.name;
       version = opam_pkg.version;
       prefix;
       opamfile;
     }
   in
-  Onix.Pkg_ctx.make ~dependencies ~ocaml_version self
+  Onix.Pkg_scope.make ~deps ~ocaml_version self
 
 module Opam_patch = struct
   let run style_renderer log_level ocaml_version opamfile prefix opam_pkg =

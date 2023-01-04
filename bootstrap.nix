@@ -4,6 +4,7 @@ let
   onix = import ./default.nix {
     inherit pkgs;
     ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_14;
+    verbosity = "debug";
   };
 in onix.env {
   repo = {
@@ -12,5 +13,5 @@ in onix.env {
   };
   path = ./.;
   deps = { "ocaml-system" = "*"; };
-  vars = { dev-setup = true; };
+  vars = { "with-dev-setup" = true; };
 }

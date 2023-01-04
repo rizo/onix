@@ -2,6 +2,31 @@
 
 let ( </> ) = Filename.concat
 
+module Resolvers = struct
+  let resolve_available_current_system =
+    let jobs = Nix_utils.get_nix_build_jobs () in
+    let arch = OpamSysPoll.arch () in
+    let os = OpamSysPoll.os () in
+    let user = Unix.getlogin () in
+    let group = Utils.Os.get_group () in
+    Pkg_scope.resolve_many
+      [Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group]
+
+  let resolve_filter_deps_current_system =
+    let jobs = Nix_utils.get_nix_build_jobs () in
+    let arch = OpamSysPoll.arch () in
+    let os = OpamSysPoll.os () in
+    let user = Unix.getlogin () in
+    let group = Utils.Os.get_group () in
+    fun ~test ~doc ~dev_setup opam_pkg ->
+      Pkg_scope.resolve_many
+        [
+          Pkg_scope.resolve_opam_pkg opam_pkg;
+          Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group;
+          Pkg_scope.resolve_dep ~test ~doc ~dev_setup;
+        ]
+end
+
 type t = {
   package_dep_vars : Opam_utils.package_dep_vars;
   repo_packages_dir : string;
@@ -32,7 +57,7 @@ module Private = struct
       OpamPackage.Version.Set.mem (OpamPackage.version pkg)
         Nix_utils.available_ocaml_versions
     else
-      let env = Pkg_ctx.Vars.resolve_from_base in
+      let env = Resolvers.resolve_available_current_system in
       OpamFilter.eval_to_bool ~default:false env available
 end
 
@@ -123,13 +148,7 @@ let filter_deps t pkg depends_formula =
   in
   let env var =
     let contents =
-      Pkg_ctx.Vars.try_resolvers
-        [
-          Pkg_ctx.Vars.resolve_package pkg;
-          Pkg_ctx.Vars.resolve_from_base;
-          Pkg_ctx.Vars.resolve_dep_vars ~test ~doc ~dev_setup;
-        ]
-        var
+      Resolvers.resolve_filter_deps_current_system pkg ~test ~doc ~dev_setup var
     in
     (* let nv = OpamPackage.to_string pkg in *)
     (* Opam_utils.debug_var ~scope:("filter_deps/" ^ nv) var contents; *)
