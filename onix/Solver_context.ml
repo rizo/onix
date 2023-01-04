@@ -3,28 +3,15 @@
 let ( </> ) = Filename.concat
 
 module Resolvers = struct
-  let resolve_available_current_system =
-    let jobs = Nix_utils.get_nix_build_jobs () in
-    let arch = OpamSysPoll.arch () in
-    let os = OpamSysPoll.os () in
-    let user = Unix.getlogin () in
-    let group = Utils.Os.get_group () in
-    Pkg_scope.resolve_many
-      [Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group]
+  let resolve_available_current_system = Pkg_scope.resolve_global_host
 
-  let resolve_filter_deps_current_system =
-    let jobs = Nix_utils.get_nix_build_jobs () in
-    let arch = OpamSysPoll.arch () in
-    let os = OpamSysPoll.os () in
-    let user = Unix.getlogin () in
-    let group = Utils.Os.get_group () in
-    fun ~test ~doc ~dev_setup opam_pkg ->
-      Pkg_scope.resolve_many
-        [
-          Pkg_scope.resolve_opam_pkg opam_pkg;
-          Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group;
-          Pkg_scope.resolve_dep ~test ~doc ~dev_setup;
-        ]
+  let resolve_filter_deps_current_system ~test ~doc ~dev_setup opam_pkg =
+    Pkg_scope.resolve_many
+      [
+        Pkg_scope.resolve_opam_pkg opam_pkg;
+        Pkg_scope.resolve_global_host;
+        Pkg_scope.resolve_dep ~test ~doc ~dev_setup;
+      ]
 end
 
 type t = {
@@ -35,27 +22,23 @@ type t = {
   prefer_oldest : bool;
 }
 
-module Private = struct
-  let load_opam ~fixed_opam_details ~repo_packages_dir pkg =
+open struct
+  let load_repo_opam ~repo_packages_dir pkg =
     let { OpamPackage.name; version = _ } = pkg in
-    match OpamPackage.Name.Map.find_opt name fixed_opam_details with
-    | Some { Opam_utils.opam; _ } -> opam
-    | None ->
-      let opam_path =
-        repo_packages_dir
-        </> OpamPackage.Name.to_string name
-        </> OpamPackage.to_string pkg
-        </> "opam"
-      in
-      OpamFile.OPAM.read (OpamFile.make (OpamFilename.raw opam_path))
+    let opam_path =
+      repo_packages_dir
+      </> OpamPackage.Name.to_string name
+      </> OpamPackage.to_string pkg
+      </> "opam"
+    in
+    OpamFile.OPAM.read (OpamFile.make (OpamFilename.raw opam_path))
 
   (* Availability only seems to require os, ocaml-version, opam-version. *)
-  let resolve_available ~pkg available =
-    if
-      OpamPackage.Name.equal Opam_utils.ocaml_system_name (OpamPackage.name pkg)
-    then
-      OpamPackage.Version.Set.mem (OpamPackage.version pkg)
-        Nix_utils.available_ocaml_versions
+  let check_available ~pkg available =
+    let n = OpamPackage.name pkg in
+    let v = OpamPackage.version pkg in
+    if OpamPackage.Name.equal Opam_utils.ocaml_system_name n then
+      OpamPackage.Version.Set.mem v Nix_utils.available_ocaml_versions
     else
       let env = Resolvers.resolve_available_current_system in
       OpamFilter.eval_to_bool ~default:false env available
@@ -91,8 +74,10 @@ let user_restrictions t name = OpamPackage.Name.Map.find_opt name t.constraints
 
 let candidates t name =
   match OpamPackage.Name.Map.find_opt name t.fixed_opam_details with
+  (* It's a fixed user-provided package. *)
   | Some { Opam_utils.package; opam; _ } ->
     [(OpamPackage.version package, Ok opam)]
+  (* Lookup in the repository. *)
   | None -> (
     let versions_dir =
       t.repo_packages_dir </> OpamPackage.Name.to_string name
@@ -116,14 +101,13 @@ let candidates t name =
              | _ ->
                let pkg = OpamPackage.create name v in
                let opam =
-                 Private.load_opam ~fixed_opam_details:t.fixed_opam_details
-                   ~repo_packages_dir:t.repo_packages_dir pkg
+                 load_repo_opam ~repo_packages_dir:t.repo_packages_dir pkg
                in
                let available = OpamFile.OPAM.available opam in
-               if Private.resolve_available ~pkg available then (v, Ok opam)
+               if check_available ~pkg available then (v, Ok opam)
                else (v, Error Unavailable))
     | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
-      OpamConsole.log "opam-0install" "Package %S not found!"
+      OpamConsole.log "opam-0install" "Package %S not found in the repository"
         (OpamPackage.Name.to_string name);
       [])
 

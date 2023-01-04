@@ -96,7 +96,7 @@ let resolve_global ?jobs ?arch ?os ?user ?group full_var =
     match OpamVariable.to_string var with
     (* Static *)
     | "opam-version" -> string' OpamVersion.(to_string current)
-    | "root" -> None
+    | "root" -> string' "/tmp/onix-opam-root"
     | "make" -> string' "make"
     | "os-distribution" -> string' "nixos"
     | "os-family" -> string' "nixos"
@@ -108,6 +108,14 @@ let resolve_global ?jobs ?arch ?os ?user ?group full_var =
     | "user" -> Option.map string user
     | "group" -> Option.map string group
     | _ -> None
+
+let resolve_global_host =
+  let jobs = Nix_utils.get_nix_build_jobs () in
+  let arch = OpamSysPoll.arch () in
+  let os = OpamSysPoll.os () in
+  let user = Unix.getlogin () in
+  let group = Utils.Os.get_group () in
+  resolve_global ~jobs ?arch ?os ~user ?group
 
 let resolve_pkg ~build_dir { self; pkgs; ocaml_version; _ } full_var =
   let var = OpamVariable.to_string (OpamVariable.Full.variable full_var) in

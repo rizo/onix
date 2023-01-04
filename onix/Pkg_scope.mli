@@ -24,7 +24,10 @@ val resolve_global :
   ?user:string ->
   ?group:string ->
   OpamFilter.env
-(** Resolves [name], [version] and [dev] vars. *)
+(** Resolve global generic system variables. *)
+
+val resolve_global_host : OpamFilter.env
+(** Resolve global host system variables. *)
 
 val resolve_pkg : build_dir:string -> t -> OpamFilter.env
 (** Resolves [name], [version] and [dev] vars. *)

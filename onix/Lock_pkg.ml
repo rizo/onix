@@ -1,34 +1,24 @@
 open Utils
 
 module Resolvers = struct
-  let resolve_depends_current_system =
-    let jobs = Nix_utils.get_nix_build_jobs () in
-    let arch = OpamSysPoll.arch () in
-    let os = OpamSysPoll.os () in
-    let user = Unix.getlogin () in
-    let group = Utils.Os.get_group () in
-    fun ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false) pkg ->
-      Pkg_scope.resolve_many
-        [
-          Pkg_scope.resolve_stdenv;
-          Pkg_scope.resolve_opam_pkg pkg;
-          Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group;
-          Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
-        ]
+  let resolve_depends_host ?(build = false) ?(test = false) ?(doc = false)
+      ?(dev_setup = false) pkg =
+    Pkg_scope.resolve_many
+      [
+        Pkg_scope.resolve_stdenv;
+        Pkg_scope.resolve_opam_pkg pkg;
+        Pkg_scope.resolve_global_host;
+        Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
+      ]
 
-  let resolve_depexts_current_system =
-    let jobs = Nix_utils.get_nix_build_jobs () in
-    let arch = OpamSysPoll.arch () in
-    let os = OpamSysPoll.os () in
-    let user = Unix.getlogin () in
-    let group = Utils.Os.get_group () in
-    fun ?(build = false) ?(test = false) ?(doc = false) ?(dev_setup = false) pkg ->
-      Pkg_scope.resolve_many
-        [
-          Pkg_scope.resolve_opam_pkg pkg;
-          Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group;
-          Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
-        ]
+  let resolve_depexts_host ?(build = false) ?(test = false) ?(doc = false)
+      ?(dev_setup = false) pkg =
+    Pkg_scope.resolve_many
+      [
+        Pkg_scope.resolve_opam_pkg pkg;
+        Pkg_scope.resolve_global_host;
+        Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
+      ]
 end
 
 type src =
@@ -242,8 +232,7 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let get_deps ?build ?test ?doc ?dev_setup ?(depends = Name_set.empty)
       ?(depopts = Name_set.empty) () =
     let env =
-      Resolvers.resolve_depends_current_system ?build ?test ?doc ?dev_setup
-        package
+      Resolvers.resolve_depends_host ?build ?test ?doc ?dev_setup package
     in
     let _req, opt = filter_deps ~env ~required:false opam_depopts in
     assert (Name_set.is_empty _req);
@@ -297,8 +286,7 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let depexts_nix, depexts_unknown =
     let is_zip_src = Option.map_default false check_is_zip_src src in
     let env =
-      Resolvers.resolve_depexts_current_system ~build:true ~test ~doc ~dev_setup
-        package
+      Resolvers.resolve_depexts_host ~build:true ~test ~doc ~dev_setup package
     in
     get_depexts ~is_zip_src ~package ~env opam_depexts
   in

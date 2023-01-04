@@ -10,11 +10,6 @@ let mk_dep_vars ~with_test ~with_doc ~with_dev_setup =
     ]
 
 let resolve_actions =
-  let jobs = Nix_utils.get_nix_build_jobs () in
-  let arch = OpamSysPoll.arch () in
-  let os = OpamSysPoll.os () in
-  let user = Unix.getlogin () in
-  let group = Utils.Os.get_group () in
   let build_dir = Sys.getcwd () in
   fun ?(local = OpamVariable.Map.empty) pkg_scope ->
     Pkg_scope.resolve_many
@@ -22,7 +17,7 @@ let resolve_actions =
         Pkg_scope.resolve_stdenv;
         Pkg_scope.resolve_local local;
         Pkg_scope.resolve_config pkg_scope;
-        Pkg_scope.resolve_global ~jobs ?arch ?os ~user ?group;
+        Pkg_scope.resolve_global_host;
         Pkg_scope.resolve_pkg ~build_dir pkg_scope;
       ]
 
