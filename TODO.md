@@ -151,3 +151,4 @@
 - [ ] Changing the repo hash invalidates cache even if opam files did not change? Is it possible to depend on opam file contents?
 - [ ] Fix lock var generation when not all vars are passed.
 - [ ] When evaluating `arch` use a "delayed" env var version.
+- [ ] Document that opam vars can be added to drv.

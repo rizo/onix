@@ -216,7 +216,12 @@ let get_depexts ~package ~is_zip_src ~env depexts =
 (* Given required and optional deps, compute a union of all installed deps. *)
 let only_installed ~installed req opt =
   (* All req deps MUST be installed. *)
-  Name_set.iter (fun dep -> assert (installed dep)) req;
+  Name_set.iter
+    (fun dep ->
+      if not (installed dep) then
+        Fmt.failwith "BUG: req dep is not installed: %a"
+          Opam_utils.pp_package_name dep)
+    req;
   let opt_installed = Name_set.filter installed opt in
   Name_set.union req opt_installed
 

@@ -62,6 +62,14 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
 
   Logs.info (fun log -> log "Solving dependencies...");
   Logs.info (fun log ->
+      log "Root packages: %a"
+        Fmt.(seq ~sep:Fmt.sp Opam_utils.pp_package_name)
+        (root_opam_details |> OpamPackage.Name.Map.to_seq |> Seq.map fst));
+  Logs.debug (fun log ->
+      log "Fixed packages: %a"
+        Fmt.(seq ~sep:Fmt.sp Opam_utils.pp_package_name)
+        (fixed_opam_details |> OpamPackage.Name.Map.to_seq |> Seq.map fst));
+  Logs.debug (fun log ->
       log "Target packages: %a"
         Fmt.(list ~sep:Fmt.sp Opam_utils.pp_package_name)
         target_package_names);
