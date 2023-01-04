@@ -131,8 +131,8 @@ let resolve_pkg ~build_dir { self; pkgs; ocaml_version; _ } full_var =
   | `Global, "installed" -> bool' false (* not yet *)
   | `Installed _pkg, "installed" -> bool' true
   | `Missing _name, "installed" -> bool' false
-  (* FIXME *)
-  (* | `Global, "enable" -> bool' false *)
+  | `Installed _pkg, "enable" -> string' "enable"
+  | `Missing _name, "enable" -> string' "disable"
   | `Global, ("pinned" | "dev") ->
     bool' (Opam_utils.is_pinned_version self.version)
   | `Installed pkg, ("pinned" | "dev") ->
