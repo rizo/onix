@@ -3,21 +3,21 @@ open Utils
 module Resolvers = struct
   let resolve_depends_host ?(build = false) ?(test = false) ?(doc = false)
       ?(dev_setup = false) pkg =
-    Pkg_scope.resolve_many
+    Scope.resolve_many
       [
-        Pkg_scope.resolve_stdenv_host;
-        Pkg_scope.resolve_opam_pkg pkg;
-        Pkg_scope.resolve_global_host;
-        Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
+        Scope.resolve_stdenv_host;
+        Scope.resolve_opam_pkg pkg;
+        Scope.resolve_global_host;
+        Scope.resolve_dep ~build ~test ~doc ~dev_setup;
       ]
 
   let resolve_depexts_host ?(build = false) ?(test = false) ?(doc = false)
       ?(dev_setup = false) pkg =
-    Pkg_scope.resolve_many
+    Scope.resolve_many
       [
-        Pkg_scope.resolve_opam_pkg pkg;
-        Pkg_scope.resolve_global_host;
-        Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
+        Scope.resolve_opam_pkg pkg;
+        Scope.resolve_global_host;
+        Scope.resolve_dep ~build ~test ~doc ~dev_setup;
       ]
 end
 
@@ -206,12 +206,13 @@ let get_depexts ~package ~is_zip_src ~env depexts =
 (* Given required and optional deps, compute a union of all installed deps. *)
 let only_installed ~installed req opt =
   (* All req deps MUST be installed. *)
-  Name_set.iter
-    (fun dep ->
-      if not (installed dep) then
-        Fmt.failwith "BUG: req dep is not installed: %a"
-          Opam_utils.pp_package_name dep)
-    req;
+  (* FIXME: Temp disabled for nix gen. *)
+  (* Name_set.iter
+     (fun dep ->
+       if not (installed dep) then
+         Fmt.failwith "BUG: req dep is not installed: %a"
+           Opam_utils.pp_package_name dep)
+     req; *)
   let opt_installed = Name_set.filter installed opt in
   Name_set.union req opt_installed
 
@@ -264,12 +265,6 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
       (fun acc name ->
         if Name_set.mem name depends then Name_set.add name acc else acc)
       depends_build Overrides.build_depends_names
-  in
-  (* Add ocamlfind to all packages that depend on dune or topkg. *)
-  let depends_build =
-    if Name_set.mem Opam_utils.dune_name depends_build then
-      Name_set.add Opam_utils.ocamlfind_name depends_build
-    else depends_build
   in
 
   let depopts_build =

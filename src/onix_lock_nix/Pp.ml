@@ -38,7 +38,7 @@ let pp_version f version =
   (* We require that the version does NOT contain any '-' or '~' characters.
      - Note that nix will replace '~' to '-' automatically.
      The version is parsed with Nix_utils.parse_store_path by splitting bytes
-     '- ' to obtain the Pkg_scope.package information.
+     '- ' to obtain the Scope.package information.
      This is fine because the version in the lock file is mostly informative. *)
   let set_valid_char i =
     match String.get version i with
@@ -163,7 +163,7 @@ let pp_pkg ~gitignore f (nix_pkg : Nix_pkg.t) =
     "%a:@.@.@[<v2>nixpkgs.stdenv.mkDerivation {@ pname = %S;@ version = \
      %a;%a%a@,\
      %a@,\
-     %a%a%a%a@]@ }@." (* inputs *) pp_file_inputs nix_pkg.inputs
+     %a%a%a%a%a%a@]@ }@." (* inputs *) pp_file_inputs nix_pkg.inputs
     (* name and version *) name pp_version version
     (* src *)
     (pp_src ~gitignore)
@@ -178,6 +178,12 @@ let pp_pkg ~gitignore f (nix_pkg : Nix_pkg.t) =
     (* checkInputs *)
     (pp_depends_sets "checkInputs")
     nix_pkg.check_inputs (* build *) pp_commands nix_pkg.build
+    (* configurePhase *)
+    (pp_phase "configurePhase")
+    nix_pkg.configure_phase
+    (* buildPhase *)
+    (pp_phase "buildPhase")
+    nix_pkg.build_phase
     (* installPhase *)
     (pp_install_phase
        ~package_name:(OpamPackage.name lock_pkg.opam_details.package)

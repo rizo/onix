@@ -5,72 +5,73 @@ let resolve_commands =
   let user = "${user}" in
   let group = "${group}" in
   let build_dir = "." in
-  fun pkg_scope ->
-    Pkg_scope.resolve_many
+  fun scope ->
+    Scope.resolve_many
       [
-        Pkg_scope.resolve_config pkg_scope;
-        Pkg_scope.resolve_global ~jobs ?arch:None ?os:None ~user ~group;
-        Pkg_scope.resolve_pkg ~build_dir pkg_scope;
+        Scope.resolve_config scope;
+        Scope.resolve_global ~jobs ?arch:None ?os:None ~user ~group;
+        Scope.resolve_pkg ~build_dir scope;
       ]
 
 let resolve_depends ?(build = false) ?(test = false) ?(doc = false)
     ?(dev_setup = false) pkg =
-  Pkg_scope.resolve_many
+  Scope.resolve_many
     [
-      Pkg_scope.resolve_stdenv_host;
-      Pkg_scope.resolve_opam_pkg pkg;
-      Pkg_scope.resolve_global_host;
-      Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
+      Scope.resolve_stdenv_host;
+      Scope.resolve_opam_pkg pkg;
+      Scope.resolve_global_host;
+      Scope.resolve_dep ~build ~test ~doc ~dev_setup;
     ]
 
 (* FIXME this shouldn't use hosts' vars! *)
 let resolve_subst_and_patch =
   let build_dir = Sys.getcwd () in
-  fun ?(local = OpamVariable.Map.empty) pkg_scope ->
-    Pkg_scope.resolve_many
+  fun ?(local = OpamVariable.Map.empty) scope ->
+    Scope.resolve_many
       [
-        Pkg_scope.resolve_stdenv_host;
-        Pkg_scope.resolve_local local;
-        Pkg_scope.resolve_config pkg_scope;
-        Pkg_scope.resolve_global_host;
-        Pkg_scope.resolve_pkg ~build_dir pkg_scope;
+        Scope.resolve_stdenv_host;
+        Scope.resolve_local local;
+        Scope.resolve_config scope;
+        Scope.resolve_global_host;
+        Scope.resolve_pkg ~build_dir scope;
       ]
 
-let pkg_scope_for_lock_pkg ~ocaml_version (lock_pkg : Lock_pkg.t) =
+let scope_for_lock_pkg ~ocaml_version (lock_pkg : Lock_pkg.t) =
   let name = OpamPackage.name lock_pkg.opam_details.package in
   let version = OpamPackage.version lock_pkg.opam_details.package in
   let dep_names = Name_set.union lock_pkg.depends lock_pkg.depends_build in
+  (* Logs.debug (fun log ->
+      log "@[<v>Creating package scope with:@,%a@]"
+        Fmt.(seq (any "- " ++ Opam_utils.pp_package_name))
+        (Name_set.to_seq dep_names)); *)
   let deps =
     Name_set.fold
       (fun name acc ->
         let prefix =
           String.concat "" ["${"; OpamPackage.Name.to_string name; "}"]
         in
-        let build_pkg =
-          {
-            Pkg_scope.name;
-            version = OpamPackage.Version.of_string "version_todo";
-            opamfile =
-              Onix_core.Paths.lib ~pkg_name:name ~ocaml_version prefix ^ "/opam";
-            prefix;
-          }
+        let pkg =
+          Scope.make_pkg ~name
+            ~version:(OpamPackage.Version.of_string "version_todo")
+            ~opamfile:
+              (Onix_core.Paths.lib ~pkg_name:name ~ocaml_version prefix
+              ^ "/opam")
+            ~prefix
         in
-        Name_map.add name build_pkg acc)
+        Name_map.add name pkg acc)
       dep_names Name_map.empty
   in
   let self =
-    {
-      Pkg_scope.name;
-      version;
-      opamfile = OpamFilename.to_string lock_pkg.opam_details.path;
-      prefix = "$out";
-    }
+    Scope.make_pkg ~name ~version
+      ~opamfile:(OpamFilename.to_string lock_pkg.opam_details.path)
+      ~prefix:"$out"
   in
-  Pkg_scope.make ~deps ~ocaml_version self
+
+  Scope.make ~deps ~ocaml_version self
 
 type t = {
   lock_pkg : Lock_pkg.t;
-  pkg_scope : Pkg_scope.t;
+  scope : Scope.t;
   opam_details : Opam_utils.Opam_details.t;
   inputs : String_set.t;
   check_inputs : String_set.t;
@@ -150,23 +151,23 @@ let of_lock_pkg ~ocaml_version ~with_test ~with_doc ~with_dev_setup
     get_propagated_native_build_inputs lock_pkg
   in
 
-  let pkg_scope = pkg_scope_for_lock_pkg ~ocaml_version lock_pkg in
+  let scope = scope_for_lock_pkg ~ocaml_version lock_pkg in
 
   let opam_build_commands =
-    Opam_actions.build ~with_test ~with_doc ~with_dev_setup pkg_scope
+    Opam_actions.build ~with_test ~with_doc ~with_dev_setup scope
   in
   let opam_install_commands =
-    Opam_actions.install ~with_test ~with_doc ~with_dev_setup pkg_scope
+    Opam_actions.install ~with_test ~with_doc ~with_dev_setup scope
   in
 
   let build =
-    let env = resolve_commands pkg_scope in
+    let env = resolve_commands scope in
     Nix_filter.process_commands ~env (OpamFile.OPAM.build opam)
   in
 
   {
     lock_pkg;
-    pkg_scope;
+    scope;
     opam_details = lock_pkg.opam_details;
     inputs;
     check_inputs;
@@ -251,7 +252,7 @@ let resolve_files ~lock_dir (pkg_drv : t) =
   copy_extra_files ~pkg_lock_dir extra_files;
 
   let subst_files, patches =
-    let env = resolve_subst_and_patch pkg_drv.pkg_scope in
+    let env = resolve_subst_and_patch pkg_drv.scope in
     Subst_and_patch.get_subst_and_patches ~env ~pkg_lock_dir
       pkg_drv.opam_details
   in

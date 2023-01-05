@@ -14,27 +14,30 @@ let
         ./ocamlfind/onix_install_topfind_194.patch
         ++ lib.optional (lib.versionAtLeast oldAttrs.version "1.9.5")
         ./ocamlfind/onix_install_topfind_195.patch;
-
       setupHook = nixpkgs.writeText "ocamlfind-setup-hook.sh" ''
         [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
-
-        addTargetOCamlPath () {
-          local libdir="$1/lib/ocaml/${super.ocaml.version}/site-lib"
-
-          if [[ ! -d "$libdir" ]]; then
-            return 0
-          fi
-
-          echo "+ onix-ocamlfind-setup-hook.sh/addTargetOCamlPath: $*"
-
-          addToSearchPath "OCAMLPATH" "$libdir"
-          addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
-        }
-
-        addEnvHooks "$targetOffset" addTargetOCamlPath
-
         export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${super.ocaml.version}/site-lib/toplevel"
       '';
+      # setupHook = nixpkgs.writeText "ocamlfind-setup-hook.sh" ''
+      #   [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
+
+      #   addTargetOCamlPath () {
+      #     local libdir="$1/lib/ocaml/${super.ocaml.version}/site-lib"
+
+      #     if [[ ! -d "$libdir" ]]; then
+      #       return 0
+      #     fi
+
+      #     echo "+ onix-ocamlfind-setup-hook.sh/addTargetOCamlPath: $*"
+
+      #     addToSearchPath "OCAMLPATH" "$libdir"
+      #     addToSearchPath "CAML_LD_LIBRARY_PATH" "$libdir/stublibs"
+      #   }
+
+      #   addEnvHooks "$targetOffset" addTargetOCamlPath
+
+      #   export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${super.ocaml.version}/site-lib/toplevel"
+      # '';
     });
 
     # topkg = super.topkg.overrideAttrs (oldAttrs: {

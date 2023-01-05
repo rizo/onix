@@ -44,20 +44,20 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
   let repository_dir, resolved_repository_urls =
     Nix_utils.resolve_repos repository_urls
   in
+  let repo = Repo.make ~root:repository_dir ~urls:resolved_repository_urls in
   let constraints = Resolutions.constraints resolutions in
 
   let context =
-    Solver_context.make
-      OpamFilename.Op.(repository_dir / "packages")
-      ~fixed_opam_details ~constraints ~package_dep_vars
+    Solver_context.make ~repo ~fixed_opam_details ~constraints ~package_dep_vars
+      ()
   in
 
   let get_opam_details package =
     let name = OpamPackage.name package in
     try OpamPackage.Name.Map.find name fixed_opam_details
     with Not_found ->
-      let opam = Solver_context.get_opam_file context package in
-      let path = Opam_utils.mk_repo_opamfile ~repository_dir package in
+      let opam = Repo.read_opam repo package in
+      let path = Repo.get_opam_filename repo package in
       { package; path; opam }
   in
 
@@ -115,5 +115,5 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
     |> OpamPackage.Name.Map.values
     |> Lock_file.make ~repository_urls:resolved_repository_urls ~compiler
   | Error err ->
-    prerr_endline (Opam_0install_solver.diagnostics err);
+    prerr_endline (Opam_0install_solver.diagnostics ~verbose:false err);
     exit 2

@@ -5,8 +5,8 @@ let
   defaultOverlay = import ./overlay/default.nix pkgs;
 
   inherit (builtins)
-    filter trace hasAttr getAttr setAttr attrNames attrValues concatMap
-    pathExists foldl';
+    trace hasAttr getAttr setAttr attrNames attrValues concatMap pathExists
+    foldl';
   inherit (pkgs) lib stdenv;
   inherit (pkgs.lib) optionalString;
   inherit (pkgs.lib.attrsets) mapAttrs';

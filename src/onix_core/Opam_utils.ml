@@ -56,6 +56,7 @@ let is_ocaml_compiler_name name =
   || OpamPackage.Name.equal name ocaml_system_name
   || OpamPackage.Name.equal name ocaml_variants_name
 
+let is_ocaml_name name = OpamPackage.Name.equal name ocaml_name
 let dev_version = OpamPackage.Version.of_string "dev"
 let is_pinned_version version = OpamPackage.Version.equal version dev_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)

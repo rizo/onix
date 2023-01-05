@@ -1,19 +1,40 @@
-(* Build context defines the build environment for a package.
-   This can be seen as a sandboxed opam switch. *)
-
-type package = {
+type pkg = {
   name : OpamTypes.name;
   version : OpamTypes.version;
   opamfile : string;
+  opam : OpamFile.OPAM.t Lazy.t;
   prefix : string;
 }
 
 type t = {
-  self : package;
+  self : pkg;
   ocaml_version : OpamTypes.version;
-  pkgs : package OpamTypes.name_map;
+  pkgs : pkg OpamTypes.name_map;
   vars : OpamVariable.variable_contents OpamVariable.Full.Map.t;
 }
+
+val make_pkg :
+  name:OpamTypes.name ->
+  version:OpamTypes.version ->
+  opamfile:string ->
+  prefix:string ->
+  pkg
+
+val make :
+  deps:pkg OpamPackage.Name.Map.t ->
+  ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
+  ocaml_version:OpamPackage.Version.t ->
+  pkg ->
+  t
+
+val with_onix_path :
+  onix_path:string ->
+  ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
+  ocaml_version:OpamPackage.Version.t ->
+  pkg ->
+  t
+
+(* val get_opam : OpamPackage.Name.t -> t -> OpamFile.OPAM.t option *)
 
 (** {2 Variable resolvers} *)
 
@@ -55,20 +76,4 @@ val resolve_dep :
 (** Resolve dependency variables. *)
 
 val resolve_many : OpamFilter.env list -> OpamFilter.env
-
-(* val resolve_all : *)
-(*   ?local:OpamVariable.variable_contents option OpamVariable.Map.t -> *)
-(*   t -> *)
-(*   OpamFilter.env *)
-
-val dependencies_of_onix_path :
-  ocaml_version:OpamPackage.Version.t ->
-  string ->
-  package OpamPackage.Name.Map.t
-
-val make :
-  deps:package OpamPackage.Name.Map.t ->
-  ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
-  ocaml_version:OpamPackage.Version.t ->
-  package ->
-  t
+(* Resolves using a provided list of resolvers. *)

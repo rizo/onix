@@ -200,17 +200,19 @@ let resolve_repos repos =
     | _ -> symlink_join ~name:"onix-opam-repo" (List.map snd resolved_with_path)
   in
   let resolved_urls = List.map fst resolved_with_path in
-  Fmt.epr "@[<v>Repositories:@,%a@]@."
-    Fmt.(list ~sep:cut (any "- " ++ Opam_utils.pp_url))
-    resolved_urls;
+  Fmt.epr "@[<v>Repositories:@,%a@,%a@]@."
+    Fmt.(list ~sep:cut (any "- url: " ++ Opam_utils.pp_url))
+    resolved_urls
+    Fmt.(any "- dir: " ++ Opam_utils.pp_filename_dir)
+    joint_path;
   (joint_path, resolved_urls)
 
 type store_path = {
   hash : string;
-  package_name : OpamPackage.Name.t;
-  package_version : OpamPackage.Version.t;
-  prefix : OpamFilename.Dir.t;
-  suffix : OpamFilename.Base.t;
+  pkg_name : string;
+  pkg_version : string;
+  prefix : string;
+  suffix : string;
 }
 
 let pp_store_path formatter store_path =
@@ -219,36 +221,23 @@ let pp_store_path formatter store_path =
     (Fmt.Dump.record
        [
          field "hash" (fun r -> r.hash) Fmt.Dump.string;
-         field "package_name"
-           (fun r -> r.package_name)
-           Opam_utils.pp_package_name;
-         field "package_version"
-           (fun r -> r.package_version)
-           Opam_utils.pp_package_version;
-         field "prefix" (fun r -> r.prefix) Opam_utils.pp_filename_dir;
-         field "suffix" (fun r -> r.suffix) Opam_utils.pp_filename_base;
+         field "pkg_name" (fun r -> r.pkg_name) Fmt.Dump.string;
+         field "pkg_version" (fun r -> r.pkg_version) Fmt.Dump.string;
+         field "prefix" (fun r -> r.prefix) Fmt.Dump.string;
+         field "suffix" (fun r -> r.suffix) Fmt.Dump.string;
        ])
     store_path
 
 let parse_store_path path =
-  let path = OpamFilename.Dir.to_string path in
   match String.split_on_char '/' path with
   | "" :: "nix" :: "store" :: hash_name_v :: base_path_parts -> (
     let hash_name_v_parts = String.split_on_char '-' hash_name_v in
     match (List.hd hash_name_v_parts, List.rev (List.tl hash_name_v_parts)) with
-    | hash, package_version :: name_rev ->
-      let package_name =
-        OpamPackage.Name.of_string (String.concat "-" (List.rev name_rev))
-      in
-      let package_version = OpamPackage.Version.of_string package_version in
-      let prefix =
-        OpamFilename.Dir.of_string
-          (String.concat "/" [""; "nix"; "store"; hash_name_v])
-      in
-      let suffix =
-        OpamFilename.Base.of_string (String.concat "/" base_path_parts)
-      in
-      { hash; package_name; package_version; prefix; suffix }
+    | hash, pkg_version :: name_rev ->
+      let pkg_name = String.concat "-" (List.rev name_rev) in
+      let prefix = String.concat "/" [""; "nix"; "store"; hash_name_v] in
+      let suffix = String.concat "/" base_path_parts in
+      { hash; pkg_name; pkg_version; prefix; suffix }
     | (exception _) | _ ->
       Fmt.invalid_arg "Invalid hash and package name in path: %S" path)
   | _ -> Fmt.invalid_arg "Invalid nix store path: %S" path

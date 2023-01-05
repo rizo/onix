@@ -86,6 +86,17 @@ module Filesystem = struct
       | exception End_of_file -> acc
     in
     with_dir path (aux [])
+
+  let fold_dir ?(include_hidden = false) f init path =
+    let rec loop acc ch =
+      match Unix.readdir ch with
+      | name when (not include_hidden) && String.starts_with ~prefix:"." name ->
+        loop acc ch
+      | name -> loop (f acc name) ch
+      | exception End_of_file -> Some acc
+    in
+    try with_dir path (loop init)
+    with Unix.Unix_error (Unix.ENOENT, _, _) -> None
 end
 
 module Result = struct

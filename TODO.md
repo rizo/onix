@@ -152,3 +152,4 @@
 - [ ] Fix lock var generation when not all vars are passed.
 - [ ] When evaluating `arch` use a "delayed" env var version.
 - [ ] Document that opam vars can be added to drv.
+- [ ] Install repo's opam file.

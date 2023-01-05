@@ -18,13 +18,13 @@ val resolve_repos : OpamUrl.t list -> OpamFilename.Dir.t * OpamUrl.t list
 
 type store_path = {
   hash : string;
-  package_name : OpamPackage.Name.t;
-  package_version : OpamPackage.Version.t;
-  prefix : OpamFilename.Dir.t;
-  suffix : OpamFilename.Base.t;
+  pkg_name : string;
+  pkg_version : string;
+  prefix : string;
+  suffix : string;
 }
 
 val pp_store_path : Format.formatter -> store_path -> unit
-val parse_store_path : OpamFilename.Dir.t -> store_path
+val parse_store_path : string -> store_path
 val available_ocaml_versions : OpamPackage.Version.Set.t
 val make_ocaml_packages_path : OpamPackage.Version.t -> string

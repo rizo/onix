@@ -12,13 +12,13 @@ let mk_dep_vars ~with_test ~with_doc ~with_dev_setup =
 let resolve_actions =
   let build_dir = Sys.getcwd () in
   fun ?(local = OpamVariable.Map.empty) pkg_scope ->
-    Pkg_scope.resolve_many
+    Scope.resolve_many
       [
-        Pkg_scope.resolve_stdenv_host;
-        Pkg_scope.resolve_local local;
-        Pkg_scope.resolve_config pkg_scope;
-        Pkg_scope.resolve_global_host;
-        Pkg_scope.resolve_pkg ~build_dir pkg_scope;
+        Scope.resolve_stdenv_host;
+        Scope.resolve_local local;
+        Scope.resolve_config pkg_scope;
+        Scope.resolve_global_host;
+        Scope.resolve_pkg ~build_dir pkg_scope;
       ]
 
 module Patch = struct
@@ -165,7 +165,7 @@ module Patch = struct
 
   (* TODO: implement extra file fetching via lock-file?:
      - https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L455 *)
-  let run (pkg_scope : Pkg_scope.t) =
+  let run (pkg_scope : Scope.t) =
     let opamfile = OpamFilename.of_string pkg_scope.self.opamfile in
     let opam = Opam_utils.read_opam opamfile in
     let () =
@@ -187,7 +187,7 @@ end
 
 let patch = Patch.run
 
-let build ~with_test ~with_doc ~with_dev_setup (pkg_scope : Pkg_scope.t) =
+let build ~with_test ~with_doc ~with_dev_setup (pkg_scope : Scope.t) =
   let opam =
     Opam_utils.read_opam (OpamFilename.of_string pkg_scope.self.opamfile)
   in
@@ -215,7 +215,7 @@ let build ~with_test ~with_doc ~with_dev_setup (pkg_scope : Pkg_scope.t) =
   commands
 
 module Install = struct
-  let run ~with_test ~with_doc ~with_dev_setup (pkg_scope : Pkg_scope.t) =
+  let run ~with_test ~with_doc ~with_dev_setup (pkg_scope : Scope.t) =
     let opam =
       Opam_utils.read_opam (OpamFilename.of_string pkg_scope.self.opamfile)
     in
@@ -229,3 +229,4 @@ module Install = struct
 end
 
 let install = Install.run
+let all ~with_test ~with_doc ~with_dev_setup (pkg_scope : Scope.t) = ()

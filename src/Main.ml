@@ -64,22 +64,15 @@ let with_dev_setup_arg =
   in
   Arg.(info ["with-dev-setup"] ~doc |> opt bool false |> value)
 
-let mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
+let make_scope ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
   let onix_path = Sys.getenv_opt "ONIXPATH" or "" in
   let ocaml_version = OpamPackage.Version.of_string ocaml_version in
-  let deps =
-    Onix_core.Pkg_scope.dependencies_of_onix_path ~ocaml_version onix_path
-  in
   let opam_pkg = OpamPackage.of_string opam_pkg in
   let self =
-    {
-      Onix_core.Pkg_scope.name = opam_pkg.name;
-      version = opam_pkg.version;
-      prefix;
-      opamfile;
-    }
+    Onix_core.Scope.make_pkg ~name:opam_pkg.name ~version:opam_pkg.version
+      ~opamfile ~prefix
   in
-  Onix_core.Pkg_scope.make ~deps ~ocaml_version self
+  Onix_core.Scope.with_onix_path ~onix_path ~ocaml_version self
 
 module Opam_patch = struct
   let run style_renderer log_level ocaml_version opamfile prefix opam_pkg =
@@ -87,8 +80,8 @@ module Opam_patch = struct
     Logs.info (fun log ->
         log "opam-patch: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
           ocaml_version prefix opamfile);
-    let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
-    Onix_core.Opam_actions.patch ctx;
+    let scope = make_scope ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
+    Onix_core.Opam_actions.patch scope;
     Logs.info (fun log -> log "opam-patch: Done.")
 
   let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
@@ -112,8 +105,8 @@ module Opam_build = struct
     Logs.info (fun log ->
         log "opam-build: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
           ocaml_version prefix opamfile);
-    let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
-    Onix_core.Opam_actions.build ~with_test ~with_doc ~with_dev_setup ctx
+    let scope = make_scope ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
+    Onix_core.Opam_actions.build ~with_test ~with_doc ~with_dev_setup scope
     |> List.iter Onix_core.Utils.print_command;
     Logs.info (fun log -> log "opam-build: Done.")
 
@@ -141,8 +134,8 @@ module Opam_install = struct
     Logs.info (fun log ->
         log "opam-install: Running... pkg=%S ocaml=%S prefix=%S opam=%S"
           opam_pkg ocaml_version prefix opamfile);
-    let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
-    Onix_core.Opam_actions.install ~with_test ~with_doc ~with_dev_setup ctx
+    let scope = make_scope ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
+    Onix_core.Opam_actions.install ~with_test ~with_doc ~with_dev_setup scope
     |> List.iter Onix_core.Utils.print_command;
     Logs.info (fun log -> log "opam-install: Done.")
 

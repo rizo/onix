@@ -7,8 +7,7 @@ type t = {
 let default =
   {
     with_constraint = OpamPackage.Name.Map.empty;
-    without_constraint =
-      OpamPackage.Name.Set.singleton Opam_utils.ocamlfind_name;
+    without_constraint = OpamPackage.Name.Set.empty;
     compiler_name = Opam_utils.ocaml_base_compiler_name;
   }
 
