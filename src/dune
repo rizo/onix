@@ -1,0 +1,19 @@
+(executable
+ (name Main)
+ (public_name onix)
+ (modules Main)
+ (libraries
+  fpath
+  logs
+  logs.fmt
+  logs.cli
+  fmt
+  fmt.cli
+  fmt.tty
+  cmdliner
+  onix_core
+  onix_lock_nix
+  onix_lock_json
+  onix_lock_opam
+  opam-core
+  opam-format))

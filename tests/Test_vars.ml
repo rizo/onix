@@ -1,3 +1,5 @@
+open Onix_core
+
 let onix_path =
   String.concat ":"
     [
@@ -15,18 +17,18 @@ let onix_path =
       "/nix/store/i7hmg44cvnfq0xa0f9dm1hx2262j9vyf-yojson-1.7.0";
     ]
 
-let deps =
-  Onix.Pkg_scope.dependencies_of_onix_path ~ocaml_version:"4.14.0" onix_path
+let ocaml_version = OpamPackage.Version.of_string "4.14.0"
+let deps = Pkg_scope.dependencies_of_onix_path ~ocaml_version onix_path
 
 let self =
   {
-    Onix.Pkg_scope.name = OpamPackage.Name.of_string "onix-example";
+    Pkg_scope.name = OpamPackage.Name.of_string "onix-example";
     version = OpamPackage.Version.of_string "root";
     prefix = "/nix/store/yzy5ip0v895v7s2ld4i1dcv00cl8b7zf-onix-example-root";
     opamfile = "/nix/store/93l01ab4xqjn6q4n0nf25yasp8jf2jhv-onix-example.opam";
   }
 
-let pkg_scope = Onix.Pkg_scope.make ~deps ~ocaml_version:"4.14.0" self
+let pkg_scope = Pkg_scope.make ~deps ~ocaml_version self
 
 let eq_pkg_name n1 n2 =
   let eq = OpamPackage.Name.equal n1 n2 in
@@ -87,10 +89,10 @@ let check_vars () =
     let group = "my_group" in
     let build_dir = "/build" in
 
-    Onix.Pkg_scope.resolve_many
+    Pkg_scope.resolve_many
       [
-        Onix.Pkg_scope.resolve_global ~jobs ~arch ~os ~user ~group;
-        Onix.Pkg_scope.resolve_pkg ~build_dir pkg_scope;
+        Pkg_scope.resolve_global ~jobs ~arch ~os ~user ~group;
+        Pkg_scope.resolve_pkg ~build_dir pkg_scope;
       ]
   in
 

@@ -14,7 +14,7 @@ let resolve_actions =
   fun ?(local = OpamVariable.Map.empty) pkg_scope ->
     Pkg_scope.resolve_many
       [
-        Pkg_scope.resolve_stdenv;
+        Pkg_scope.resolve_stdenv_host;
         Pkg_scope.resolve_local local;
         Pkg_scope.resolve_config pkg_scope;
         Pkg_scope.resolve_global_host;

@@ -5,7 +5,7 @@ module Resolvers = struct
       ?(dev_setup = false) pkg =
     Pkg_scope.resolve_many
       [
-        Pkg_scope.resolve_stdenv;
+        Pkg_scope.resolve_stdenv_host;
         Pkg_scope.resolve_opam_pkg pkg;
         Pkg_scope.resolve_global_host;
         Pkg_scope.resolve_dep ~build ~test ~doc ~dev_setup;
@@ -214,8 +214,6 @@ let only_installed ~installed req opt =
     req;
   let opt_installed = Name_set.filter installed opt in
   Name_set.union req opt_installed
-
-(* Can the "basename" be a folder path? *)
 
 let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
   let package = opam_details.Opam_utils.package in

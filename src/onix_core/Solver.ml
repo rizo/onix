@@ -3,6 +3,7 @@ module Opam_0install_solver = Opam_0install.Solver.Make (Solver_context)
 let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
     ~with_dev_setup opam_file_paths =
   let resolutions = Resolutions.make resolutions in
+  let compiler_name = Resolutions.compiler_name resolutions in
   Resolutions.debug resolutions;
 
   (* Packages with .opam files at the root of the project. *)
@@ -88,6 +89,10 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
       (fun _ -> Fmt.pr "- %a@." Opam_utils.pp_package)
       packages;
     let installed name = OpamPackage.Name.Map.mem name packages in
+    let compiler =
+      try OpamPackage.Name.Map.find compiler_name packages
+      with Not_found -> failwith "Could not find a compiler package"
+    in
     packages
     |> OpamPackage.Name.Map.filter_map (fun pkg_name pkg ->
            match
@@ -108,7 +113,7 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
              None
            | some -> some)
     |> OpamPackage.Name.Map.values
-    |> Lock_file.make ~repository_urls:resolved_repository_urls
+    |> Lock_file.make ~repository_urls:resolved_repository_urls ~compiler
   | Error err ->
     prerr_endline (Opam_0install_solver.diagnostics err);
     exit 2

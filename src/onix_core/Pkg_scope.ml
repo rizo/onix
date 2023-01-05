@@ -7,40 +7,6 @@ open struct
   let bool' x = Some (OpamVariable.bool x)
 end
 
-module Paths = struct
-  open struct
-    let join = String.concat "/"
-  end
-
-  let lib ?pkg_name ?subdir ~ocaml_version prefix =
-    let pkg_name = Option.map OpamPackage.Name.to_string pkg_name in
-    let ocaml_version = OpamPackage.Version.to_string ocaml_version in
-    match (pkg_name, subdir) with
-    | None, None -> join [prefix; "lib/ocaml"; ocaml_version; "site-lib"]
-    | None, Some subdir ->
-      join [prefix; "lib/ocaml"; ocaml_version; "site-lib"; subdir]
-    | Some name, None ->
-      join [prefix; "lib/ocaml"; ocaml_version; "site-lib"; name]
-    | Some name, Some subdir ->
-      join [prefix; "lib/ocaml"; ocaml_version; "site-lib"; subdir; name]
-
-  let stublibs ?pkg_name = lib ?pkg_name ~subdir:"stublibs"
-  let toplevel ?pkg_name = lib ?pkg_name ~subdir:"toplevel"
-
-  let out ?pkg_name ~subdir prefix =
-    let pkg_name = Option.map OpamPackage.Name.to_string pkg_name in
-    match pkg_name with
-    | None -> join [prefix; subdir]
-    | Some name -> join [prefix; subdir; name]
-
-  let bin = out ~subdir:"bin"
-  let sbin = out ~subdir:"sbin"
-  let share = out ~subdir:"share"
-  let etc = out ~subdir:"etc"
-  let doc = out ~subdir:"doc"
-  let man = out ?pkg_name:None ~subdir:"man"
-end
-
 type package = {
   name : OpamPackage.Name.t;
   version : OpamPackage.Version.t;
@@ -55,6 +21,7 @@ type t = {
   vars : OpamTypes.variable_contents OpamVariable.Full.Map.t;
 }
 
+(* FIXME: Use Paths *)
 let package_of_nix_store_path ~ocaml_version ~onix_pkg_dir
     (store_path : Nix_utils.store_path) =
   let package_name = OpamPackage.Name.to_string store_path.package_name in
@@ -68,7 +35,7 @@ let package_of_nix_store_path ~ocaml_version ~onix_pkg_dir
         onix_pkg_dir
         / "lib"
         / "ocaml"
-        / ocaml_version
+        / OpamPackage.Version.to_string ocaml_version
         / "site-lib"
         / package_name
         // "opam")
@@ -98,7 +65,7 @@ let resolve_global ?jobs ?arch ?os ?user ?group full_var =
     | "opam-version" -> string' OpamVersion.(to_string current)
     | "root" -> string' "/tmp/onix-opam-root"
     | "make" -> string' "make"
-    | "os-distribution" -> string' "nixos"
+    | "os-distribution" -> string' "homebrew"
     | "os-family" -> string' "nixos"
     | "os-version" -> string' "unknown"
     (* Dynamic *)
@@ -201,7 +168,7 @@ let resolve_dep ?(build = true) ?post ?(test = false) ?(doc = false)
   | "with-dev-setup" -> bool' dev_setup
   | _ -> None
 
-let resolve_stdenv = OpamVariable.Full.read_from_env
+let resolve_stdenv_host = OpamVariable.Full.read_from_env
 
 let resolve_config { self; pkgs; _ } full_var =
   let ( </> ) = OpamFilename.Op.( / ) in
@@ -253,5 +220,4 @@ let resolve_many resolvers full_var =
 
 let make ~deps ?(vars = OpamVariable.Full.Map.empty) ~ocaml_version self =
   let pkgs = OpamPackage.Name.Map.add self.name self deps in
-  let ocaml_version = OpamPackage.Version.of_string ocaml_version in
   { self; ocaml_version; pkgs; vars }

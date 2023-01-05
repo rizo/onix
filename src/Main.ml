@@ -66,19 +66,20 @@ let with_dev_setup_arg =
 
 let mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () =
   let onix_path = Sys.getenv_opt "ONIXPATH" or "" in
+  let ocaml_version = OpamPackage.Version.of_string ocaml_version in
   let deps =
-    Onix.Pkg_scope.dependencies_of_onix_path ~ocaml_version onix_path
+    Onix_core.Pkg_scope.dependencies_of_onix_path ~ocaml_version onix_path
   in
   let opam_pkg = OpamPackage.of_string opam_pkg in
   let self =
     {
-      Onix.Pkg_scope.name = opam_pkg.name;
+      Onix_core.Pkg_scope.name = opam_pkg.name;
       version = opam_pkg.version;
       prefix;
       opamfile;
     }
   in
-  Onix.Pkg_scope.make ~deps ~ocaml_version self
+  Onix_core.Pkg_scope.make ~deps ~ocaml_version self
 
 module Opam_patch = struct
   let run style_renderer log_level ocaml_version opamfile prefix opam_pkg =
@@ -87,7 +88,7 @@ module Opam_patch = struct
         log "opam-patch: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
           ocaml_version prefix opamfile);
     let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
-    Onix.Opam_actions.patch ctx;
+    Onix_core.Opam_actions.patch ctx;
     Logs.info (fun log -> log "opam-patch: Done.")
 
   let info = Cmd.info "opam-patch" ~doc:"Apply opam package patches."
@@ -112,8 +113,8 @@ module Opam_build = struct
         log "opam-build: Running... pkg=%S ocaml=%S prefix=%S opam=%S" opam_pkg
           ocaml_version prefix opamfile);
     let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
-    Onix.Opam_actions.build ~with_test ~with_doc ~with_dev_setup ctx
-    |> List.iter Onix.Utils.print_command;
+    Onix_core.Opam_actions.build ~with_test ~with_doc ~with_dev_setup ctx
+    |> List.iter Onix_core.Utils.print_command;
     Logs.info (fun log -> log "opam-build: Done.")
 
   let info =
@@ -141,8 +142,8 @@ module Opam_install = struct
         log "opam-install: Running... pkg=%S ocaml=%S prefix=%S opam=%S"
           opam_pkg ocaml_version prefix opamfile);
     let ctx = mk_pkg_ctx ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
-    Onix.Opam_actions.install ~with_test ~with_doc ~with_dev_setup ctx
-    |> List.iter Onix.Utils.print_command;
+    Onix_core.Opam_actions.install ~with_test ~with_doc ~with_dev_setup ctx
+    |> List.iter Onix_core.Utils.print_command;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =
@@ -181,7 +182,8 @@ module Lock = struct
 
   let resolutions_arg =
     let conv =
-      (Onix.Resolutions.parse_resolution, Onix.Resolutions.pp_resolution)
+      ( Onix_core.Resolutions.parse_resolution,
+        Onix_core.Resolutions.pp_resolution )
     in
     let doc =
       "Additional packages and version constraints to be used during \
@@ -221,25 +223,15 @@ module Lock = struct
     in
 
     let lock_file =
-      Onix.Solver.solve ~repository_urls ~resolutions ~with_test ~with_doc
+      Onix_core.Solver.solve ~repository_urls ~resolutions ~with_test ~with_doc
         ~with_dev_setup opam_file_paths
     in
+    Onix_lock_json.gen ~lock_file_path lock_file;
 
-    (* Generate onix lock file. *)
-    Onix.Utils.Out_channel.with_open_text lock_file_path (fun chan ->
-        let out = Format.formatter_of_out_channel chan in
-        Fmt.pf out "%a" Onix.Pp_lock.pp lock_file);
-    Logs.info (fun log -> log "Created a lock file at %S." lock_file_path);
-
-    (* Generate opam lock file. *)
-    Option.iter
-      (fun opam_lock_file_path ->
-        Onix.Utils.Out_channel.with_open_text opam_lock_file_path (fun chan ->
-            let out = Format.formatter_of_out_channel chan in
-            Fmt.pf out "%a" Onix.Pp_opam_lock.pp lock_file);
-        Logs.info (fun log ->
-            log "Created an opam lock file at %S." opam_lock_file_path))
-      opam_lock_file_path
+    match opam_lock_file_path with
+    | Some opam_lock_file_path ->
+      Onix_lock_opam.gen ~opam_lock_file_path lock_file
+    | None -> ()
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
 
@@ -283,10 +275,10 @@ module Gen = struct
     in
 
     let lock_file =
-      Onix.Solver.solve ~repository_urls ~resolutions ~with_test ~with_doc
+      Onix_core.Solver.solve ~repository_urls ~resolutions ~with_test ~with_doc
         ~with_dev_setup opam_file_paths
     in
-    Onix.Gen_drv_tree.gen ~gitignore:true ~lock_dir ~with_test ~with_doc
+    Onix_lock_nix.gen ~gitignore:true ~lock_dir ~with_test ~with_doc
       ~with_dev_setup lock_file;
     Logs.info (fun log -> log "Created the nix environment in %S." lock_dir)
 

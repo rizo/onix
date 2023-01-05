@@ -1,4 +1,5 @@
-open Utils
+open Onix_core
+open Onix_core.Utils
 
 (* Lock pkg printers *)
 

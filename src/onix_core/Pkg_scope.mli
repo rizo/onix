@@ -35,8 +35,8 @@ val resolve_pkg : build_dir:string -> t -> OpamFilter.env
 val resolve_opam_pkg : OpamPackage.t -> OpamFilter.env
 (** Resolves [name], [version] and [dev] vars. *)
 
-val resolve_stdenv : OpamFilter.env
-(** Resolves opam variables from enviroonment variables. *)
+val resolve_stdenv_host : OpamFilter.env
+(** Resolves opam variables from host's enviroonment variables. *)
 
 val resolve_config : t -> OpamFilter.env
 (** Resolves the variables from config file. *)
@@ -62,11 +62,13 @@ val resolve_many : OpamFilter.env list -> OpamFilter.env
 (*   OpamFilter.env *)
 
 val dependencies_of_onix_path :
-  ocaml_version:string -> string -> package OpamPackage.Name.Map.t
+  ocaml_version:OpamPackage.Version.t ->
+  string ->
+  package OpamPackage.Name.Map.t
 
 val make :
   deps:package OpamPackage.Name.Map.t ->
   ?vars:OpamVariable.variable_contents OpamVariable.Full.Map.t ->
-  ocaml_version:string ->
+  ocaml_version:OpamPackage.Version.t ->
   package ->
   t

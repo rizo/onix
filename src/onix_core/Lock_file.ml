@@ -1,9 +1,10 @@
 type t = {
   repository_urls : OpamUrl.t list;
   packages : Lock_pkg.t list;
+  compiler : OpamPackage.t;
 }
 
-let make ~repository_urls packages =
+let make ~repository_urls ~compiler packages =
   (* TODO: Move validation up. *)
   List.iter
     (fun url ->
@@ -11,4 +12,5 @@ let make ~repository_urls packages =
         Fmt.failwith "Repo URI without rev when creating a lock file: %a"
           Opam_utils.pp_url url)
     repository_urls;
-  { repository_urls; packages }
+
+  { repository_urls; packages; compiler }

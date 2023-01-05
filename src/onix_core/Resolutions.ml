@@ -1,7 +1,7 @@
 type t = {
   with_constraint : OpamFormula.version_constraint OpamPackage.Name.Map.t;
   without_constraint : OpamPackage.Name.Set.t;
-  compiler : OpamPackage.Name.t;
+  compiler_name : OpamPackage.Name.t;
 }
 
 let default =
@@ -9,7 +9,7 @@ let default =
     with_constraint = OpamPackage.Name.Map.empty;
     without_constraint =
       OpamPackage.Name.Set.singleton Opam_utils.ocamlfind_name;
-    compiler = Opam_utils.ocaml_base_compiler_name;
+    compiler_name = Opam_utils.ocaml_base_compiler_name;
   }
 
 let constraints t = t.with_constraint
@@ -19,7 +19,7 @@ let make t =
     (fun acc (name, constraint_opt) ->
       let acc =
         if Opam_utils.is_ocaml_compiler_name name then
-          { acc with compiler = name }
+          { acc with compiler_name = name }
         else acc
       in
       match constraint_opt with
@@ -37,11 +37,13 @@ let make t =
         })
     default t
 
+let compiler_name t = t.compiler_name
+
 let all t =
   OpamPackage.Name.Map.fold
     (fun name _ acc -> OpamPackage.Name.Set.add name acc)
     t.with_constraint t.without_constraint
-  |> OpamPackage.Name.Set.add t.compiler
+  |> OpamPackage.Name.Set.add t.compiler_name
   |> OpamPackage.Name.Set.to_seq
   |> List.of_seq
 

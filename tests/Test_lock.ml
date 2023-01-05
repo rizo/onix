@@ -1,3 +1,5 @@
+open Onix_core
+
 let complex_opam =
   {|
 opam-version: "2.0"
@@ -104,14 +106,14 @@ let mk_lock ~name str =
   let package = OpamPackage.of_string name in
   let opam = OpamFile.OPAM.read_from_string str in
   let path = OpamFilename.of_string (name ^ ".opam") in
-  let opam_details = { Onix.Opam_utils.package; opam; path } in
-  Onix.Lock_pkg.of_opam ~installed ~with_dev_setup:true ~with_test:true
+  let opam_details = { Opam_utils.package; opam; path } in
+  Lock_pkg.of_opam ~installed ~with_dev_setup:true ~with_test:true
     ~with_doc:true opam_details
   |> Option.get
 
 let test_complex_opam () =
   let lock_pkg = mk_lock ~name:"complex.root" complex_opam in
-  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix_lock_json.Pp.pp_pkg lock_pkg in
   let expected =
     {|"version": "root",
 "depends": [
@@ -143,7 +145,7 @@ let test_complex_opam () =
 
 let test_dev_opam () =
   let lock_pkg = mk_lock ~name:"dev.dev" dev_opam in
-  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix_lock_json.Pp.pp_pkg lock_pkg in
   let expected =
     {|"version": "dev",
 "src": {
@@ -157,7 +159,7 @@ let test_dev_opam () =
 
 let test_zip_src_opam () =
   let lock_pkg = mk_lock ~name:"zip.1.0.2" zip_src_opam in
-  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix_lock_json.Pp.pp_pkg lock_pkg in
   let expected =
     {|"version": "1.0.2",
 "src": {
@@ -174,7 +176,7 @@ let test_zip_src_opam () =
 
 let test_other_deps_opam () =
   let lock_pkg = mk_lock ~name:"other-deps.1.0.1" other_deps_opam in
-  let actual = Fmt.str "@[<v>%a@]@." Onix.Pp_lock.pp_pkg lock_pkg in
+  let actual = Fmt.str "@[<v>%a@]@." Onix_lock_json.Pp.pp_pkg lock_pkg in
   let expected =
     {|"version": "1.0.1",
 "depends": [

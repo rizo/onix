@@ -1,0 +1,3 @@
+(library
+ (name onix_lock_opam)
+ (libraries onix_core fmt logs opam-core opam-format))
