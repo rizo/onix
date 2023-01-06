@@ -22,6 +22,14 @@ let
         l1Attrs l2;
     in attrValues unionAttrs;
 
+  # We require that the version does NOT contain any '-' or '~' characters.
+  # - Note that nix will replace '~' to '-' automatically.
+  # The version is parsed with Nix_utils.parse_store_path by splitting bytes
+  # '- ' to obtain the Pkg_ctx.package information.
+  # This is fine because the version in the lock file is mostly informative.
+  normalizeVersion = version:
+    builtins.replaceStrings [ "-" "~" ] [ "+" "+" ] version;
+
   fetchSrc = { rootPath, name, src }:
     let urlLen = builtins.stringLength src.url;
     in if lib.strings.hasPrefix "file://" src.url then
@@ -61,18 +69,10 @@ let
       let
         # Copy the path into nix store to avoid depending on repoPath.
         nixPath = builtins.path {
-          name = "${name}-${version}-opam";
+          name = "${name}-${normalizeVersion version}-opam";
           path = "${repoPath}/packages/${name}/${name}.${version}";
         };
       in "${nixPath}/opam";
-
-  # We require that the version does NOT contain any '-' or '~' characters.
-  # - Note that nix will replace '~' to '-' automatically.
-  # The version is parsed with Nix_utils.parse_store_path by splitting bytes
-  # '- ' to obtain the Pkg_ctx.package information.
-  # This is fine because the version in the lock file is mostly informative.
-  normalizeVersion = version:
-    builtins.replaceStrings [ "-" "~" ] [ "+" "+" ] version;
 
   # Build a package from a lock dependency.
   buildPkg = { rootPath, repoPath, scope }:
