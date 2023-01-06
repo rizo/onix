@@ -107,7 +107,7 @@ module Opam_build = struct
           ocaml_version prefix opamfile);
     let scope = make_scope ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
     Onix_core.Opam_actions.build ~with_test ~with_doc ~with_dev_setup scope
-    |> List.iter Onix_core.Utils.print_command;
+    |> List.iter Onix_core.Utils.Os.run_command;
     Logs.info (fun log -> log "opam-build: Done.")
 
   let info =
@@ -136,7 +136,7 @@ module Opam_install = struct
           opam_pkg ocaml_version prefix opamfile);
     let scope = make_scope ~ocaml_version ~opamfile ~prefix ~opam_pkg () in
     Onix_core.Opam_actions.install ~with_test ~with_doc ~with_dev_setup scope
-    |> List.iter Onix_core.Utils.print_command;
+    |> List.iter Onix_core.Utils.Os.run_command;
     Logs.info (fun log -> log "opam-install: Done.")
 
   let info =

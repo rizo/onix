@@ -58,7 +58,13 @@ let
       else
         throw "could not find opam file for package ${name} in ${src}"
     else
-      "${repoPath}/packages/${name}/${name}.${version}/opam";
+      let
+        # Copy the path into nix store to avoid depending on repoPath.
+        nixPath = builtins.path {
+          name = "${name}-${version}-opam";
+          path = "${repoPath}/packages/${name}/${name}.${version}";
+        };
+      in "${nixPath}/opam";
 
   # We require that the version does NOT contain any '-' or '~' characters.
   # - Note that nix will replace '~' to '-' automatically.
@@ -149,7 +155,7 @@ let
           --opam=${opam} \
           --path=$out \
           --verbosity=${verbosity} \
-          ${name}.${dep.version} | tee /dev/stderr | bash
+          ${name}.${dep.version}
       '';
 
       # Steps:
@@ -185,7 +191,7 @@ let
           --with-dev-setup=${builtins.toJSON vars.with-dev-setup} \
           --path=$out \
           --verbosity=${verbosity} \
-          ${name}.${dep.version} | tee /dev/stderr | bash
+          ${name}.${dep.version}
 
         runHook postBuild
       '';
@@ -223,7 +229,7 @@ let
           --with-doc=${builtins.toJSON vars.with-doc} \
           --with-dev-setup=${builtins.toJSON vars.with-dev-setup} \
           --path=$out \
-          ${name}.${dep.version} | tee /dev/stderr | bash
+          ${name}.${dep.version}
 
         if [[ -e "$out/lib/${name}/META" ]] && [[ ! -e "$OCAMLFIND_DESTDIR/${name}" ]]; then
           mv "$out/lib/${name}" "$OCAMLFIND_DESTDIR"
