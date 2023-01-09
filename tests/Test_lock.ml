@@ -129,8 +129,7 @@ let test_complex_opam () =
   "yojson"
 ],
 "build-depends": [
-  "dune",
-  "ocamlfind"
+  "dune"
 ],
 "doc-depends": [
   "odoc"

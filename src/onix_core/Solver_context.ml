@@ -119,20 +119,3 @@ let filter_deps t pkg depends_formula =
     contents
   in
   OpamFilter.filter_formula ~default:false env depends_formula
-(*
-   let get_opam_file t pkg =
-     let name = OpamPackage.name pkg in
-     let candidates = candidates t name in
-     let version = OpamPackage.version pkg in
-     let res =
-       List.find_map
-         (fun (v, opam_file) ->
-           if OpamPackage.Version.equal v version then Some opam_file else None)
-         candidates
-     in
-     match res with
-     | None -> Fmt.failwith "No such package %a" Opam_utils.pp_package pkg
-     | Some (Ok opam_file) -> opam_file
-     | Some (Error rejection) ->
-       Fmt.failwith "Package %a rejected: %a" Opam_utils.pp_package pkg
-         pp_rejection rejection *)

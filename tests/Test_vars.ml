@@ -81,15 +81,14 @@ let check_self () =
 let check_vars () =
   let resolve =
     let jobs = "1" in
-    let arch = "my_arch" in
-    let os = "my_os" in
+    let system = { System.arch = "my_arch"; os = "os" } in
     let user = "my_user" in
     let group = "my_group" in
     let build_dir = "/build" in
 
     Scope.resolve_many
       [
-        Scope.resolve_global ~jobs ~arch ~os ~user ~group;
+        Scope.resolve_global ~jobs ~system ~user ~group;
         Scope.resolve_pkg ~build_dir pkg_scope;
       ]
   in

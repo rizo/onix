@@ -58,10 +58,6 @@ let opam_filter_to_nix_string ?custom (t : OpamTypes.filter) =
   in
   aux t
 
-let opam_filter_is bool = function
-  | OpamTypes.FBool x when x = bool -> true
-  | _ -> false
-
 let rec simplify_conjunction (filter : OpamTypes.filter) : OpamTypes.filter =
   match filter with
   | FOp (f1, relop, f2) ->

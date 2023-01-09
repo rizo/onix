@@ -23,7 +23,7 @@ let install_phase_str_for_config_files ~package_name =
 
 let pp_string_escape_with_enderscore formatter str =
   if Utils.String.starts_with_number str then Fmt.string formatter ("_" ^ str)
-  else Fmt.string formatter str
+  else Fmt.Dump.string formatter str
 
 let pp_name_escape_with_enderscore formatter name =
   let name = OpamPackage.Name.to_string name in
@@ -87,28 +87,46 @@ let pp_src ~gitignore f (t : Lock_pkg.t) =
       Fmt.pf f "@,src = nixpkgs.nix-gitignore.gitignoreSource [] %s;" path
     else Fmt.pf f "@,src = ./../../..;"
 
-let pp_depends_sets name f req =
+let pp_src f (t : Lock_pkg.t) =
+  if Opam_utils.Opam_details.check_has_absolute_path t.opam_details then
+    (* Absolute path: use src. *)
+    match t.src with
+    | None -> ()
+    | Some (Git { url; rev }) ->
+      Fmt.pf f ",@,@[<v2>src = {@,url = \"git+%s\",@, rev = %S@]@,};" url rev
+    (* MD5 hashes are not supported by Nix fetchers. Fetch without hash.
+       This normally would not happen as we try to prefetch_src_if_md5. *)
+    | Some (Http { url; hash = `MD5, _ }) ->
+      Fmt.invalid_arg "Unexpected md5 hash: package=%a url=%a"
+        Opam_utils.pp_package t.opam_details.package Opam_utils.pp_url url
+    | Some (Http { url; hash }) ->
+      Fmt.pf f ",@,@[<v2>src = {@,url = %a;@,%a;@]@,};"
+        (Fmt.quote Opam_utils.pp_url)
+        url pp_hash hash
+  else
+    (* Relative path: use file scheme. *)
+    let path =
+      let opam_path = t.opam_details.Opam_utils.path in
+      let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
+      if String.equal path "./." || String.equal path "./" then "." else path
+    in
+    Fmt.pf f ",@,src = { url = \"file://%s\"; };" path
+
+let pp_depexts f req =
   let pp_req f =
     String_set.iter (fun dep ->
         Fmt.pf f "@ %a" pp_string_escape_with_enderscore dep)
   in
   if String_set.is_empty req then ()
-  else Fmt.pf f "@ %s = [@[<hov1>%a@ @]];" name pp_req req
+  else Fmt.pf f "@ depexts = with nixpkgs; [@[<hov1>%a@ @]];" pp_req req
 
-let pp_phase_commands =
-  Fmt.list ~sep:Fmt.cut (Fmt.using Utils.command_to_string Fmt.string)
-
-let pp_phase name f commands =
-  if List.is_empty commands then Fmt.pf f "@,%s = \"true\";" name
-  else Fmt.pf f "@,@[<v2>%s = ''@,%a@]@,'';" name pp_phase_commands commands
-
-let pp_install_phase ~package_name ~ocaml_version f commands =
-  if List.is_empty commands then ()
-  else
-    Fmt.pf f "@,@[<v2>installPhase = ''@,%a%s@,%s@]@,'';" pp_phase_commands
-      commands
-      (install_phase_str_for_install_files ~ocaml_version)
-      (install_phase_str_for_config_files ~package_name)
+let pp_depends name f req =
+  let pp_req f =
+    Name_set.iter (fun dep ->
+        Fmt.pf f "%a@ " pp_name_escape_with_enderscore dep)
+  in
+  if Name_set.is_empty req then ()
+  else Fmt.pf f "@,@[<v2>%s = [@,@[<hov>%a@]@]@,];" name pp_req req
 
 let pp_file_inputs f inputs =
   let pp_inputs =
@@ -132,65 +150,57 @@ let pp_patches f patches =
 
 (* Printers for the nix commands with filters. *)
 
-let pp_with_filter pp_v f (v, filter) =
-  Fmt.pf f "@[<v2>(when (%s) %a)@]"
-    (Nix_filter.opam_filter_to_nix_string filter)
-    pp_v v
-
 let pp_command f (command : string list * OpamTypes.filter option) =
   match command with
   | args_str, None ->
-    Fmt.pf f "[ %a ]" (Fmt.using command_to_string Fmt.string) args_str
+    Fmt.pf f "[%a]" (Fmt.using command_to_string Fmt.string) args_str
   | args_str, Some filter ->
-    Fmt.pf f "@[<v2>(when (%s) [ %a ]@])"
-      (Nix_filter.opam_filter_to_nix_string filter)
+    Fmt.pf f "[@[<v2>[%a] { when = ''%s''; }]@]"
       (Fmt.using command_to_string Fmt.string)
       args_str
+      (Nix_filter.opam_filter_to_nix_string filter)
 
 let pp_commands f (commands : (string list * OpamTypes.filter option) list) =
   if List.is_empty commands then ()
-  else
-    Fmt.pf f "@,@[<v2>build = with onix.vars; [@,%a@]@,];" (Fmt.list pp_command)
-      commands
+  else Fmt.pf f "@,@[<v2>build = [@,%a@]@,];" (Fmt.list pp_command) commands
+
+let pp_extra_files formatter extra_files =
+  if List.is_not_empty extra_files then
+    let extra_files =
+      List.map
+        (fun file -> "./" ^ OpamFilename.(Base.to_string (basename file)))
+        extra_files
+    in
+    Fmt.pf formatter "@,@[<v2>extra-files = [@,%a@]@,];" (Fmt.list Fmt.string)
+      extra_files
 
 (* Package printer *)
+
+let pp_many (formatter : Format.formatter) list =
+  List.iter (fun pp -> pp formatter) list
+
+let pp_item (pp : 'a Fmt.t) x formatter = pp formatter x
 
 let pp_pkg ~gitignore f (nix_pkg : Nix_pkg.t) =
   let lock_pkg = nix_pkg.lock_pkg in
   let name = OpamPackage.name_to_string lock_pkg.opam_details.package in
   let version = OpamPackage.version lock_pkg.opam_details.package in
-  Format.fprintf f
-    "%a:@.@.@[<v2>nixpkgs.stdenv.mkDerivation {@ pname = %S;@ version = \
-     %a;%a%a@,\
-     %a@,\
-     %a%a%a%a%a%a@]@ }@." (* inputs *) pp_file_inputs nix_pkg.inputs
-    (* name and version *) name pp_version version
-    (* src *)
-    (pp_src ~gitignore)
-    lock_pkg (* patches *)
-    pp_patches nix_pkg.patches
-    (* propagatedBuildInputs *)
-    (pp_depends_sets "propagatedBuildInputs")
-    nix_pkg.propagated_build_inputs
-    (* propagatedNativeBuildInputs *)
-    (pp_depends_sets "propagatedNativeBuildInputs")
-    nix_pkg.propagated_native_build_inputs
-    (* checkInputs *)
-    (pp_depends_sets "checkInputs")
-    nix_pkg.check_inputs (* build *) pp_commands nix_pkg.build
-    (* configurePhase *)
-    (pp_phase "configurePhase")
-    nix_pkg.configure_phase
-    (* buildPhase *)
-    (pp_phase "buildPhase")
-    nix_pkg.build_phase
-    (* installPhase *)
-    (pp_install_phase
-       ~package_name:(OpamPackage.name lock_pkg.opam_details.package)
-       ~ocaml_version:(OpamPackage.Version.of_string "4.14.0"))
-    nix_pkg.install_phase
-
-(* Lock file printers *)
+  Fmt.pf f "@[<v2>{@ name = %S;@ version = %a;%a@]@,}@." name pp_version version
+    pp_many
+    [
+      pp_item pp_src lock_pkg;
+      pp_item pp_patches nix_pkg.patches;
+      pp_item (pp_depends "depends") nix_pkg.lock_pkg.depends;
+      pp_item (pp_depends "build-depends") nix_pkg.lock_pkg.depends_build;
+      pp_item (pp_depends "test-depends") nix_pkg.lock_pkg.depends_test;
+      pp_item (pp_depends "doc-depends") nix_pkg.lock_pkg.depends_doc;
+      pp_item
+        (pp_depends "dev-setup-depends")
+        nix_pkg.lock_pkg.depends_dev_setup;
+      pp_item pp_depexts nix_pkg.lock_pkg.depexts_nix;
+      pp_item pp_commands nix_pkg.build;
+      pp_item pp_extra_files nix_pkg.extra_files;
+    ]
 
 let pp_version f version = Fmt.pf f "version = %S;" version
 

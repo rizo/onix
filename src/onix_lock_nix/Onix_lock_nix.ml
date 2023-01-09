@@ -2,9 +2,9 @@ open Prelude
 
 let gen_pkg ~lock_dir ~ocaml_version ~gitignore ~with_test ~with_doc
     ~with_dev_setup (lock_pkg : Lock_pkg.t) =
+  let pkg_name = OpamPackage.name_to_string lock_pkg.opam_details.package in
+  let pkg_lock_dir = lock_dir </> "packages" </> pkg_name in
   let pkg_default_nix =
-    let pkg_name = OpamPackage.name_to_string lock_pkg.opam_details.package in
-    let pkg_lock_dir = lock_dir </> "packages" </> pkg_name in
     OpamFilename.mkdir pkg_lock_dir;
     OpamFilename.to_string (pkg_lock_dir <//> "default.nix")
   in
@@ -13,7 +13,8 @@ let gen_pkg ~lock_dir ~ocaml_version ~gitignore ~with_test ~with_doc
     Nix_pkg.of_lock_pkg ~ocaml_version ~with_test ~with_doc ~with_dev_setup
       lock_pkg
   in
-  let nix_pkg = Nix_pkg.resolve_files ~lock_dir nix_pkg in
+  Nix_pkg.copy_extra_files ~pkg_lock_dir nix_pkg.extra_files;
+  (* let nix_pkg = Nix_pkg.resolve_files ~lock_dir nix_pkg in *)
   let out = Format.formatter_of_out_channel chan in
   Fmt.pf out "%a" (Pp.pp_pkg ~gitignore) nix_pkg
 

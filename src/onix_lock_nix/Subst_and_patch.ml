@@ -1,4 +1,4 @@
-open Onix_core
+open Prelude
 
 let print_subst ~nv basename =
   let file = OpamFilename.Base.to_string basename in
@@ -19,21 +19,55 @@ let run_substs ~pkg_lock_dir ~env ~nv substs =
       with e -> ((f, e) :: errs, oks))
     ([], []) substs
 
+(* https://opam.ocaml.org/doc/Manual.html#opamfield-patches *)
+let get_patches ~env opam =
+  let filtered_patches = OpamFile.OPAM.patches opam in
+  (* FIXME: Resolve patches formula! *)
+  List.map fst filtered_patches
+
+let get_extra_files (opam_details : Opam_utils.opam_details) =
+  (* FIXME: Check for undeclared in ./files! *)
+  match OpamFile.OPAM.extra_files opam_details.opam with
+  | None -> []
+  | Some extra_files ->
+    let bad_files, good_files =
+      Opam_utils.check_extra_files_hashes ~opamfile:opam_details.path
+        extra_files
+    in
+    if List.is_not_empty bad_files then
+      Logs.warn (fun log ->
+          log "@[<v>%a: bad hash for extra files:@,%a@]" Opam_utils.pp_package
+            opam_details.package
+            (Fmt.list Opam_utils.pp_filename)
+            bad_files);
+    let all = List.append bad_files good_files in
+    if List.is_not_empty all then
+      Logs.debug (fun log ->
+          log "@[<v>%a: found extra files:@,%a@]" Opam_utils.pp_package
+            opam_details.package
+            (Fmt.list Opam_utils.pp_filename)
+            all);
+    all
+
 let get_subst_and_patches ~env ~pkg_lock_dir
     (opam_details : Opam_utils.opam_details) =
   let nv = opam_details.package in
 
-  let patches = OpamFile.OPAM.patches opam_details.opam in
-  (* FIXME: Resolve patches formula! *)
-  let resolved_patches = List.map fst patches in
+  let patches = get_patches ~env opam_details.opam in
   let substs = OpamFile.OPAM.substs opam_details.opam in
+  let extra_files = get_extra_files opam_details in
+
   let subst_patches, subst_other =
-    List.partition (fun f -> List.mem_assoc f patches) substs
+    List.partition (fun subst_file -> List.mem subst_file patches) substs
   in
 
   List.iter
+    (fun base -> Fmt.epr "*** extra_files: %s@." (OpamFilename.to_string base))
+    extra_files;
+
+  List.iter
     (fun base -> Fmt.epr "*** patch: %s@." (OpamFilename.Base.to_string base))
-    resolved_patches;
+    patches;
 
   List.iter
     (fun base -> Fmt.epr "*** subst: %s@." (OpamFilename.Base.to_string base))
@@ -66,4 +100,4 @@ let get_subst_and_patches ~env ~pkg_lock_dir
     exit 1
   end;
 
-  (subst_other, resolved_patches)
+  (subst_other, patches)

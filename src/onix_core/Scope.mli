@@ -39,9 +39,8 @@ val with_onix_path :
 (** {2 Variable resolvers} *)
 
 val resolve_global :
+  ?system:System.t ->
   ?jobs:string ->
-  ?arch:string ->
-  ?os:string ->
   ?user:string ->
   ?group:string ->
   OpamFilter.env

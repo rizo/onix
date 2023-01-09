@@ -138,18 +138,24 @@
     - Which uses `nix develop -i -c $prog $args`.
 - [ ] Can we symlinkJoin an opam root?
 - [ ] How to get compatibility with OCaml Platform? Can we fake opam's CLI?
-- [ ] Pass `verbosity` to top-level onix attrset.
+- [x] Pass `verbosity` to top-level onix attrset.
 - [ ] Fetch the repository before passing it to onix lock.
 - [ ] Input path does not currently support `opam` files because the package name cannot be extracted.
-- [ ] Do we need the "root" version or can we use "dev" in the lock file?
+- [x] Do we need the "root" version or can we use "dev" in the lock file?
+  - Removed root version.
 - [ ] It's currently impossible to avoid reading root packages when opam deps are passed.
 - [ ] Deps: support overriding to nixpkgs package and providing remote opam URL.
 - [ ] SIGSEGV when the path contains a large file (during gitignore?).
 - [ ] Better roots tracking (for deps with constraints)?
 - [ ] Activate dep flags for a selected list of deps?
 - [ ] Allow passing dep flags (test, doc, dev-setup) to each dependency.
-- [ ] Changing the repo hash invalidates cache even if opam files did not change? Is it possible to depend on opam file contents?
+- [x] Changing the repo hash invalidates cache even if opam files did not change? Is it possible to depend on opam file contents?
+  - Fixed.
 - [ ] Fix lock var generation when not all vars are passed.
 - [ ] When evaluating `arch` use a "delayed" env var version.
 - [ ] Document that opam vars can be added to drv.
 - [ ] Install repo's opam file.
+- [ ] When running `nix profile install github:odis-labs/onix` why are so manny deps fetched (like clang).
+- [ ] Lookup all opam files by default on onix lock.
+- [ ] Improve verbosity of onix lock.
+- [ ] Add a shell hook to shell to check if there are any opam variables.

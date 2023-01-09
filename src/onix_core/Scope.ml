@@ -68,7 +68,7 @@ open struct
   let bool' x = Some (Var.bool x)
 end
 
-let resolve_global ?jobs ?arch ?os ?user ?group full_var =
+let resolve_global ?(system : System.t option) ?jobs ?user ?group full_var =
   if Var.Full.(scope full_var <> Global) then None
   else
     let var = Var.Full.variable full_var in
@@ -82,19 +82,23 @@ let resolve_global ?jobs ?arch ?os ?user ?group full_var =
     | "os-version" -> string' "unknown"
     (* Dynamic *)
     | "jobs" -> Option.map string jobs
-    | "arch" -> Option.map string arch
-    | "os" -> Option.map string os
+    | "arch" -> (
+      match system with
+      | Some system -> string' system.arch
+      | None -> None)
+    | "os" -> (
+      match system with
+      | Some system -> string' system.os
+      | None -> None)
     | "user" -> Option.map string user
     | "group" -> Option.map string group
     | _ -> None
 
 let resolve_global_host =
   let jobs = Nix_utils.get_nix_build_jobs () in
-  let arch = OpamSysPoll.arch () in
-  let os = OpamSysPoll.os () in
   let user = Unix.getlogin () in
   let group = Utils.Os.get_group () in
-  resolve_global ~jobs ?arch ?os ~user ?group
+  resolve_global ~jobs ~system:System.host ~user ?group
 
 let resolve_pkg ~build_dir { self; pkgs; ocaml_version; _ } full_var =
   let var = Var.to_string (Var.Full.variable full_var) in
@@ -167,6 +171,7 @@ let resolve_opam_pkg pkg full_var =
   | "dev" | "pinned" -> bool' (Opam_utils.is_pinned pkg)
   | _ -> None
 
+(* Use https://docs.ocaml.pro/docs/LIBRARY.opam_format@opam-format.2.0.8/OpamFilter/index.html#val-deps_var_env *)
 let resolve_dep ?(build = true) ?(post = false) ?(test = false) ?(doc = false)
     ?(dev_setup = false) var =
   match Var.Full.to_string var with
