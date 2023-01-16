@@ -1,4 +1,5 @@
 val get_nix_build_jobs : unit -> string
+val nix_build_jobs_var : string
 val fetch_git : OpamUrl.t -> OpamFilename.Dir.t
 val fetch_git_resolve : OpamUrl.t -> string * OpamFilename.Dir.t
 val fetch_resolve_many : OpamUrl.t list -> (OpamUrl.t * OpamFilename.Dir.t) list

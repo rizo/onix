@@ -55,6 +55,7 @@ module String = struct
 end
 
 module String_set = Set.Make (String)
+module String_map = Map.Make (String)
 
 (* Since 4.14.0 *)
 module Out_channel = struct

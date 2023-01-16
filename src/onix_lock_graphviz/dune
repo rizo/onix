@@ -1,0 +1,3 @@
+(library
+ (name onix_lock_graphviz)
+ (libraries onix_core fmt logs opam-format))

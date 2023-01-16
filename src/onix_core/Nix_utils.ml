@@ -3,6 +3,8 @@ open Utils
 let get_nix_build_jobs () =
   try Unix.getenv "NIX_BUILD_CORES" with Not_found -> "1"
 
+let nix_build_jobs_var = "$NIX_BUILD_CORES"
+
 let eval expr =
   let open Bos in
   let output =

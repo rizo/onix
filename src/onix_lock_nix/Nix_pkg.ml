@@ -9,7 +9,7 @@ let resolve_commands =
     Scope.resolve_many
       [
         Scope.resolve_config scope;
-        Scope.resolve_global ~jobs ?system:None ~user ~group;
+        Scope.resolve_global ~jobs ~user ~group;
         Scope.resolve_pkg ~build_dir scope;
       ]
 

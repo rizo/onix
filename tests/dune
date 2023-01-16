@@ -11,6 +11,7 @@
 (test
  (name Opam_to_nix)
  (modules Opam_to_nix)
+ (deps zarith.opam)
  (libraries
   onix_core
   onix_lock_nix

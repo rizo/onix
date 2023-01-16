@@ -161,6 +161,11 @@ module Lock = struct
     let doc = "Input opam paths to be used during package resolution." in
     Arg.(value & pos_all file [] & info [] ~docv:"PATH" ~doc)
 
+  let graphviz_file_path_arg =
+    let doc = "Generate a dependency graph and save it at this path." in
+    let docv = "FILE" in
+    Arg.(info ["graphviz-file"] ~docv ~doc |> opt (some string) None |> value)
+
   let repository_urls_arg =
     let doc =
       "Comma-separated URLs of the OPAM repositories to be used when solving \
@@ -199,7 +204,7 @@ module Lock = struct
 
   let run style_renderer log_level lock_file_path opam_lock_file_path
       repository_urls resolutions with_test with_doc with_dev_setup
-      opam_file_paths =
+      opam_file_paths graphviz_file_path =
     setup_logs style_renderer log_level;
     Logs.info (fun log -> log "lock: Running...");
 
@@ -221,10 +226,20 @@ module Lock = struct
     in
     Onix_lock_json.gen ~lock_file_path lock_file;
 
-    match opam_lock_file_path with
-    | Some opam_lock_file_path ->
-      Onix_lock_opam.gen ~opam_lock_file_path lock_file
-    | None -> ()
+    let () =
+      match opam_lock_file_path with
+      | Some opam_lock_file_path ->
+        Onix_lock_opam.gen ~opam_lock_file_path lock_file
+      | None -> ()
+    in
+
+    let () =
+      match graphviz_file_path with
+      | Some graphviz_file_path ->
+        Onix_lock_graphviz.gen ~graphviz_file_path lock_file
+      | None -> ()
+    in
+    Logs.info (fun log -> log "Done.")
 
   let info = Cmd.info "lock" ~doc:"Solve dependencies and create a lock file."
 
@@ -241,7 +256,8 @@ module Lock = struct
         $ with_test_arg
         $ with_doc_arg
         $ with_dev_setup_arg
-        $ opam_file_paths_arg)
+        $ opam_file_paths_arg
+        $ graphviz_file_path_arg)
 end
 
 module Gen = struct

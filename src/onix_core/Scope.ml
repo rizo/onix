@@ -100,6 +100,15 @@ let resolve_global_host =
   let group = Utils.Os.get_group () in
   resolve_global ~jobs ~system:System.host ~user ?group
 
+let resolve_system ?arch ?os full_var =
+  if Var.Full.(scope full_var <> Global) then None
+  else
+    let var = Var.Full.variable full_var in
+    match Var.to_string var with
+    | "arch" -> Option.map string arch
+    | "os" -> Option.map string os
+    | _ -> None
+
 let resolve_pkg ~build_dir { self; pkgs; ocaml_version; _ } full_var =
   let var = Var.to_string (Var.Full.variable full_var) in
   let scope =
@@ -195,7 +204,7 @@ let resolve_config { self; pkgs; _ } full_var =
     in
     if OpamFilename.exists config_filename then (
       Logs.debug (fun log ->
-          log "Scope.resolve_from_config: loading %a..." Opam_utils.pp_filename
+          log "Scope.resolve_config: loading %a..." Opam_utils.pp_filename
             config_filename);
       let config_file = OpamFile.make config_filename in
       let config = OpamFile.Dot_config.read config_file in

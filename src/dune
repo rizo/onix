@@ -15,5 +15,6 @@
   onix_lock_nix
   onix_lock_json
   onix_lock_opam
+  onix_lock_graphviz
   opam-core
   opam-format))
