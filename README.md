@@ -75,7 +75,7 @@ onix.env {
 
   # A nix overlay to be applied to the built scope.
   overlay = null;
-};
+}
 ```
 
 The return type of `onix.env` is a set with the following attributes:
