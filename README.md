@@ -37,7 +37,7 @@ depends: [
 ```nix
 onix.env {
   # The repo to use for resolution.
-  repo ? {
+  repo = {
     url = "https://github.com/ocaml/opam-repository.git";
   };
 
