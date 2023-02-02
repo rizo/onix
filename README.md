@@ -32,54 +32,59 @@ depends: [
 
 ## Nix API Reference
 
-### `onix.project`
+### `onix.env`
 
 ```nix
-let project = onix.project ./. {
-  # The paths of the root opam files.
-  # Will lookup all at the project root dir by default.
-  roots ? [ ],
+onix.env {
+  # The repo to use for resolution.
+  repo ? {
+    url = "https://github.com/ocaml/opam-repository.git";
+  },
 
-  # The path of the lock file. Must be in the root dir of the project.
-  lock ? "onix-lock.json",
+  # List of additional or alternative repos.
+  repos ? [ ]
 
-  # The URLs of OPAM package repositories.
-  repositories ? [ "https://github.com/ocaml/opam-repository.git" ],
+  # The path of the project where opam files are looked up.
+  path ? null,
 
-  # Additional dependency resolutions.
-  resolutions ? { },
+  # The path to project's root opam files. Will be looked up if null.
+  roots ? null,
 
-  # Package overrides.
-  overrides ? null,
+  # Apply gitignore to root directory: true|false|path.
+  gitignore ? true,
 
-  # Verbosity of the onix tool.
-  verbosity ? "warning",
+  # List of additional or alternative deps.
+  # A deps value can be:
+  #   - a version constraint string: "pkg": ">2.0";
+  #   - a local opam file path: "pkg": ./vendor/pkg/opam;
+  #   - a git source: "pkg": { url = "https://github.com/user/repo.git" }.
+  deps ? { }
 
-  # Flags for dependency resolution.
-  flags ? {
-    with-test = false;
-    with-doc = false;
-    with-dev-setup = false;
-  };
+  # The path to the onix lock file.
+  lock ? "onix-lock.json"
 
-  # Apply gitignore filter to project directory.
-  # Possible values: true, false, path to gitignore file.
-  gitignore ? true
+  # The path to the opam lock file.
+  opam-lock ? null
+
+  # Package variables. Supported vars are: `with-test`, `with-doc` and `with-dev-setup`.
+  vars ? { }
+
+  # A nix overlay to be applied to the built scope.
+  overlay ? null
 };
 ```
 
-The return type of `onix.project` is a set with the following attributes:
+The return type of `onix.env` is a set with the following attributes:
 
 ```nix
 # Resolve dependencies and generate a lock file.
-project.lock
+env.lock
 
 # A package set with all project packages.
-project.pkgs
-
-# Build all root pacakges.
-project.all
+env.pkgs
 
 # Start a shell for root packages.
-project.shell
+env.shell
 ```
+
+The `env` itself is a target that builds all root packages.
