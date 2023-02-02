@@ -39,38 +39,42 @@ onix.env {
   # The repo to use for resolution.
   repo ? {
     url = "https://github.com/ocaml/opam-repository.git";
-  },
+  };
 
   # List of additional or alternative repos.
-  repos ? [ ]
+  repos = [ ];
 
   # The path of the project where opam files are looked up.
-  path ? null,
+  path = null;
 
   # The path to project's root opam files. Will be looked up if null.
-  roots ? null,
+  roots = null;
 
   # Apply gitignore to root directory: true|false|path.
-  gitignore ? true,
+  gitignore = true;
 
   # List of additional or alternative deps.
   # A deps value can be:
   #   - a version constraint string: "pkg": ">2.0";
   #   - a local opam file path: "pkg": ./vendor/pkg/opam;
   #   - a git source: "pkg": { url = "https://github.com/user/repo.git" }.
-  deps ? { }
+  deps = { };
 
   # The path to the onix lock file.
-  lock ? "onix-lock.json"
+  lock = "onix-lock.json";
 
   # The path to the opam lock file.
-  opam-lock ? null
+  opam-lock = null;
 
-  # Package variables. Supported vars are: `with-test`, `with-doc` and `with-dev-setup`.
-  vars ? { }
+  # Package variables.
+  vars = {
+    "with-test" = false;
+    "with-doc" = false;
+    "with-dev-setup" = false;
+  };
 
   # A nix overlay to be applied to the built scope.
-  overlay ? null
+  overlay = null;
 };
 ```
 
