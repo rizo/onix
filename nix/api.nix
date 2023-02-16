@@ -158,8 +158,9 @@ let
     # roots requires path
       throw errRequiredRootPath
     else if !(isNull rootPath) && !(isNull roots) && length roots > 0 then
-    # Use provided roots if path is set too.
-      roots
+    # Use provided _relative_ roots if path is set too.
+      builtins.map
+      (r: lib.strings.removePrefix (rootPath + "/") (builtins.toString r)) roots
     else if !(isNull rootPath) && isNull roots then
     # Lookup roots in path if roots is null (default)
       lookupRoots rootPath
