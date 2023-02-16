@@ -51,6 +51,7 @@
     - [x] Cache the `Dot_config` file as it's likely to be accessed multiple times.
 - [x] Use nix-prefetch-url.
 - [x] Use nix-prefetch-git for repo fetching.
+- [ ] Force symlink resolution of locally vendored deps. Otherwise we get "chmod: changing permissions of 'melange': Operation not permitted"
 - [ ] Make sure that incremental/partial changes to the lock file (and opam file) are possible withou full rebuild.
 - [x] Make dev tools work: vscode/vim plugins.
 - [x] Fix ocaml env vars propagation for shell.
