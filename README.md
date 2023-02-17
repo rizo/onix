@@ -52,6 +52,13 @@ in onix.env {
     rev = "ff615534bda0fbb06447f8cbb6ba2d3f3343c57e";
   };
 
+  # Optional: dependency variables to be used during lock generation.
+  vars = {
+    "with-test" = true;
+    "with-doc" = true;
+    "with-dev-setup" = true;
+  };
+
   # Optional: additional dependencies. Here we add ocaml-system which is the
   # ocaml package from ocamlPackages mentioned above.
   deps = { "ocaml-system" = "*"; };
