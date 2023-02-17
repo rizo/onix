@@ -48,6 +48,7 @@ in onix.env {
   # Optional: provide the opam repository URL.
   repo = {
     url = "https://github.com/ocaml/opam-repository.git";
+    # Optional: specify the git commit to be used.
     rev = "ff615534bda0fbb06447f8cbb6ba2d3f3343c57e";
   };
  
