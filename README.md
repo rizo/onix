@@ -136,7 +136,7 @@ Update the `deps` field in your `default.nix` file to point to the vendored opam
 {
   deps = {
     "pkg-foo" = ./vendor/pkg-foo/foo.poam;
-    "bar" = ./vendor/pkg-bar/poam;
+    "bar" = ./vendor/pkg-bar/opam;
   };
 }
 ```
