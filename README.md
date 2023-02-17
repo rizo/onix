@@ -67,6 +67,7 @@ $ nix develop -f default.nix lock
 Start a development shell:
 ```shell
 $ nix develop -f default.nix -j auto -i -k TERM -k PATH -k HOME -v shell
+# Here you can start working on your project by calling `dune build` for example.
 ```
 
 Build your root opam packages:
