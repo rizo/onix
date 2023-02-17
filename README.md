@@ -252,9 +252,10 @@ env.pkgs
 
 # Start a shell for root packages.
 env.shell
-```
 
-The `env` itself is a target that builds all root packages.
+# The env itself is a target that builds all root packages.
+env
+```
 
 
 ## OCaml Platform integration
