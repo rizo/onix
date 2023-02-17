@@ -117,10 +117,12 @@ Add the compiler package to the `deps` field in your `default.nix` file with
 any additional compiler options packages:
 
 ```nix
-deps = {
-  "ocaml-variants" = "<5.0";
-  "ocaml-option-flambda" = "*";
-};
+{
+  deps = {
+    "ocaml-variants" = "<5.0";
+    "ocaml-option-flambda" = "*";
+  };
+}
 ```
 
 
@@ -131,10 +133,12 @@ Create a `./vendor` folder and clone or copy the projects you want to vendor the
 Update the `deps` field in your `default.nix` file to point to the vendored opam files:
 
 ```nix
-deps = {
-  "pkg-foo" = ./vendor/pkg-foo/foo.poam;
-  "bar" = ./vendor/pkg-bar/poam;
-};
+{
+  deps = {
+    "pkg-foo" = ./vendor/pkg-foo/foo.poam;
+    "bar" = ./vendor/pkg-bar/poam;
+  };
+}
 ```
 
 Regenreate the lock file. This will add the vendored packages to your build scope.
