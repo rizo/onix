@@ -168,6 +168,14 @@ let
     # No roots otherwise.
       [ ];
 
+  opamRootsToPackageNames = roots:
+    builtins.map (r:
+      let base = builtins.baseNameOf r;
+      in if base == "opam" then
+        builtins.baseNameOf (lib.strings.removeSuffix "opam" r)
+      else
+        lib.strings.removeSuffix ".opam" r) roots;
+
   processLock = rootPath: lock:
     if isNull lock then
       null
@@ -266,8 +274,10 @@ in {
         lockPath = config.lockPath;
         overlay = config.overlay;
       };
-      devPkgs = lib.attrsets.filterAttrs (n: p: isAttrs p && p.version == "dev")
-        allPkgs;
+
+      rootPkgNames = opamRootsToPackageNames config.opamFiles;
+      rootPkgs = builtins.map (name: allPkgs.${name}) rootPkgNames;
+
       depPkgs =
         lib.attrsets.mapAttrs (name: _: allPkgs.${name}) validatedArgs.deps;
 
@@ -275,7 +285,7 @@ in {
       devLinks = pkgs.linkFarm (builtins.baseNameOf "onix-links") (map (r: {
         name = r.name;
         path = r;
-      }) (lib.attrsets.attrValues devPkgs));
+      }) rootPkgs);
 
     in devLinks // {
       # Shell for generating a lock file.
@@ -291,11 +301,11 @@ in {
       pkgs = allPkgs;
 
       shell = pkgs.mkShell {
-        inputsFrom = (builtins.attrValues devPkgs);
+        inputsFrom = rootPkgs;
         buildInputs = (builtins.attrValues depPkgs);
-        shellHook = ''
-          echo "PATH=$PATH" > ${config.rootPath}/.onix.env
-        '';
+        # shellHook = ''
+        #   echo "PATH=$PATH" > ${config.rootPath}/.onix.env
+        # '';
       };
     };
 }
