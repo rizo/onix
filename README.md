@@ -156,6 +156,22 @@ onix.env {
   };
 
   # List of additional or alternative repos.
+  # Example:
+  # ```
+  # repos = [
+  #   {
+  #     url = "https://github.com/ocaml/opam-repository.git";
+  #   }
+  #   {
+  #     url = "https://github.com/kit-ty-kate/opam-alpha-repository";
+  #     rev = "0a81964b3d1e27a6aaf699e3a2153059b77435e2";
+  #   }
+  #   {
+  #     url = "https://github.com/ocaml/ocaml-beta-repository.git";
+  #     rev = "79aeeadd813bdae424ab53f882f08bee0a4e0b89";
+  #   }
+  # ];
+  # ```
   repos = [ ];
 
   # The path of the project where opam files are looked up.
