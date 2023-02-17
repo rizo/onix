@@ -4,8 +4,82 @@ Build OCaml projects with Nix.
 
 > Note: this project is experimental. The core functionality is stable but the API may break before the official release.
 
+Onix provides a [Nix](https://nixos.org/download.html) powered workflow for working with opam projects.
+
+Features:
+- Full hermetic and deterministic builds based on a precise lock file.
+- Robust cross-project cache powered by Nix store.
+- Support for `pin-depends` add add packages not published to the opam repository.
+- Conditional compilation of `with-test`, `with-doc` and `with-dev-setup` dependencies.
+- Support for compiler variants similar to opam (for example, the flambda compiler can be used).
+- Generation of opam-compatible "locked" files.
 
 See onix usage examples at https://github.com/odis-labs/onix-examples.
+
+
+## Usage
+
+Create `default.nix` in your OCaml project where opam files are located:
+
+```nix
+{ pkgs ? import <nixpkgs> { } }:
+
+let
+  # Specify the "system" compiler (see below). This will be used to build your
+  # project and onix itself.
+  ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_14;
+
+  # Obtain the latest onix version.
+  onix = import (builtins.fetchGit {
+    url = "https://github.com/odis-labs/onix.git";
+    rev = "4453bd3e0398cc8b62161a3856634f64565119b5";
+  }) {
+    inherit pkgs ocamlPackages;
+    verbosity = "warning";
+  };
+
+# Create your project environment.
+in onix.env {
+  # Optional: provide the opam repository URL.
+  repo = {
+    url = "https://github.com/ocaml/opam-repository.git";
+    rev = "ff615534bda0fbb06447f8cbb6ba2d3f3343c57e";
+  };
+ 
+  # The path where opam files are looked up.
+  path = ./.;
+
+  # Use gitignore to avoid copying non-desired files into nix store.
+  gitignore = ./.gitignore;
+
+  # Additional dependencies. Here we add ocaml-system which is the ocaml
+  # package from ocamlPackages.
+  deps = { "ocaml-system" = "*"; };
+}
+```
+
+Generate a lock file:
+```shell
+$ nix develop -f default.nix lock
+# This generates ./onix-lock.json
+```
+
+Start a development shell:
+```shell
+$ nix develop -f default.nix -j8 -i -k TERM -k PATH -k HOME -v shell
+```
+
+Build the root opam packages:
+```shell
+$ nix build -f default.nix -j8 -v
+# This creates a ./result symlink with all your built packages.
+```
+
+Build a single package from your project scope:
+```shell
+$ nix build -f default.nix -j8 -v pkgs.dune
+# This create a ./result symlik to the built package.
+```
 
 
 ## Development setup dependencies
@@ -29,6 +103,16 @@ depends: [
 - `ocaml-variants` - build a custom opam compiler;
 - `ocaml-base-compiler` - build an opam compiler with vanilla options.
 
+Add the compiler package to the `deps` field in your `default.nix` file with
+any additional compiler options packages:
+
+```nix
+deps = {
+  "ocaml-variants" = "<5.0";
+  "ocaml-option-flambda" = "*";
+};
+```
+
 
 ## Nix API Reference
 
@@ -45,25 +129,31 @@ onix.env {
   repos = [ ];
 
   # The path of the project where opam files are looked up.
+  # Example: `path = ./;`
   path = null;
 
   # The path to project's root opam files. Will be looked up if null.
+  # Example: `roots = [ ./my-package.opam ./another.opam ];`
   roots = null;
 
   # Apply gitignore to root directory: true|false|path.
+  # Example: `gitignore = ./.my-custom-ignore;`
   gitignore = true;
 
   # List of additional or alternative deps.
   # A deps value can be:
-  #   - a version constraint string: "pkg": ">2.0";
-  #   - a local opam file path: "pkg": ./vendor/pkg/opam;
-  #   - a git source: "pkg": { url = "https://github.com/user/repo.git" }.
+  #   - a version constraint string: "pkg" = ">2.0";
+  #   - a local opam file path: "pkg" = ./vendor/pkg/opam;
+  #   - a git source: "pkg" = { url = "https://github.com/user/repo.git" }.
+  # Example: `deps = { "dune" = ">3.6"; }`
   deps = { };
 
   # The path to the onix lock file.
+  # Example: `lock = ./my-custm-lock.json;`
   lock = "onix-lock.json";
 
   # The path to the opam lock file.
+  # Example: `opam-lock = ./my-project.opam.locked;`
   opam-lock = null;
 
   # Package variables.
@@ -74,6 +164,16 @@ onix.env {
   };
 
   # A nix overlay to be applied to the built scope.
+  # Example:
+  # ```
+  # overlay = self: super: {
+  #   "some-pkg" = super.some-pkg.overrideAttrs (superAttrs: {
+  #     patches = oldAttrs.patches or [ ] ++ [ ./patches/some-pkg.patch ];
+  #     buildInputs = superAttrs.buildInputs or [] ++ [ pkgs.foo ];
+  #     postInstall = "...";
+  #   });
+  # };
+  # ```
   overlay = null;
 }
 ```
@@ -84,7 +184,7 @@ The return type of `onix.env` is a set with the following attributes:
 # Resolve dependencies and generate a lock file.
 env.lock
 
-# A package set with all project packages.
+# A package set with all locked packages.
 env.pkgs
 
 # Start a shell for root packages.
@@ -92,3 +192,4 @@ env.shell
 ```
 
 The `env` itself is a target that builds all root packages.
+
