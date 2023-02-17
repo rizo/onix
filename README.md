@@ -42,7 +42,7 @@ let
 
 # Create your project environment.
 in onix.env {
-  # The path where opam files are looked up.
+  # Optional: the path where opam files are looked up.
   path = ./.;
 
   # Optional: provide the opam repository URL.
