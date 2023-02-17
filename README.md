@@ -104,6 +104,16 @@ depends: [
 ]
 ```
 
+Enable the `with-dev-setup` variable in your `default.nix` file:
+
+```nix
+{
+  vars = {
+    "with-dev-setup" = true;
+  };
+}
+```
+
 Regenreate the lock file. This will add the development setup packages to your
 shell environment.
 
