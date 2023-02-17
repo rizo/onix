@@ -191,7 +191,7 @@ onix.env {
   #   - a version constraint string: "pkg" = ">2.0";
   #   - a local opam file path: "pkg" = ./vendor/pkg/opam;
   #   - a git source: "pkg" = { url = "https://github.com/user/repo.git" }.
-  # Example: `deps = { "dune" = ">3.6"; }`
+  # Example: `deps = { "dune" = ">3.6"; };`
   deps = { };
 
   # The path to the onix lock file.
