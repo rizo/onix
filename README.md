@@ -54,7 +54,7 @@ in onix.env {
   gitignore = ./.gitignore;
 
   # Optional: additional dependencies. Here we add ocaml-system which is the
-  # ocaml package from ocamlPackages.
+  # ocaml package from ocamlPackages mentioned above.
   deps = { "ocaml-system" = "*"; };
 }
 ```
