@@ -41,15 +41,15 @@ let
 
 # Create your project environment.
 in onix.env {
+  # The path where opam files are looked up.
+  path = ./.;
+
   # Optional: provide the opam repository URL.
   repo = {
     url = "https://github.com/ocaml/opam-repository.git";
     rev = "ff615534bda0fbb06447f8cbb6ba2d3f3343c57e";
   };
  
-  # The path where opam files are looked up.
-  path = ./.;
-
   # Optional: use gitignore to avoid copying non-desired files into nix store.
   gitignore = ./.gitignore;
 
