@@ -274,7 +274,7 @@ Create a settings file to instruct OCaml Platform to use the nix environment:
 {
   "ocaml.sandbox": {
     "kind": "custom",
-      "template": "nix develop -f ${workspaceFolder:YOUR_PROJECT_FOLDER}/default.nix -j auto -i shell -c $prog $args"
+    "template": "nix develop -f ${workspaceFolder:YOUR_PROJECT_FOLDER}/default.nix -j auto -i shell -c $prog $args"
   }
 }
 ```
