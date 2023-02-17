@@ -68,25 +68,30 @@ $ nix develop -f default.nix lock
 
 Start a development shell:
 ```shell
-$ nix develop -f default.nix -j8 -i -k TERM -k PATH -k HOME -v shell
+$ nix develop -f default.nix -j auto -i -k TERM -k PATH -k HOME -v shell
 ```
 
 Build the root opam packages:
 ```shell
-$ nix build -f default.nix -j8 -v
+$ nix build -f default.nix -j auto -v
 # This creates a ./result symlink with all your built packages.
 ```
 
 Build a single package from your project scope:
 ```shell
-$ nix build -f default.nix -j8 -v pkgs.dune
+$ nix build -f default.nix -j auto -v pkgs.dune
 # This create a ./result symlik to the built package.
 ```
+
+Some of these actions are included in the `Makefile.template` you can copy into
+your project.
 
 
 ## Development setup dependencies
 
-Development setup dependencies can be added to your opam files using the [`{with-dev-setup}`](https://opam.ocaml.org/doc/Manual.html#pkgvar-with-dev-setup) flag.
+Development setup dependencies can be added to your opam files using the
+[`{with-dev-setup}`](https://opam.ocaml.org/doc/Manual.html#pkgvar-with-dev-setup)
+flag.
 
 ### 1. Add your development setup packages:
 
@@ -97,6 +102,9 @@ depends: [
   "ocamlformat" {with-dev-setup}
 ]
 ```
+
+Regenreate the lock file. This will add the development setup packages to your
+shell environment.
 
 
 ## OCaml compilers
@@ -210,4 +218,26 @@ env.shell
 ```
 
 The `env` itself is a target that builds all root packages.
+
+
+## OCaml Platform integration
+
+### Terminal-based editors
+
+You can start your editor from the nix shell to make sure it has all the tools for OCaml LSP to work.
+
+### VS Code
+
+Create a settings file to instruct OCaml Platform to use the nix environment:
+
+> Note: Remember to replace `YOUR_PROJECT_FOLDER` by your project folder name.
+
+```json
+{
+  "ocaml.sandbox": {
+    "kind": "custom",
+      "template": "nix develop -f ${workspaceFolder:YOUR_PROJECT_FOLDER}/default.nix -j auto -i shell -c $prog $args"
+  }
+}
+```
 
