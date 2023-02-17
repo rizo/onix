@@ -50,11 +50,11 @@ in onix.env {
   # The path where opam files are looked up.
   path = ./.;
 
-  # Use gitignore to avoid copying non-desired files into nix store.
+  # Optional: use gitignore to avoid copying non-desired files into nix store.
   gitignore = ./.gitignore;
 
-  # Additional dependencies. Here we add ocaml-system which is the ocaml
-  # package from ocamlPackages.
+  # Optional: additional dependencies. Here we add ocaml-system which is the
+  # ocaml package from ocamlPackages.
   deps = { "ocaml-system" = "*"; };
 }
 ```
