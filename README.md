@@ -13,6 +13,7 @@ Onix provides a [Nix](https://nixos.org/download.html) powered workflow for work
 - Support for `pin-depends` add add packages not published to the opam repository.
 - Conditional compilation of `with-test`, `with-doc` and `with-dev-setup` dependencies.
 - Support for compiler variants similar to opam (for example, the flambda compiler can be used).
+- Compilation of vendored packages.
 - Generation of opam-compatible "locked" files.
 
 See onix usage examples at https://github.com/odis-labs/onix-examples.
@@ -113,6 +114,22 @@ deps = {
   "ocaml-option-flambda" = "*";
 };
 ```
+
+
+## Vendoring packages
+
+Create a `./vendor` folder and clone or copy the projects you want to vendor there.
+
+Update the `deps` field in your `default.nix` file to point to the vendored opam files:
+
+```nix
+deps = {
+  "pkg-foo" = ./vendor/pkg-foo/foo.poam;
+  "bar" = ./vendor/pkg-bar/poam;
+};
+```
+
+Regenreate the lock file. This will add the vendored packages to your build scope.
 
 
 ## Nix API Reference
