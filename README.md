@@ -165,6 +165,7 @@ Regenreate the lock file. This will add the vendored packages to your build scop
 ### `onix.env`
 
 ```nix
+# Create an onix environtment for your opam project.
 onix.env {
   # The repo to use for resolution.
   repo = {
