@@ -8,7 +8,7 @@ Onix provides a [Nix](https://nixos.org/download.html) powered workflow for work
 
 ## Features
 
-- Full hermetic and deterministic builds based on a precise lock file.
+- Fully hermetic and deterministic builds based on a precise lock file.
 - Robust cross-project cache powered by Nix store.
 - Support for `pin-depends` add add packages not published to the opam repository.
 - Conditional compilation of `with-test`, `with-doc` and `with-dev-setup` dependencies.
