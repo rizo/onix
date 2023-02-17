@@ -51,9 +51,6 @@ in onix.env {
     # Optional: specify the git commit to be used.
     rev = "ff615534bda0fbb06447f8cbb6ba2d3f3343c57e";
   };
- 
-  # Optional: use gitignore to avoid copying non-desired files into nix store.
-  gitignore = ./.gitignore;
 
   # Optional: additional dependencies. Here we add ocaml-system which is the
   # ocaml package from ocamlPackages mentioned above.
