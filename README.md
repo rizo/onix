@@ -10,7 +10,7 @@ Onix provides a [Nix](https://nixos.org/download.html) powered workflow for work
 
 - Fully hermetic and deterministic builds based on a precise lock file.
 - Robust cross-project cache powered by Nix store.
-- Support for `pin-depends` add add packages not published to the opam repository.
+- Support for `pin-depends` to add packages outside of the opam repository.
 - Supoort for automated `depexts` installation from nixpkgs.
 - Conditional compilation of `with-test`, `with-doc` and `with-dev-setup` dependencies.
 - Support for compiler variants similar to opam (for example, the flambda compiler can be used).
