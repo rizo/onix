@@ -225,6 +225,7 @@ onix.env {
   };
 
   # Generate an .env file with the $PATH variable when the shell is invoked. Disabled by default.
+  # Note that this files should be added to .gitignore as it's system-specific.
   # Example: `env-file = ./.onix.env;`
   env-file = null;
 
