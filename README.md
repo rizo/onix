@@ -288,6 +288,8 @@ onix.env {
 }
 ```
 
+This file is regenerated everytime you open your nix shell, so make sure to open the nix shell at least once before opening VS Code.
+
 Set up the OCaml Platform extension to source this file before executing any
 commands:
 
