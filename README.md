@@ -59,10 +59,6 @@ in onix.env {
     "with-doc" = true;
     "with-dev-setup" = true;
   };
-
-  # Optional: additional dependencies. Here we add ocaml-system which is the
-  # ocaml package from ocamlPackages mentioned above.
-  deps = { "ocaml-system" = "*"; };
 }
 ```
 
@@ -209,8 +205,9 @@ onix.env {
   #   - a version constraint string: "pkg" = ">2.0";
   #   - a local opam file path: "pkg" = ./vendor/pkg/opam;
   #   - a git source: "pkg" = { url = "https://github.com/user/repo.git" }.
+  # By default, the ocaml-system package (i.e. from nixpkgs) is used in deps.
   # Example: `deps = { "dune" = ">3.6"; };`
-  deps = { };
+  deps = { "ocaml-system" = "*"; };
 
   # The path to the onix lock file.
   # Example: `lock = ./my-custm-lock.json;`
