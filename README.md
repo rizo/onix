@@ -122,6 +122,7 @@ shell environment.
 
 ## OCaml compilers
 
+The following compiler packages are supported:
 - `ocaml-system` - use the compiler provided by nixpkgs;
 - `ocaml-variants` - build a custom opam compiler;
 - `ocaml-base-compiler` - build an opam compiler with vanilla options.
