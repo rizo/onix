@@ -7,7 +7,7 @@ lock:
 shell:
 	nix develop -f default.nix -j auto -i -k TERM -k PATH -k HOME -v shell
 
-.PHONY: all
-all:
+.PHONY: build
+build:
 	nix build -f default.nix -j auto -v
 
