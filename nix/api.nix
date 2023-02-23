@@ -236,9 +236,11 @@ in {
       #   - a version constraint string;
       #   - a local opam file path;
       #   - a git source (an attrset with "url" name).
-    , deps ? { }
+    , deps ? {
+      "ocaml-system" = "*";
+    }
 
-      # The path to the onix lock file.
+    # The path to the onix lock file.
     , lock ? "onix-lock.json"
 
       # The path to the opam lock file.
@@ -325,7 +327,7 @@ in {
           export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
         '' else ''
           export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
-          echo "PATH=$PATH" > ${config.env-file}
+          echo "PATH='$PATH'" > ${config.env-file}
         '';
       };
     };
