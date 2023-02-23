@@ -28,6 +28,10 @@ let
     "onix: lock argument must be a path or a null value, found: ${
       builtins.toJSON lock
     }";
+  errInvalidEnvFile = envFile:
+    "onix: env-file argument must be a path or a null value, found: ${
+      builtins.toJSON envFile
+    }";
   errInvalidVars = "onix: vars argument must be an attrset";
   errInvalidOverlay = "onix: overlay must be a function or a null value";
   errRequiredRootPath =
@@ -124,6 +128,12 @@ let
     else
       throw (errInvalidLock lock);
 
+  validateEnvFile = envFile:
+    if isString envFile || isPath envFile || isNull envFile then
+      envFile
+    else
+      throw (errInvalidEnvFile envFile);
+
   validateVars = vars: if isAttrs vars then vars else throw errInvalidVars;
 
   validateOverlay = overlay:
@@ -176,7 +186,7 @@ let
       else
         lib.strings.removeSuffix ".opam" r) roots;
 
-  processLock = rootPath: lock:
+  processPathRelativeToRoot = rootPath: lock:
     if isNull lock then
       null
     else if isPath lock then
@@ -237,6 +247,9 @@ in {
       # Package variables.
     , vars ? { }
 
+      # Env file.
+    , env-file ? null
+
       # A nix overlay to be applied to the built scope.
     , overlay ? null }:
 
@@ -250,6 +263,7 @@ in {
         deps = validateDeps deps;
         lock = validateLock lock;
         vars = validateVars vars;
+        env-file = validateEnvFile env-file;
         opam-lock = validateLock opam-lock;
         overlay = validateOverlay overlay;
       };
@@ -263,9 +277,13 @@ in {
         opamFiles = (processRoots validatedArgs.rootPath validatedArgs.roots)
           ++ extractOpamDeps validatedArgs.rootPath validatedArgs.deps;
         constraints = extractConstraintDeps validatedArgs.deps;
-        lockPath = processLock validatedArgs.rootPath validatedArgs.lock;
-        opam-lock = processLock validatedArgs.rootPath validatedArgs.opam-lock;
+        lockPath =
+          processPathRelativeToRoot validatedArgs.rootPath validatedArgs.lock;
+        opam-lock = processPathRelativeToRoot validatedArgs.rootPath
+          validatedArgs.opam-lock;
         vars = processVars validatedArgs.vars;
+        env-file = processPathRelativeToRoot validatedArgs.rootPath
+          validatedArgs.env-file;
         overlay = validatedArgs.overlay;
       };
 
@@ -303,9 +321,12 @@ in {
       shell = pkgs.mkShell {
         inputsFrom = rootPkgs;
         buildInputs = (builtins.attrValues depPkgs);
-        # shellHook = ''
-        #   echo "PATH=$PATH" > ${config.rootPath}/.onix.env
-        # '';
+        shellHook = if isNull config.env-file then ''
+          export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
+        '' else ''
+          export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
+          echo "PATH=$PATH" > ${config.env-file}
+        '';
       };
     };
 }

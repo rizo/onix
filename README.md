@@ -113,7 +113,7 @@ depends: [
 Enable the `with-dev-setup` variable in your `default.nix` file:
 
 ```nix
-{
+onix.env {
   vars = {
     "with-dev-setup" = true;
   };
@@ -134,7 +134,7 @@ Add the compiler package to the `deps` field in your `default.nix` file with
 any additional compiler options packages:
 
 ```nix
-{
+onix.env {
   deps = {
     "ocaml-variants" = "<5.0";
     "ocaml-option-flambda" = "*";
@@ -150,7 +150,7 @@ Create a `./vendor` folder and clone or copy the projects you want to vendor the
 Update the `deps` field in your `default.nix` file to point to the vendored opam files:
 
 ```nix
-{
+onix.env {
   deps = {
     "pkg-foo" = ./vendor/pkg-foo/foo.poam;
     "bar" = ./vendor/pkg-bar/opam;
@@ -227,6 +227,10 @@ onix.env {
     "with-dev-setup" = false;
   };
 
+  # Generate an .env file with the $PATH variable when the shell is invoked. Disabled by default.
+  # Example: `env-file = ./.onix.env;`
+  env-file = null;
+
   # A nix overlay to be applied to the built scope.
   # Example:
   # ```
@@ -265,9 +269,29 @@ env
 
 You can start your editor from the nix shell to make sure it has all the tools for OCaml LSP to work.
 
+```shell
+[onix]$ vim .
+```
+
 ### VS Code
 
-Create a settings file to instruct OCaml Platform to use the nix environment:
+You can open VS Code from the nix shell environment:
+
+```shell
+[onix]$ code .
+```
+
+Alternatively you can pass the `env-file` parameter to `onix.env` to generate a static file containing the `PATH` of the development setup packages.
+
+```nix
+onix.env {
+  # ...
+  env-file = ./.onix.env;
+}
+```
+
+Set up the OCaml Platform extension to source this file before executing any
+commands:
 
 > Note: Remember to replace `YOUR_PROJECT_FOLDER` by your project folder name.
 
@@ -275,7 +299,7 @@ Create a settings file to instruct OCaml Platform to use the nix environment:
 {
   "ocaml.sandbox": {
     "kind": "custom",
-    "template": "nix develop -f ${workspaceFolder:YOUR_PROJECT_FOLDER}/default.nix -j auto -i shell -c $prog $args"
+    "template": "source ${workspaceFolder:YOUR_PROJECT_FOLDER}/.onix.env; $prog $args"
   }
 }
 ```
