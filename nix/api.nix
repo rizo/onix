@@ -9,6 +9,8 @@ let
 
   core = import ./core.nix { inherit pkgs onix verbosity; };
 
+  defaultOpamRepo = { url = "https://github.com/ocaml/opam-repository.git"; };
+
   # Errors.
   errInvalidSrc = name:
     "onix: invalid ${name} argument, must be an attribute set with `url` key";
@@ -214,15 +216,12 @@ let
 
 in {
   env = {
-    # The repo to use for resolution.
-    repo ? {
-      url = "https://github.com/ocaml/opam-repository.git";
-    }
+    # List of opam repositories.
+    repos ? [
+      defaultOpamRepo
+    ]
 
-    # List of additional or alternative repos.
-    , repos ? [ ]
-
-      # The path of the project where opam files are looked up.
+    # The path of the project where opam files are looked up.
     , path ? null
 
       # The path to project's root opam files. Will be looked up if null.
@@ -257,7 +256,6 @@ in {
 
     let
       validatedArgs = {
-        repo = validateSrc "repo" repo;
         repos = validateRepos repos;
         rootPath = validateRootPath (checkHasOpamDeps validatedArgs.deps) path;
         roots = validateRoots roots;
@@ -272,7 +270,7 @@ in {
 
       # config = builtins.trace "config: ${builtins.toJSON config_}" config_;
       config = {
-        repos = [ validatedArgs.repo ] ++ validatedArgs.repos;
+        repos = validatedArgs.repos;
         rootPath = validatedArgs.rootPath;
         rootPathWithGitignore =
           processRootPath { inherit (validatedArgs) gitignore rootPath; };

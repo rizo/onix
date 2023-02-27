@@ -42,6 +42,7 @@ let solve ?(resolutions = []) ~repository_urls ~with_test ~with_doc
   in
 
   let repository_dir, resolved_repository_urls =
+    Logs.info (fun log -> log "Fetching opam repositories...");
     Nix_utils.resolve_repos repository_urls
   in
   let repo = Repo.make ~root:repository_dir ~urls:resolved_repository_urls in

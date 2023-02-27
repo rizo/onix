@@ -28,30 +28,19 @@ Create `default.nix` in your OCaml project where opam files are located:
 { pkgs ? import <nixpkgs> { } }:
 
 let
-  # Specify the "system" compiler (see below). This will be used to build your
-  # project and onix itself.
-  ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_14;
-
   # Obtain the latest onix version.
   onix = import (builtins.fetchGit {
     url = "https://github.com/odis-labs/onix.git";
     rev = "4453bd3e0398cc8b62161a3856634f64565119b5";
   }) {
-    inherit pkgs ocamlPackages;
-    verbosity = "warning";
+    inherit pkgs;
+    verbosity = "info";
   };
 
 # Create your project environment.
 in onix.env {
   # Optional: the path where opam files are looked up.
   path = ./.;
-
-  # Optional: provide the opam repository URL.
-  repo = {
-    url = "https://github.com/ocaml/opam-repository.git";
-    # Optional: specify the git commit to be used.
-    rev = "ff615534bda0fbb06447f8cbb6ba2d3f3343c57e";
-  };
 
   # Optional: dependency variables to be used during lock generation.
   vars = {
@@ -165,12 +154,7 @@ Regenreate the lock file. This will add the vendored packages to your build scop
 ```nix
 # Create an onix environtment for your opam project.
 onix.env {
-  # The repo to use for resolution.
-  repo = {
-    url = "https://github.com/ocaml/opam-repository.git";
-  };
-
-  # List of additional or alternative repos.
+  # List opam repositories.
   # Example:
   # ```
   # repos = [
@@ -187,7 +171,7 @@ onix.env {
   #   }
   # ];
   # ```
-  repos = [ ];
+  repos = [{ url = "https://github.com/ocaml/opam-repository.git";}];
 
   # The path of the project where opam files are looked up.
   # Example: `path = ./;`
