@@ -327,7 +327,24 @@ in {
           export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
         '' else ''
           export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
+
           echo "PATH='$PATH'" > ${config.env-file}
+          echo "SHELL='$SHELL'" > ${config.env-file}
+
+          # common OCaml compilation lookup paths
+          echo "OCAMLPATH=$OCAMLPATH" >> ${config.env-file}
+          echo "CAML_LD_LIBRARY_PATH=$CAML_LD_LIBRARY_PATH" >> ${config.env-file}
+          echo "OCAMLTOP_INCLUDE_PATH=$OCAMLTOP_INCLUDE_PATH" >> ${config.env-file}
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> ${config.env-file}
+
+          # aliases and other common paths
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> ${config.env-file}
+          echo "LIBRARY_PATH=$LIBRARY_PATH" >> ${config.env-file}
+          echo "C_INCLUDE_PATH=$C_INCLUDE_PATH" >> ${config.env-file}
+
+          # shell completions / default config options
+          echo "XDG_DATA_DIRS=$XDG_DATA_DIRS" >> ${config.env-file}
+          echo "XDG_CONFIG_DIRS=$XDG_CONFIG_DIRS" >> ${config.env-file}
         '';
       };
     };
