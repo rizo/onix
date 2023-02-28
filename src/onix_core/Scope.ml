@@ -96,8 +96,8 @@ let resolve_global ?(system : System.t option) ?jobs ?user ?group full_var =
 
 let resolve_global_host =
   let jobs = Nix_utils.get_nix_build_jobs () in
-  let user = Unix.getlogin () in
-  let group = Utils.Os.get_group () in
+  let user = "onix" in
+  let group = None in
   resolve_global ~jobs ~system:System.host ~user ?group
 
 let resolve_system ?arch ?os full_var =
