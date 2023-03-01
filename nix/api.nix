@@ -325,7 +325,18 @@ in {
           export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
         '' else ''
           export PS1="[\[\033[1;34m\]onix\[\033[0m\]]\$ "
-          echo "PATH='$PATH'" > ${config.env-file}
+
+          echo "export PATH='$PATH'" > ${config.env-file}
+          echo "export SHELL='$SHELL'" >> ${config.env-file}
+          echo "export OCAMLPATH='$OCAMLPATH'" >> ${config.env-file}
+          echo "export CAML_LD_LIBRARY_PATH='$CAML_LD_LIBRARY_PATH'" >> ${config.env-file}
+          echo "export OCAMLTOP_INCLUDE_PATH='$OCAMLTOP_INCLUDE_PATH'" >> ${config.env-file}
+          echo "export PKG_CONFIG_PATH='$PKG_CONFIG_PATH'" >> ${config.env-file}
+          echo "export LD_LIBRARY_PATH='$LD_LIBRARY_PATH'" >> ${config.env-file}
+          echo "export LIBRARY_PATH='$LIBRARY_PATH'" >> ${config.env-file}
+          echo "export C_INCLUDE_PATH='$C_INCLUDE_PATH'" >> ${config.env-file}
+          echo "export XDG_DATA_DIRS='$XDG_DATA_DIRS'" >> ${config.env-file}
+          echo "export XDG_CONFIG_DIRS='$XDG_CONFIG_DIRS'" >> ${config.env-file}
         '';
       };
     };
