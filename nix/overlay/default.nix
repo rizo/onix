@@ -80,6 +80,9 @@ let
 
     timedesc-tzlocal =
       super.timedesc-tzlocal.overrideAttrs (attrs: { sourceRoot = "."; });
+      
+    timedesc =
+      super.timedesc.overrideAttrs (attrs: { sourceRoot = "."; });      
 
     # With propagated inputs this is not necessary.
     # https://github.com/ocaml/opam-repository/blob/e470f5f4ad3083618a4e144668faaa81b726b912/packages/either/either.1.0.0/opam#L14
