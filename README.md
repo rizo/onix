@@ -112,9 +112,9 @@ shell environment.
 ## OCaml compilers
 
 The following compiler packages are supported:
-- `ocaml-system` - use the compiler provided by nixpkgs;
-- `ocaml-variants` - build a custom opam compiler;
-- `ocaml-base-compiler` - build an opam compiler with vanilla options.
+- `ocaml-system`: Use the compiler provided by nixpkgs. This is the default compiler used by onix. Using this option avoids building the compiler from scratch.
+- `ocaml-variants`: Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
+- `ocaml-base-compiler`: Build an opam compiler with vanilla options. This is the compiler normally used by opam.
 
 Add the compiler package to the `deps` field in your `default.nix` file with
 any additional compiler options packages:
@@ -126,6 +126,8 @@ onix.env {
     "ocaml-option-flambda" = "*";
   };
 }
+
+This will build the compiler with flambda support. You can find the list of all supported options packages [here](https://ocaml.org/p/ocaml-variants/latest#used-by).
 ```
 
 
