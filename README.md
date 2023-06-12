@@ -126,9 +126,9 @@ onix.env {
     "ocaml-option-flambda" = "*";
   };
 }
+```
 
 This will build the compiler with flambda support. You can find the list of all supported options packages [here](https://ocaml.org/p/ocaml-variants/latest#used-by).
-```
 
 
 ## Vendoring packages
