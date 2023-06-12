@@ -112,9 +112,9 @@ shell environment.
 ## OCaml compilers
 
 The following compiler packages are supported:
-- `ocaml-system`: Use the compiler provided by nixpkgs. This is the default compiler used by onix. Using this option avoids building the compiler from scratch.
-- `ocaml-variants`: Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
-- `ocaml-base-compiler`: Build an opam compiler with vanilla options. This is the compiler normally used by opam.
+- `ocaml-system` - Use the compiler provided by nixpkgs. This is the default compiler used by onix. Using this option avoids building the compiler from scratch.
+- `ocaml-variants` - Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
+- `ocaml-base-compiler` - Build an opam compiler with vanilla options. This is the compiler normally used by opam.
 
 Add the compiler package to the `deps` field in your `default.nix` file with
 any additional compiler options packages:
