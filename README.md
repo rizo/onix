@@ -39,7 +39,7 @@ let
 
 # Create your project environment.
 in onix.env {
-  # Optional: the path where opam files are looked up.
+  # The path where opam files are looked up.
   path = ./.;
 
   # Optional: dependency variables to be used during lock generation.
