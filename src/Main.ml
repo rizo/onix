@@ -265,7 +265,7 @@ let () =
   let doc = "Manage OCaml projects with Nix" in
   let sdocs = Manpage.s_common_options in
 
-  let info = Cmd.info "onix" ~version:"0.0.2" ~doc ~sdocs in
+  let info = Cmd.info "onix" ~version:Onix_core.Lib.version ~doc ~sdocs in
 
   let default =
     let run () = `Help (`Pager, None) in
