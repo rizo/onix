@@ -167,6 +167,32 @@ onix.env {
 Regenreate the lock file. This will add the vendored packages to your build scope.
 
 
+## Override packages
+
+Any package in the onix build scope can be overridden using overlays.
+
+In the following example, a pre-patch action is added to the `zarith` package.
+
+```nix
+onix.env {
+  # ...
+  overlay = self: super: {
+    zarith = super.zarith.overrideAttrs (oldAttrs: {
+      prePatch = (oldAttrs.prePatch or "") + ''
+        if test -e ./z_pp.pl; then
+          patchShebangs ./z_pp.pl
+        fi
+      '';
+    });
+  };
+}
+```
+
+Onix comes with a small number of default overrides that fix issues for popular packages. If an opam dependency you are building fails to compile, it might need to be patched or made compatible with nix.
+
+The default overlay can be found at https://github.com/rizo/onix/blob/master/nix/overlay/default.nix. PRs with fixes for other opam packages are welcome!
+
+
 ## Nix API Reference
 
 ### `onix.env`
