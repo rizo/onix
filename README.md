@@ -74,7 +74,7 @@ $ nix build -f default.nix -j auto -v pkgs.dune
 # This create a ./result symlik to the built package.
 ```
 
-Some of these actions are included in the `Makefile.template` you can copy into
+Some of these actions are included in the [`Makefile.template`](https://github.com/rizo/onix/blob/master/Makefile.template) you can copy into
 your project.
 
 
