@@ -1,7 +1,6 @@
 type t
 
 val make : OpamFormula.atom list -> t
-val compiler_name : t -> OpamPackage.Name.t
 val constraints : t -> OpamFormula.version_constraint OpamTypes.name_map
 val all : t -> OpamTypes.name list
 val debug : t -> unit

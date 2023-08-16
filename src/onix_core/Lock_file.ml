@@ -1,10 +1,9 @@
 type t = {
   repository_urls : OpamUrl.t list;
   packages : Lock_pkg.t list;
-  compiler : OpamPackage.t;
 }
 
-let make ~repository_urls ~compiler packages =
+let make ~repository_urls packages =
   (* TODO: Move validation up. *)
   List.iter
     (fun url ->
@@ -13,4 +12,4 @@ let make ~repository_urls ~compiler packages =
           Opam_utils.pp_url url)
     repository_urls;
 
-  { repository_urls; packages; compiler }
+  { repository_urls; packages }
