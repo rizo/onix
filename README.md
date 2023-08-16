@@ -111,7 +111,7 @@ shell environment.
 ## Specifying an OCaml compiler package
 
 The following compiler packages are supported:
-- `ocaml-system` - Use the compiler provided by nixpkgs. This is the default compiler used by onix. Using this option avoids building the compiler from scratch.
+- `ocaml-system` - Use the compiler provided by nixpkgs. This might avoid building the compiler from source since it's normally included in the official Nix build cache.
 - `ocaml-variants` - Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
 - `ocaml-base-compiler` - Build an opam compiler with vanilla options. This is the compiler normally used by opam.
 
