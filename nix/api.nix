@@ -186,7 +186,7 @@ let
       in if base == "opam" then
         builtins.baseNameOf (lib.strings.removeSuffix "opam" r)
       else
-        lib.strings.removeSuffix ".opam" r) roots;
+        lib.strings.removeSuffix ".opam" base) roots;
 
   processPathRelativeToRoot = rootPath: lock:
     if isNull lock then
