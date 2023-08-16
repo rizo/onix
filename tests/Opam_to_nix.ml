@@ -21,8 +21,9 @@
 let opamfile = "../../../tests/zarith.opam"
 let opam = In_channel.with_open_text opamfile OpamFile.OPAM.read_from_channel
 let build_commands = OpamFile.OPAM.build opam
-let install_commands = OpamFile.OPAM.install opam
-let depends = OpamFile.OPAM.depends opam
+
+(* let install_commands = OpamFile.OPAM.install opam *)
+(* let depends = OpamFile.OPAM.depends opam *)
 
 let dep_names =
   ["ocaml"; "ocamlfind"; "conf-gmp"; "ocaml-lsp-server"; "utop"; "foo"]
@@ -58,7 +59,7 @@ let pkg_scope =
   in
   Onix_core.Scope.make ~deps ~ocaml_version self
 
-let env = Onix_lock_nix.Nix_pkg.resolve_commands pkg_scope
+(* let env = Onix_lock_nix.Nix_pkg.resolve_commands pkg_scope *)
 
 let process_commands commands =
   let commands' =
@@ -67,17 +68,17 @@ let process_commands commands =
   in
   Fmt.pr "%a" Onix_core.Filter.pp_commands commands'
 
-let process_depends depends =
-  (* let depends_filtered_formula =
-       OpamFilter.string_of_filtered_formula depends
-     in *)
-  let depends_ands : OpamTypes.filtered_formula list =
-    OpamFormula.ands_to_list depends
-  in
-  let depends_ands_srs_list =
-    List.map OpamFilter.string_of_filtered_formula depends_ands
-  in
+(* let process_depends depends =
+   (* let depends_filtered_formula =
+        OpamFilter.string_of_filtered_formula depends
+      in *)
+   let depends_ands : OpamTypes.filtered_formula list =
+     OpamFormula.ands_to_list depends
+   in
+   let depends_ands_srs_list =
+     List.map OpamFilter.string_of_filtered_formula depends_ands
+   in
 
-  Fmt.pr "%s" (String.concat ";; " depends_ands_srs_list)
+   Fmt.pr "%s" (String.concat ";; " depends_ands_srs_list) *)
 
 let () = process_commands build_commands

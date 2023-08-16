@@ -54,7 +54,7 @@ let pp_hash f (kind, hash) =
   | `SHA512 -> Fmt.pf f "sha512 = %S" hash
   | `MD5 -> Fmt.pf f "md5 = %S" hash
 
-let pp_src ~gitignore f (t : Lock_pkg.t) =
+let _pp_src ~gitignore f (t : Lock_pkg.t) =
   if Opam_utils.Opam_details.check_has_absolute_path t.opam_details then
     match t.src with
     | None -> Fmt.pf f "@,src = null;@,dontUnpack = true;"
@@ -181,7 +181,8 @@ let pp_many (formatter : Format.formatter) list =
 
 let pp_item (pp : 'a Fmt.t) x formatter = pp formatter x
 
-let pp_pkg ~gitignore f (nix_pkg : Nix_pkg.t) =
+(* TODO check ~gitignore arg *)
+let pp_pkg ~gitignore:_ f (nix_pkg : Nix_pkg.t) =
   let lock_pkg = nix_pkg.lock_pkg in
   let name = OpamPackage.name_to_string lock_pkg.opam_details.package in
   let version = OpamPackage.version lock_pkg.opam_details.package in

@@ -1,7 +1,5 @@
 (* Based on https://github.com/ocaml-opam/opam-0install-solver/blob/master/lib/dir_context.ml *)
 
-let ( </> ) = Filename.concat
-
 module Resolvers = struct
   let resolve_available_current_system = Scope.resolve_global_host
 

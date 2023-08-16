@@ -123,7 +123,8 @@ let mk_copy_files_commands filenames =
       ["cp"; String.concat "" ["${./"; basename; "}"]; basename])
     filenames
 
-let of_lock_pkg ~ocaml_version ~with_test ~with_doc ~with_dev_setup
+(* TODO: check ~with_x args *)
+let of_lock_pkg ~ocaml_version ~with_test:_ ~with_doc:_ ~with_dev_setup:_
     (lock_pkg : Lock_pkg.t) =
   let opam = lock_pkg.opam_details.opam in
   let lock_pkg = add_nixpkgs_prefix_to_depexts lock_pkg in

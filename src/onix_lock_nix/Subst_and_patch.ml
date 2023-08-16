@@ -20,7 +20,8 @@ let run_substs ~pkg_lock_dir ~env ~nv substs =
     ([], []) substs
 
 (* https://opam.ocaml.org/doc/Manual.html#opamfield-patches *)
-let get_patches ~env opam =
+(* TODO: check ~env *)
+let get_patches ~env:_ opam =
   let filtered_patches = OpamFile.OPAM.patches opam in
   (* FIXME: Resolve patches formula! *)
   List.map fst filtered_patches
