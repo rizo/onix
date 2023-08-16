@@ -29,7 +29,7 @@ Create `default.nix` in your OCaml project where opam files are located:
 let
   # Obtain the latest onix package.
   onix = import (builtins.fetchGit {
-    url = "https://github.com/odis-labs/onix.git";
+    url = "https://github.com/rizo/onix.git";
     rev = "2ba70cf1b11826fd4bd920269dc9613ed427febd";
   }) { verbosity = "info"; };
 
