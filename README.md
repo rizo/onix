@@ -17,7 +17,7 @@ Onix provides a [Nix](https://nixos.org/download.html) powered workflow for work
 - Compilation of vendored packages.
 - Generation of opam-compatible "locked" files.
 
-See onix usage examples at https://github.com/odis-labs/onix-examples.
+See onix usage examples at https://github.com/rizo/onix-examples.
 
 
 ## Usage
