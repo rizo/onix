@@ -38,7 +38,7 @@ open struct
     let n = OpamPackage.name pkg in
     let v = OpamPackage.version pkg in
     if OpamPackage.Name.equal Opam_utils.ocaml_system_name n then
-      OpamPackage.Version.Set.mem v Nix_utils.available_ocaml_versions
+      Nix_utils.check_ocaml_packages_version v
     else
       let env = Resolvers.resolve_available_current_system in
       OpamFilter.eval_to_bool ~default:false env available

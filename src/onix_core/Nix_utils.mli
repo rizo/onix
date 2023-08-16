@@ -27,5 +27,5 @@ type store_path = {
 
 val pp_store_path : Format.formatter -> store_path -> unit
 val parse_store_path : string -> store_path
-val available_ocaml_versions : OpamPackage.Version.Set.t
 val make_ocaml_packages_path : OpamPackage.Version.t -> string
+val check_ocaml_packages_version : OpamPackage.Version.t -> bool

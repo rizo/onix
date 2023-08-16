@@ -244,26 +244,24 @@ let parse_store_path path =
       Fmt.invalid_arg "Invalid hash and package name in path: %S" path)
   | _ -> Fmt.invalid_arg "Invalid nix store path: %S" path
 
-(* See: pkgs.ocaml-ng.ocamlPackages_4_XX.ocaml.version *)
-let available_ocaml_versions =
-  OpamPackage.Version.Set.of_list
-    [
-      OpamPackage.Version.of_string "4.08.1";
-      OpamPackage.Version.of_string "4.09.1";
-      OpamPackage.Version.of_string "4.10.2";
-      OpamPackage.Version.of_string "4.11.2";
-      OpamPackage.Version.of_string "4.12.1";
-      OpamPackage.Version.of_string "4.13.1";
-      OpamPackage.Version.of_string "4.14.0";
-    ]
-
 let make_ocaml_packages_path version =
-  let version_str = OpamPackage.Version.to_string version in
-  if not (OpamPackage.Version.Set.mem version available_ocaml_versions) then
-    raise (Failure ("Unsupported nixpkgs ocaml version: " ^ version_str));
-  (* 4.XX.Y -> 4.XX *)
-  let version_str_short =
-    String.sub version_str 0 4
-    |> String.mapi (fun i x -> if i = 1 then '_' else x)
-  in
-  String.concat "" ["ocaml-ng.ocamlPackages_"; version_str_short; ".ocaml"]
+  (* See: pkgs.ocaml-ng.ocamlPackages_X_XX.ocaml.version *)
+  match OpamPackage.Version.to_string version with
+  | "4.08.1" -> "ocaml-ng.ocamlPackages_4_08.ocaml"
+  | "4.09.1" -> "ocaml-ng.ocamlPackages_4_09.ocaml"
+  | "4.10.2" -> "ocaml-ng.ocamlPackages_4_10.ocaml"
+  | "4.11.2" -> "ocaml-ng.ocamlPackages_4_11.ocaml"
+  | "4.12.1" -> "ocaml-ng.ocamlPackages_4_12.ocaml"
+  | "4.13.1" -> "ocaml-ng.ocamlPackages_4_13.ocaml"
+  | "4.14.0" -> "ocaml-ng.ocamlPackages_4_14.ocaml"
+  (* [NOTE] This currently doesn't work because opam doesn't have the "-beta1"
+     version. Once `ocamlPackages` has a non-beta 5.0, we can add it here. *)
+  (* | "5.0.0-beta1" -> "ocaml-ng.ocamlPackages_5_0.ocaml" *)
+  | unsupported ->
+    Fmt.failwith "Unsupported nixpkgs ocaml version: %s" unsupported
+
+let check_ocaml_packages_version version =
+  try
+    let _ = make_ocaml_packages_path version in
+    true
+  with Failure _ -> false
