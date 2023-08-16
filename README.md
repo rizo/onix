@@ -167,7 +167,7 @@ onix.env {
 Regenreate the lock file. This will add the vendored packages to your build scope.
 
 
-## Override packages
+## Overriding packages
 
 Any package in the onix build scope can be overridden using overlays.
 
