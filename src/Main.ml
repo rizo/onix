@@ -260,54 +260,6 @@ module Lock = struct
         $ graphviz_file_path_arg)
 end
 
-module Gen = struct
-  let lock_dir_arg =
-    let doc = "The path to the output lock directory." in
-    let docv = "DIR" in
-    Arg.(info ["lock-dir"] ~docv ~doc |> opt file "./onix.lock" |> value)
-
-  let run style_renderer log_level lock_dir repository_urls resolutions
-      with_test with_doc with_dev_setup opam_file_paths =
-    setup_logs style_renderer log_level;
-    Logs.info (fun log -> log "gen: Running...");
-
-    let repository_urls = List.map OpamUrl.of_string repository_urls in
-
-    let opam_file_paths =
-      List.map
-        (fun path ->
-          if not (Lock.is_opam_filename path) then
-            Fmt.failwith "Provided input path is not an opam file path.";
-          (* IMPORTANT: Do not resolve to absolute path. *)
-          OpamFilename.raw path)
-        opam_file_paths
-    in
-
-    let lock_file =
-      Onix_core.Solver.solve ~repository_urls ~resolutions ~with_test ~with_doc
-        ~with_dev_setup opam_file_paths
-    in
-    Onix_lock_nix.gen ~gitignore:true ~lock_dir ~with_test ~with_doc
-      ~with_dev_setup lock_file;
-    Logs.info (fun log -> log "Created the nix environment in %S." lock_dir)
-
-  let info = Cmd.info "gen" ~doc:"Generate the derivation tree for packages."
-
-  let cmd =
-    Cmd.v info
-      Term.(
-        const run
-        $ Fmt_cli.style_renderer ()
-        $ Logs_cli.level ~env:(Cmd.Env.info "ONIX_LOG_LEVEL") ()
-        $ lock_dir_arg
-        $ Lock.repository_urls_arg
-        $ Lock.resolutions_arg
-        $ with_test_arg
-        $ with_doc_arg
-        $ with_dev_setup_arg
-        $ Lock.opam_file_paths_arg)
-end
-
 let () =
   Printexc.record_backtrace true;
   let doc = "Manage OCaml projects with Nix" in
@@ -319,7 +271,7 @@ let () =
     let run () = `Help (`Pager, None) in
     Term.(ret (const run $ const ()))
   in
-  [Lock.cmd; Gen.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
+  [Lock.cmd; Opam_build.cmd; Opam_install.cmd; Opam_patch.cmd]
   |> Cmdliner.Cmd.group info ~default
   |> Cmdliner.Cmd.eval
   |> Stdlib.exit

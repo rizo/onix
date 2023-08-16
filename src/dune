@@ -1,3 +1,5 @@
+(dirs onix_core onix_lock_graphviz onix_lock_json onix_lock_opam)
+
 (executable
  (name Main)
  (public_name onix)
@@ -12,7 +14,6 @@
   fmt.tty
   cmdliner
   onix_core
-  onix_lock_nix
   onix_lock_json
   onix_lock_opam
   onix_lock_graphviz

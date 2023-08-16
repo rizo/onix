@@ -8,14 +8,14 @@
  (modules Test_lock)
  (libraries onix_core onix_lock_json opam-format opam-core fmt))
 
-(test
- (name Opam_to_nix)
- (modules Opam_to_nix)
- (deps zarith.opam)
- (libraries
-  onix_core
-  onix_lock_nix
-  opam-core
-  opam-file-format
-  opam-format
-  fmt))
+; (test
+;  (name Opam_to_nix)
+;  (modules Opam_to_nix)
+;  (deps zarith.opam)
+;  (libraries
+;   onix_core
+;   onix_lock_nix
+;   opam-core
+;   opam-file-format
+;   opam-format
+;   fmt))
