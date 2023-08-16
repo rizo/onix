@@ -30,7 +30,7 @@ let
   # Obtain the latest onix package.
   onix = import (builtins.fetchGit {
     url = "https://github.com/odis-labs/onix.git";
-    rev = "caccd787b2c494545d0e4fcee130ed60bfba29d0";
+    rev = "2ba70cf1b11826fd4bd920269dc9613ed427febd";
   }) { verbosity = "info"; };
 
 # Create your project environment.
