@@ -25,17 +25,12 @@ See onix usage examples at https://github.com/rizo/onix-examples.
 Create `default.nix` in your OCaml project where opam files are located:
 
 ```nix
-{ pkgs ? import <nixpkgs> { } }:
-
 let
-  # Obtain the latest onix version.
+  # Obtain the latest onix package.
   onix = import (builtins.fetchGit {
     url = "https://github.com/odis-labs/onix.git";
-    rev = "4453bd3e0398cc8b62161a3856634f64565119b5";
-  }) {
-    inherit pkgs;
-    verbosity = "info";
-  };
+    rev = "caccd787b2c494545d0e4fcee130ed60bfba29d0";
+  }) { verbosity = "info"; };
 
 # Create your project environment.
 in onix.env {
