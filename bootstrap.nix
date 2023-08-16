@@ -7,10 +7,10 @@ let
     verbosity = "debug";
   };
 in onix.env {
-  repo = {
+  repos = [{
     url = "https://github.com/ocaml/opam-repository.git";
     rev = "f3dcd527e82e83facb92cd2727651938cb9fecf9";
-  };
+  }];
   path = ./.;
   deps = { "ocaml-system" = "*"; };
   vars = { "with-dev-setup" = true; };

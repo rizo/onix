@@ -104,6 +104,29 @@ Regenreate the lock file. This will add the development setup packages to your
 shell environment.
 
 
+## External dependencies
+
+External dependencies of the opam packages are looked up in [`nixpkgs`](https://search.nixos.org/packages).
+
+If the opam file of a dependency has a dedicated entry under [`depexts`](https://opam.ocaml.org/doc/Manual.html#opamfield-depexts) for NixOS (specified as `os-distribution = "nixos"`), onix will include that dependency in the lock file and in the build environment.
+
+Alternatively, onix will use packages specified for other os distributions as optional dependencies. The hope here is that the name of the depext might match the name of the package in `nixpkgs`.
+
+Finally, if you wish to precisely control the external dependencies, you can provide an overlay that specifies the exact packages to be used. For example:
+
+```nix
+onix.env {
+  # ...
+  overlay = self: super: {
+    my_dep = super.my_dep.overrideAttrs (oldAttrs: {
+      nativeBuildInputs = oldAttrs.nativeBuildInputs or [ ]
+        ++ [ pkgs.my_depext ];
+    });
+  };
+}
+```
+
+
 ## OCaml compilers
 
 The following compiler packages are supported:

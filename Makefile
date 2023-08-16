@@ -17,7 +17,7 @@ nix-shell:
 
 .PHONY: nix-bootstrap
 nix-bootstrap:
-	nix-build ./nix/bootstrap.nix
+	nix-build ./bootstrap.nix
 
 .PHONY: test
 test:
