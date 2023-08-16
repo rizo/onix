@@ -2,7 +2,9 @@
 
 Build OCaml projects with Nix.
 
-> Note: this project is experimental. The core functionality is stable but the API may break before the official release.
+> **NOTE**
+>
+> This project is experimental. The core functionality is stable but the API may break before the official release.
 
 Onix provides a [Nix](https://nixos.org/download.html) powered workflow for working with opam projects.
 
