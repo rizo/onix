@@ -43,6 +43,9 @@ in onix.env {
     "with-doc" = true;
     "with-dev-setup" = true;
   };
+
+  # Optional: use the compiler package from nixpkgs.
+  deps = { "ocaml-system" = "*"; };
 }
 ```
 
@@ -111,8 +114,9 @@ The following compiler packages are supported:
 - `ocaml-variants` - Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
 - `ocaml-base-compiler` - Build an opam compiler with vanilla options. This is the compiler normally used by opam.
 
-Add the compiler package to the `deps` field in your `default.nix` file with
-any additional compiler options packages:
+By default, the compiler will be built from source.
+
+To specify the compiler package, add an entry to the `deps` field in your `default.nix` file with any additional compiler options packages:
 
 ```nix
 onix.env {
@@ -236,9 +240,8 @@ onix.env {
   #   - a version constraint string: "pkg" = ">2.0";
   #   - a local opam file path: "pkg" = ./vendor/pkg/opam;
   #   - a git source: "pkg" = { url = "https://github.com/user/repo.git" }.
-  # By default, the ocaml-system package (i.e. from nixpkgs) is used in deps.
-  # Example: `deps = { "dune" = ">3.6"; };`
-  deps = { "ocaml-system" = "*"; };
+  # Example: `deps = { "ocaml-system" = "*"; "dune" = ">3.6"; };`
+  deps = { };
 
   # The path to the onix lock file.
   # Example: `lock = ./my-custm-lock.json;`
