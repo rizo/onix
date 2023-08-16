@@ -104,6 +104,29 @@ Regenreate the lock file. This will add the development setup packages to your
 shell environment.
 
 
+## Specifying an OCaml compiler package
+
+The following compiler packages are supported:
+- `ocaml-system` - Use the compiler provided by nixpkgs. This is the default compiler used by onix. Using this option avoids building the compiler from scratch.
+- `ocaml-variants` - Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
+- `ocaml-base-compiler` - Build an opam compiler with vanilla options. This is the compiler normally used by opam.
+
+Add the compiler package to the `deps` field in your `default.nix` file with
+any additional compiler options packages:
+
+```nix
+onix.env {
+  deps = {
+    "ocaml-variants" = "<5.0";
+    "ocaml-option-flambda" = "*";
+  };
+}
+```
+
+This will build the compiler with flambda support. You can find the list of all supported options packages [here](https://ocaml.org/p/ocaml-variants/latest#used-by).
+
+
+
 ## External dependencies
 
 External dependencies of the opam packages are looked up in [`nixpkgs`](https://search.nixos.org/packages).
@@ -125,29 +148,6 @@ onix.env {
   };
 }
 ```
-
-
-## OCaml compilers
-
-The following compiler packages are supported:
-- `ocaml-system` - Use the compiler provided by nixpkgs. This is the default compiler used by onix. Using this option avoids building the compiler from scratch.
-- `ocaml-variants` - Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
-- `ocaml-base-compiler` - Build an opam compiler with vanilla options. This is the compiler normally used by opam.
-
-Add the compiler package to the `deps` field in your `default.nix` file with
-any additional compiler options packages:
-
-```nix
-onix.env {
-  deps = {
-    "ocaml-variants" = "<5.0";
-    "ocaml-option-flambda" = "*";
-  };
-}
-```
-
-This will build the compiler with flambda support. You can find the list of all supported options packages [here](https://ocaml.org/p/ocaml-variants/latest#used-by).
-
 
 ## Vendoring packages
 
