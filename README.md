@@ -131,7 +131,6 @@ onix.env {
 This will build the compiler with flambda support. You can find the list of all supported options packages [here](https://ocaml.org/p/ocaml-variants/latest#used-by).
 
 
-
 ## External dependencies
 
 External dependencies of the opam packages are looked up in [`nixpkgs`](https://search.nixos.org/packages).
@@ -325,12 +324,14 @@ onix.env {
 
 This file is regenerated everytime you open your nix shell, so make sure to open the nix shell at least once before opening VS Code.
 
-> Note: The `.onix.env` file contains host-specific paths of the onix environment. Do not commit this file and add it to your `.gitignore`.
+> **Note**
+> The `.onix.env` file contains host-specific paths of the onix environment. Do not commit this file and add it to your `.gitignore`.
 
 Set up the OCaml Platform extension to source this file before executing any
 commands:
 
-> Note: Remember to replace `YOUR_PROJECT_FOLDER` by your project folder name.
+> **Note**
+> Remember to replace `YOUR_PROJECT_FOLDER` by your project folder name.
 
 ```json
 {
