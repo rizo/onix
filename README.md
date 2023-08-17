@@ -110,14 +110,14 @@ shell environment.
 
 ## Specifying an OCaml compiler package
 
-The list of OCaml package versions can be consulted at https://ocaml.org/p/ocaml.
+The list of OCaml compiler versions can be consulted at https://ocaml.org/p/ocaml-base-compiler.
 
-To pick a compiler version for the build environment, add the `ocaml` package to the `deps` field:
+To pick a compiler version for the build environment, add the `ocaml-base-compiler` package to the `deps` field:
 
 ```nix
 onix.env {
   deps = {
-    "ocaml" = "5.2.0";
+    "ocaml-base-compiler" = "5.0.0";
   };
 }
 ```
