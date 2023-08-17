@@ -1,6 +1,0 @@
-{
-  "ocaml.sandbox": {
-    "kind": "custom",
-    "template": "nix-shell ${workspaceFolder:onix}/shell.nix --command \"$prog $args\""
-  }
-}
