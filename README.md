@@ -110,7 +110,7 @@ shell environment.
 
 ## Specifying an OCaml compiler package
 
-The list of stable OCaml package versions can be consulted at https://ocaml.org/p/ocaml.
+The list of OCaml package versions can be consulted at https://ocaml.org/p/ocaml.
 
 To pick a compiler version for the build environment, add the `ocaml` package to the `deps` field:
 
