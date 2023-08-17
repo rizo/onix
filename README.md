@@ -12,7 +12,7 @@ Onix provides a [Nix](https://nixos.org/download.html) powered workflow for work
 - Fully hermetic and deterministic builds based on a precise lock file.
 - Robust cross-project cache powered by Nix store.
 - Support for `pin-depends` to add packages outside of the opam repository.
-- Supoort for automated `depexts` installation from nixpkgs.
+- Support for automated `depexts` installation from nixpkgs.
 - Conditional compilation of `with-test`, `with-doc` and `with-dev-setup` dependencies.
 - Support for compiler variants similar to opam (for example, the flambda compiler can be used).
 - Compilation of vendored packages.
@@ -45,8 +45,8 @@ in onix.env {
     "with-dev-setup" = true;
   };
 
-  # Optional: use the compiler package from nixpkgs.
-  deps = { "ocaml-system" = "*"; };
+  # Optional: specify the compiler version for the build environment.
+  deps = { "ocaml" = "5.2.0"; };
 }
 ```
 
@@ -110,12 +110,31 @@ shell environment.
 
 ## Specifying an OCaml compiler package
 
-The following compiler packages are supported:
-- `ocaml-system` - Use the compiler provided by nixpkgs. This might avoid building the compiler from source since it's normally included in the official Nix build cache.
-- `ocaml-variants` - Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
-- `ocaml-base-compiler` - Build an opam compiler with vanilla options. This is the compiler normally used by opam.
+The list of stable OCaml package versions can be consulted at https://ocaml.org/p/ocaml.
 
-By default, the compiler will be built from source.
+To pick a compiler version for the build environment, add the `ocaml` package to the `deps` field:
+
+```nix
+onix.env {
+  deps = {
+    "ocaml" = "5.2.0";
+  };
+}
+```
+
+This will build the specified ocaml compiler from source.
+
+> **NOTE**
+> The specified version must be compatible with the constraints found in the project's opam files. It is generally a good idea to have loose constraints for the ocaml package in opam files.
+
+
+### Other compiler packages
+
+Alternatively, if you wish to have more freedom over the selection of the compiler,
+the following compiler packages are supported:
+- [`ocaml-system`](https://ocaml.org/p/ocaml-system/latest) - Use the compiler provided by nixpkgs. This might avoid building the compiler from source since it's normally included in the official Nix build cache. Note that the nixpkgs repository isn't always in sync with opam repository so recent compiler versions will not be available in nixpkgs.
+- [`ocaml-variants`](https://ocaml.org/p/ocaml-variants/latest) - Build a custom opam compiler. Can be used to build [variations of the compiler](https://discuss.ocaml.org/t/experimental-new-layout-for-the-ocaml-variants-packages-in-opam-repository/6779).
+- [`ocaml-base-compiler`](https://ocaml.org/p/ocaml-base-compiler/latest) - Build an opam compiler with vanilla options. This is the compiler normally used by opam.
 
 To specify the compiler package, add an entry to the `deps` field in your `default.nix` file with any additional compiler options packages:
 
