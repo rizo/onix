@@ -64,6 +64,7 @@ let is_pinned package = is_pinned_version (OpamPackage.version package)
 let opam_package_of_filename filename =
   let base_str = OpamFilename.Base.to_string (OpamFilename.basename filename) in
   if String.equal base_str "opam" then
+    (* $pkg/opam *)
     let dir_str = OpamFilename.Dir.to_string (OpamFilename.dirname filename) in
     match List.rev (String.split_on_char '/' dir_str) with
     | pkg_dir :: _ ->
@@ -73,6 +74,7 @@ let opam_package_of_filename filename =
         ("Could not extract package name from path (must be pkg/opam): "
         ^ OpamFilename.to_string filename)
   else
+    (* $pkg.opam or $pkg.$ver.opam *)
     let opamname = Filename.remove_extension base_str in
     try OpamPackage.of_string opamname
     with Failure _ ->
@@ -98,8 +100,8 @@ let debug_var ?(scope = "unknown") var contents =
            (Fmt.using OpamVariable.string_of_variable_contents Fmt.Dump.string))
         contents scope)
 
-let find_root_packages input_paths =
-  input_paths
+let find_root_packages opam_file_paths =
+  opam_file_paths
   |> List.to_seq
   |> Seq.map (fun path ->
          let package = opam_package_of_filename path in
