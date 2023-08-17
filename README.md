@@ -46,7 +46,7 @@ in onix.env {
   };
 
   # Optional: specify the compiler version for the build environment.
-  deps = { "ocaml" = "5.2.0"; };
+  deps = { "ocaml-base-compiler" = "*"; };
 }
 ```
 
