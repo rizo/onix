@@ -62,22 +62,34 @@ let is_pinned_version version = OpamPackage.Version.equal version dev_version
 let is_pinned package = is_pinned_version (OpamPackage.version package)
 
 let opam_package_of_filename filename =
-  let base_str = OpamFilename.Base.to_string (OpamFilename.basename filename) in
-  if String.equal base_str "opam" then
-    (* $pkg/opam *)
-    let dir_str = OpamFilename.Dir.to_string (OpamFilename.dirname filename) in
-    match List.rev (String.split_on_char '/' dir_str) with
-    | pkg_dir :: _ ->
-      OpamPackage.create (OpamPackage.Name.of_string pkg_dir) dev_version
-    | _ ->
-      invalid_arg
-        ("Could not extract package name from path (must be pkg/opam): "
-        ^ OpamFilename.to_string filename)
+  let filename_str = OpamFilename.to_string filename in
+  if String.equal filename_str "./opam" then
+    (* ./opam - read as $pkg/opam where $pkg is CWD.
+       If ./opam is a dir, `filename` would have been `./opam/$pkg.opam`. *)
+    let dirname =
+      OpamFilename.Base.to_string
+        (OpamFilename.basename_dir (OpamFilename.cwd ()))
+    in
+    OpamPackage.create (OpamPackage.Name.of_string dirname) dev_version
   else
-    (* $pkg.opam or $pkg.$ver.opam *)
-    let opamname = Filename.remove_extension base_str in
-    try OpamPackage.of_string opamname
-    with Failure _ ->
+    let base_str =
+      OpamFilename.Base.to_string (OpamFilename.basename filename)
+    in
+    if String.equal base_str "opam" then
+      (* $pkg/opam *)
+      let dir_str =
+        OpamFilename.Dir.to_string (OpamFilename.dirname filename)
+      in
+      match List.rev (String.split_on_char '/' dir_str) with
+      | pkg_dir :: _ ->
+        OpamPackage.create (OpamPackage.Name.of_string pkg_dir) dev_version
+      | _ ->
+        invalid_arg
+          ("Could not extract package name from path (must be pkg/opam): "
+          ^ filename_str)
+    else
+      (* $pkg.opam *)
+      let opamname = Filename.remove_extension base_str in
       OpamPackage.create (OpamPackage.Name.of_string opamname) dev_version
 
 type dep_vars = {
