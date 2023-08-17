@@ -125,7 +125,7 @@ onix.env {
 This will build the specified ocaml compiler from source.
 
 > **NOTE**
-> The specified version must be compatible with the constraints found in the project's opam files. It is generally a good idea to have loose constraints for the ocaml package in opam files.
+> The specified version must be compatible with the constraints found in the project's opam files. Generally it is a good idea to have loose constraints for the ocaml package in opam files.
 
 
 ### Other compiler packages
