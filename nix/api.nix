@@ -160,10 +160,23 @@ let
       toString rootPath;
 
   lookupRoots = rootPath:
-    lib.attrsets.mapAttrsToList (filename: _type: filename)
-    (lib.attrsets.filterAttrs (filename: _type:
-      filename != ".opam" && lib.strings.hasSuffix ".opam" filename)
-      (builtins.readDir rootPath));
+    let
+      dirItems = builtins.readDir rootPath;
+      opamFiles = lib.attrsets.mapAttrsToList (f: t:
+        if f != ".opam" && lib.strings.hasSuffix ".opam" f then
+          [ f ]
+        else if f == "opam" then
+        # ./opam can be a file or a directory with opam files
+          if t == "directory" then
+          # read all files in ./opam/ as opam files
+          # TODO: ensure matches opam/$pkg.opam
+            lib.attrsets.mapAttrsToList (f': _: "opam/" + f')
+            (builtins.readDir (rootPath + "/opam"))
+          else
+            [ f ]
+        else
+          [ ]) dirItems;
+    in builtins.concatMap (files: files) opamFiles;
 
   processRoots = rootPath: roots:
     if isNull rootPath && !(isNull roots) && length roots > 0 then
