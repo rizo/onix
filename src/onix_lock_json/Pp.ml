@@ -35,7 +35,11 @@ let pp_src f (t : Lock_pkg.t) =
     let path =
       let opam_path = t.opam_details.Opam_utils.path in
       let path = OpamFilename.(Dir.to_string (dirname opam_path)) in
-      if String.equal path "./." || String.equal path "./" then "." else path
+      match path with
+      | "./." | "./" -> "."
+      (* Use "." for ./opam/$pkg.opam. *)
+      | "opam" -> "."
+      | _ -> path
     in
     Fmt.pf f ",@,\"src\": { \"url\": \"file://%s\" }" path
 

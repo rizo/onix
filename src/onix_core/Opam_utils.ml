@@ -5,10 +5,12 @@ type opam_file_type =
   | `pkg_opam ]
 
 (* path:
-   - pkg.opam
-   - vendor/pkg/pkg.opam
-   - vendor/pkg/opam
-   - $repo/packages/pkg/pkg.version/opam *)
+   - opam
+   - opam/$pkg.opam
+   - $pkg.opam
+   - vendor/$pkg/$pkg.opam
+   - vendor/$pkg/opam
+   - $repo/packages/$pkg/$pkg.version/opam ($repo is absolute) *)
 type opam_details = {
   package : OpamTypes.package;
   path : OpamFilename.t;

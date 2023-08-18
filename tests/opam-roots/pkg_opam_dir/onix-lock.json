@@ -9,7 +9,7 @@
    "packages" : {
      "aaa": {
        "version": "dev",
-       "src": { "url": "file://opam" },
+       "src": { "url": "file://." },
        "depends": [
          "fmt",
          "ocaml"
@@ -26,7 +26,7 @@
      },
      "bbb": {
        "version": "dev",
-       "src": { "url": "file://opam" },
+       "src": { "url": "file://." },
        "depends": [
          "ocaml",
          "yojson"
