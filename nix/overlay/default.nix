@@ -103,6 +103,10 @@ let
       '';
     });
 
+    odoc = super.odoc.overrideAttrs (oldAttrs: {
+      nativeBuildInputs = (oldAttrs.nativeBuildInputs or [ ]) ++ [ self.crunch ];
+    });
+
   };
 
   darwin = {
