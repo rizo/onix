@@ -107,6 +107,11 @@ let
       nativeBuildInputs = (oldAttrs.nativeBuildInputs or [ ]) ++ [ self.crunch ];
     });
 
+    # nix 23.11 renamed `pkgconfig` to `pkg-config`
+    conf-pkg-config = super.conf-pkg-config.overrideAttrs (oldAttrs: {
+      propagatedBuildInputs = [ nixpkgs.pkg-config ];
+      propagatedNativeBuildInputs = [ nixpkgs.pkg-config ];
+    });
   };
 
   darwin = {
