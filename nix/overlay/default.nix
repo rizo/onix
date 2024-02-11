@@ -97,10 +97,11 @@ let
     # });
 
     num = super.num.overrideAttrs (selfAttrs: superAttrs: {
-      postInstall = ''
-        mkdir -p "$out/lib/ocaml/4.14.0/site-lib/stublibs"
-        mv $out/lib/ocaml/4.14.0/site-lib/num/*.so "$out/lib/ocaml/4.14.0/site-lib/stublibs"
-      '';
+      installPhase = ''
+          # opaline does not support lib_root
+          substituteInPlace num.install --replace lib_root lib
+          ${nixpkgs.opaline}/bin/opaline -prefix $out -libdir $OCAMLFIND_DESTDIR num.install
+        '';
     });
 
     odoc = super.odoc.overrideAttrs (oldAttrs: {
