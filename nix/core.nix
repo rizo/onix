@@ -50,6 +50,7 @@ let
         url = builtins.substring 4 (urlLen - 4) src.url;
         inherit (src) rev;
         allRefs = true;
+        submodules = true;
       }
     else if lib.strings.hasPrefix "http" src.url then
     # http url
