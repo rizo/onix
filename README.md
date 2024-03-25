@@ -1,6 +1,6 @@
 # onix
 
-Build OCaml projects with Nix.
+Build opam projects with Nix.
 
 > **NOTE**
 > This project is experimental. The core functionality is stable but the API may break before the official release.
