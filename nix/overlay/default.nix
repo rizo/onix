@@ -121,6 +121,15 @@ let
         nixpkgs.darwin.apple_sdk.frameworks.Foundation
         nixpkgs.darwin.apple_sdk.frameworks.CoreServices
       ];
+
+      # See https://github.com/ocaml/dune/pull/6260
+      nativeBuildInputs = oldAttrs.nativeBuildInputs ++ [ nixpkgs.makeWrapper ];
+      postFixup =
+        if nixpkgs.stdenv.isDarwin then ''
+            wrapProgram $out/bin/dune \
+              --suffix PATH : "${nixpkgs.darwin.sigtool}/bin"
+          ''
+        else "";
     });
   };
 
