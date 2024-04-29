@@ -268,7 +268,7 @@ let
         defaultOverlay
       else
         self: super: defaultOverlay self super // overlay self super;
-    in scope.overrideScope' overlay';
+    in scope.overrideScope overlay';
 
   joinRepositories = repositories:
     if builtins.length repositories == 1 then
