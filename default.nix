@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_4_14
+{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_5_1
 , verbosity ? "warning" }:
 
 let
@@ -6,7 +6,7 @@ let
   api = import ./nix/api.nix { inherit pkgs onix verbosity; };
   onix = ocamlPackages.buildDunePackage {
     pname = "onix";
-    version = "0.0.1";
+    version = "0.0.6";
     duneVersion = "3";
 
     passthru = { inherit (api) env; };
