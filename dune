@@ -1,1 +1,1 @@
-(dirs src tests)
+(dirs src tests vendor)

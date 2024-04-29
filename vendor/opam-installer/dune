@@ -1,0 +1,4 @@
+(executable
+  (name opam_installer)
+  (public_name onix-opam-installer)
+  (libraries opam-format opam-core cmdliner))

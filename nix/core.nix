@@ -211,9 +211,12 @@ let
         runHook preInstall
 
         # .install files
-        ${pkgs.opaline}/bin/opaline \
-          -prefix="$out" \
-          -libdir="$out/lib/ocaml/${ocaml.version}/site-lib"
+        if [[ -e "./${name}.install" ]]; then
+          ${onix}/bin/onix-opam-installer \
+            --prefix="$out" \
+            --libdir="$out/lib/ocaml/${ocaml.version}/site-lib" \
+            "./${name}.install"
+        fi
 
         # .config files
         if [[ -e "./${name}.config" ]]; then
