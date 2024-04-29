@@ -254,9 +254,8 @@ let make_ocaml_packages_path version =
   | "4.12.1" -> "ocaml-ng.ocamlPackages_4_12.ocaml"
   | "4.13.1" -> "ocaml-ng.ocamlPackages_4_13.ocaml"
   | "4.14.1" -> "ocaml-ng.ocamlPackages_4_14.ocaml"
-  (* [NOTE] This currently doesn't work because opam doesn't have the "-beta1"
-     version. Once `ocamlPackages` has a non-beta 5.0, we can add it here. *)
-  (* | "5.0.0-beta1" -> "ocaml-ng.ocamlPackages_5_0.ocaml" *)
+  | "5.0.0" -> "ocaml-ng.ocamlPackages_5_0.ocaml"
+  | "5.1.1" -> "ocaml-ng.ocamlPackages_5_1.ocaml"
   | unsupported ->
     Fmt.failwith "Unsupported nixpkgs ocaml version: %s" unsupported
 
