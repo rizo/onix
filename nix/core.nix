@@ -283,7 +283,7 @@ let
 
 in {
   lock =
-    { lockPath, opamLockPath, opamFiles, repositoryUrls, constraints, vars }:
+    { lockPath, opamLockPath, opamFiles, repositoryUrls, constraints, vars, graphvizPath }:
     let
       repositoryUrlsArg = lib.strings.concatStringsSep "," (map (repositoryUrl:
         if repositoryUrl ? "rev" then
@@ -308,11 +308,15 @@ in {
         " --lock-file=${lockPath}";
       opamLockPathOpt =
         if isNull opamLockPath then "" else " --opam-lock-file=${opamLockPath}";
+      graphvizPathOpt = if isNull graphvizPath then
+        ""
+      else
+        " --graphviz-file=${graphvizPath}";
 
     in pkgs.mkShell {
       buildInputs = [ onix ];
       shellHook = ''
-        onix lock${lockPathOpt}${opamLockPathOpt} \
+        onix lock${lockPathOpt}${opamLockPathOpt}${graphvizPathOpt} \
           --repository-urls='${repositoryUrlsArg}' \
           --resolutions='${mkResolutionsArg constraints}' \
           --with-test=${builtins.toJSON vars.with-test} \

@@ -270,6 +270,10 @@ onix.env {
   # Example: `opam-lock = ./my-project.opam.locked;`
   opam-lock = null;
 
+  # The path to the graphviz "dot" file with a dependency graph.
+  # Example: `graphviz-file = ./onix-lock.dot;`
+  graphviz-file = null;
+
   # Package variables.
   vars = {
     "with-test" = false;

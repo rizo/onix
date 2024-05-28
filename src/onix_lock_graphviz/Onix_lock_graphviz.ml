@@ -56,4 +56,4 @@ let gen ~graphviz_file_path (lock_file : Lock_file.t) =
       let out = Format.formatter_of_out_channel chan in
       Fmt.pf out "%a" pp pkgs);
   Logs.info (fun log ->
-      log "Created an opam lock file at %S." graphviz_file_path)
+      log "Created an graphviz file at %S." graphviz_file_path)

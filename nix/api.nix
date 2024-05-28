@@ -34,6 +34,10 @@ let
     "onix: env-file argument must be a path or a null value, found: ${
       builtins.toJSON envFile
     }";
+  errInvalidGraphvizFile = path:
+    "onix: graphviz-file argument must be a path or a null value, found: ${
+      builtins.toJSON path
+    }";
   errInvalidVars = "onix: vars argument must be an attrset";
   errInvalidOverlay = "onix: overlay must be a function or a null value";
   errRequiredRootPath =
@@ -143,6 +147,12 @@ let
       overlay
     else
       throw errInvalidOverlay;
+
+  validateGraphvizFile = path:
+    if isString path || isPath path || isNull path then
+      path
+    else
+      throw (errInvalidGraphvizFile path);
 
   # Process arguments.
 
@@ -256,6 +266,11 @@ in {
       # The path to the opam lock file.
     , opam-lock ? null
 
+      # The path to the graphviz "dot" file that will be generated. This file
+      # will contain the dependency tree graph. If "null" (the default), the file will
+      # not be generated.
+    , graphviz-file ? null
+
       # Package variables.
     , vars ? { }
 
@@ -276,6 +291,7 @@ in {
         vars = validateVars vars;
         env-file = validateEnvFile env-file;
         opam-lock = validateLock opam-lock;
+        graphviz-file = validateGraphvizFile graphviz-file;
         overlay = validateOverlay overlay;
       };
 
@@ -292,6 +308,7 @@ in {
           processPathRelativeToRoot validatedArgs.rootPath validatedArgs.lock;
         opam-lock = processPathRelativeToRoot validatedArgs.rootPath
           validatedArgs.opam-lock;
+        graphviz-file = processPathRelativeToRoot validatedArgs.rootPath validatedArgs.graphviz-file;
         vars = processVars validatedArgs.vars;
         env-file = processPathRelativeToRoot validatedArgs.rootPath
           validatedArgs.env-file;
@@ -325,6 +342,7 @@ in {
         constraints = config.constraints;
         vars = config.vars;
         opamFiles = config.opamFiles;
+        graphvizPath = config.graphviz-file;
       };
 
       pkgs = allPkgs;
