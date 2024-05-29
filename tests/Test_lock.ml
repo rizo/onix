@@ -26,6 +26,26 @@ depexts: [
   ["libogg"] {os-distribution = "nixos"}
   ["libogg"] {os = "macos" & os-distribution = "homebrew"}
 ]
+url {
+  src: "https://github.com/xavierleroy/camlzip/archive/rel110.zip"
+  checksum: "sha256=a5541cbc38c14467a8abcbdcb54c1d2ed12515c1c4c6da0eb3bdafb44aff7996"
+}
+extra-source "gui_gtk_dir.patch" {
+  src:
+    "https://raw.githubusercontent.com/ocaml/opam-source-archives/main/patches/0install/gui_gtk_dir.patch"
+  checksum: [
+    "sha256=ef4c291794ed4ca7f024c671f48a8aaa2dcd9d12c1ab73829373a7d904e537e1"
+    "md5=0a14e57ca2b2a914a5433b3a2ca2abb1"
+  ]
+}
+extra-source "0install.install" {
+  src:
+    "https://raw.githubusercontent.com/ocaml/opam-source-archives/main/patches/0install/0install.install"
+  checksum: [
+    "sha256=db9ef395b376617d963fd4c097ebdfe005978f9a3282810f858f89207fa85ab2"
+    "md5=db6ee7a35da5d98136e5a56bad08496e"
+  ]
+}
 |}
 
 let dev_opam =
@@ -116,6 +136,20 @@ let test_complex_opam () =
   let actual = Fmt.str "@[<v>%a@]@." Onix_lock_json.Pp.pp_pkg lock_pkg in
   let expected =
     {|"version": "root",
+"src": {
+  "url": "https://github.com/xavierleroy/camlzip/archive/rel110.zip",
+  "sha256": "a5541cbc38c14467a8abcbdcb54c1d2ed12515c1c4c6da0eb3bdafb44aff7996"
+},
+"src-extra": {
+  "0install.install": {
+    "url": "https://raw.githubusercontent.com/ocaml/opam-source-archives/main/patches/0install/0install.install",
+    "sha256": "db9ef395b376617d963fd4c097ebdfe005978f9a3282810f858f89207fa85ab2"
+  },
+  "gui_gtk_dir.patch": {
+    "url": "https://raw.githubusercontent.com/ocaml/opam-source-archives/main/patches/0install/gui_gtk_dir.patch",
+    "sha256": "ef4c291794ed4ca7f024c671f48a8aaa2dcd9d12c1ab73829373a7d904e537e1"
+  }
+},
 "depends": [
   "bos",
   "cmdliner",
@@ -135,7 +169,8 @@ let test_complex_opam () =
   "odoc"
 ],
 "depexts": [
-  "libogg"
+  "libogg",
+  "unzip"
 ],
 "vars": { "with-test": true, "with-doc": true, "with-dev-setup": true }
 |}

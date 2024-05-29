@@ -1,14 +1,16 @@
 open Utils
 
+type http_src = {
+  url : OpamUrl.t;
+  hash : OpamHash.kind * string;
+}
+
 type src =
   | Git of {
       url : string;
       rev : string;
     }
-  | Http of {
-      url : OpamUrl.t;
-      hash : OpamHash.kind * string;
-    }
+  | Http of http_src
 
 type t = {
   src : src option;
@@ -22,6 +24,7 @@ type t = {
   depexts_unknown : String_set.t;
   vars : Opam_utils.dep_vars;
   flags : string list;
+  extra_src : (string * http_src) list;
 }
 
 val src_is_git : src -> bool
