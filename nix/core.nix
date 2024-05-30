@@ -99,13 +99,21 @@ let
         in lib.lists.toList (lib.attrsets.attrByPath pkgPath [ ] pkgs))
         (dep.depexts or [ ]);
 
+      # Main src of the dep
       src = if dep ? src then
         fetchSrc {
           inherit rootPath name;
           inherit (dep) src;
         }
-      else
-        null;
+      else null;
+
+      # The extra-source files
+      srcExtraCommands =
+        lib.attrsets.mapAttrsToList
+          (name: src: ''
+            ln -s ${pkgs.fetchurl src} "${name}"
+          '')
+          (dep.src-extra or {});
 
       opam = getOpamFile {
         inherit repoPath src name;
@@ -150,7 +158,12 @@ let
       ONIX_LOG_LEVEL = verbosity;
       ONIXPATH = lib.strings.concatStringsSep ":" dependsAndBuildPkgs;
 
+      # Steps:
+      # - Link extra-sources
+      # Run the opam patch actions
       prePatch = ''
+        ${lib.concatStrings srcExtraCommands}
+
         ${onix}/bin/onix opam-patch \
           --ocaml-version=${ocaml.version} \
           --opam=${opam} \

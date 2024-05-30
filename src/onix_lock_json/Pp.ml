@@ -13,6 +13,9 @@ let pp_hash f (kind, hash) =
   | `SHA512 -> Fmt.pf f "\"sha512\": %S" hash
   | `MD5 -> Fmt.pf f "\"md5\": %S" hash
 
+let pp_http_src f ({ url; hash } : Lock_pkg.http_src) =
+  Fmt.pf f "\"url\": %a,@,%a" (Fmt.quote Opam_utils.pp_url) url pp_hash hash
+
 let pp_src f (t : Lock_pkg.t) =
   if Opam_utils.Opam_details.check_has_absolute_path t.opam_details then
     (* Absolute path: use src. *)
@@ -26,10 +29,8 @@ let pp_src f (t : Lock_pkg.t) =
     | Some (Http { url; hash = `MD5, _ }) ->
       Fmt.invalid_arg "Unexpected md5 hash: package=%a url=%a"
         Opam_utils.pp_package t.opam_details.package Opam_utils.pp_url url
-    | Some (Http { url; hash }) ->
-      Fmt.pf f ",@,@[<v2>\"src\": {@,\"url\": %a,@,%a@]@,}"
-        (Fmt.quote Opam_utils.pp_url)
-        url pp_hash hash
+    | Some (Http hsrc) ->
+      Fmt.pf f ",@,@[<v2>\"src\": {@,%a@]@,}" pp_http_src hsrc
   else
     (* Relative path: use file scheme. *)
     let path =
@@ -42,6 +43,18 @@ let pp_src f (t : Lock_pkg.t) =
       | _ -> path
     in
     Fmt.pf f ",@,\"src\": { \"url\": \"file://%s\" }" path
+
+let pp_extra_src =
+  let pp_item f (name, hsrc) =
+    Fmt.pf f "@[<v2>%S: {@,%a@]@,}" name pp_http_src hsrc
+  in
+  fun f (srcs : (string * Lock_pkg.http_src) list) ->
+    if List.is_empty srcs then ()
+    else begin
+      Fmt.pf f ",@,@[<v2>\"src-extra\": {@ %a@]@ }"
+        (Fmt.iter ~sep:Fmt.comma List.iter pp_item)
+        srcs
+    end
 
 let pp_depends =
   let pp_deps = Fmt.iter ~sep:Fmt.comma Name_set.iter pp_name_quoted in
@@ -72,9 +85,9 @@ let pp_pkg_vars f vars =
     Fmt.pf f ",@,@[<v2>\"vars\": { %s }@]" vars_str
 
 let pp_pkg ppf (t : Lock_pkg.t) =
-  Fmt.pf ppf "\"version\": %S%a%a%a%a%a%a%a%a"
+  Fmt.pf ppf "\"version\": %S%a%a%a%a%a%a%a%a%a"
     (OpamPackage.version_to_string t.opam_details.package)
-    pp_src t (pp_depends "depends") t.depends
+    pp_src t pp_extra_src t.extra_src (pp_depends "depends") t.depends
     (pp_depends "build-depends")
     t.depends_build
     (pp_depends "test-depends")

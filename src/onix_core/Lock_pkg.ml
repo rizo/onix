@@ -21,15 +21,17 @@ module Resolvers = struct
       ]
 end
 
+type http_src = {
+  url : OpamUrl.t;
+  hash : OpamHash.kind * string;
+}
+
 type src =
   | Git of {
       url : string;
       rev : string;
     }
-  | Http of {
-      url : OpamUrl.t;
-      hash : OpamHash.kind * string;
-    }
+  | Http of http_src
 
 let src_is_git src =
   match src with
@@ -53,6 +55,7 @@ type t = {
   depexts_unknown : String_set.t;
   vars : Opam_utils.dep_vars;
   flags : string list;
+  extra_src : (string * http_src) list;
 }
 
 let check_is_zip_src src =
@@ -95,6 +98,18 @@ let select_opam_hash hashes =
   | Some hash, _, _ -> Some (`MD5, OpamHash.contents hash)
   | _ -> None
 
+let http_src_of_opam_url ~hashes url =
+  let hash =
+    match select_opam_hash hashes with
+    | Some hash -> hash
+    | None ->
+      Logs.warn (fun log ->
+          log "Prefetching url without hash: %a" Opam_utils.pp_url url);
+      ( `SHA256,
+        Nix_utils.prefetch_url ~hash_type:`sha256 (OpamUrl.to_string url) )
+  in
+  { url; hash }
+
 let src_of_opam_url opam_url =
   let url = OpamFile.URL.url opam_url in
   match url.OpamUrl.backend with
@@ -104,16 +119,8 @@ let src_of_opam_url opam_url =
     | _ -> Error (`Msg ("Missing rev in git url: " ^ OpamUrl.to_string url)))
   | `http ->
     let hashes = OpamFile.URL.checksum opam_url in
-    let hash =
-      match select_opam_hash hashes with
-      | Some hash -> hash
-      | None ->
-        Logs.warn (fun log ->
-            log "Prefetching url without hash: %a" Opam_utils.pp_url url);
-        ( `SHA256,
-          Nix_utils.prefetch_url ~hash_type:`sha256 (OpamUrl.to_string url) )
-    in
-    Ok (Http { url; hash })
+    let http_src = http_src_of_opam_url ~hashes url in
+    Ok (Http http_src)
   | _ -> Error (`Msg ("Unsupported url: " ^ OpamUrl.to_string url))
 
 let get_src ~package opam_url_opt =
@@ -203,6 +210,22 @@ let get_depexts ~package ~is_zip_src ~env depexts =
   in
   (nix_depexts, unknown_depexts)
 
+let get_extra_sources (srcs : (OpamTypes.basename * OpamFile.URL.t) list) =
+  List.map
+    (fun (basename, opam_url) ->
+      let url = OpamFile.URL.url opam_url in
+      let name = OpamFilename.Base.to_string basename in
+      let http_src =
+        match url.OpamUrl.backend with
+        | `git | `hg | `rsync | `darcs ->
+          Fmt.failwith "extra-source: %S: invalid url, must be http" name
+        | `http ->
+          let hashes = OpamFile.URL.checksum opam_url in
+          http_src_of_opam_url ~hashes url
+      in
+      (name, http_src))
+    srcs
+
 (* Given required and optional deps, compute a union of all installed deps. *)
 let only_installed ~installed req opt =
   (* All req deps MUST be installed. *)
@@ -288,6 +311,8 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
     List.map OpamTypesBase.string_of_pkg_flag (OpamFile.OPAM.flags opam)
   in
 
+  let extra_src = get_extra_sources (OpamFile.OPAM.extra_sources opam) in
+
   Some
     {
       src;
@@ -302,4 +327,5 @@ let of_opam ~installed ~with_test ~with_doc ~with_dev_setup opam_details =
       depexts_unknown;
       flags;
       vars = { Opam_utils.test; doc; dev_setup };
+      extra_src;
     }
