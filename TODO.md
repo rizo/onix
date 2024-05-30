@@ -84,15 +84,15 @@
 - [ ] Handle lock file without ocaml.
 - [x] Version the lock file.
   - Add version, packages and repo fields.
-- [ ] Consider using joinSymlinks/linkFarm(!) to create a build scope.
+- [x] Consider using joinSymlinks/linkFarm(!) to create a build scope.
   - Use this for the `onix build` command, i.e., result will contain the root outputs.
 - [x] Consider using makeScope for the scope.
 - [ ] Handle pkg:installed?enable:disable.
 - [x] Stop using emptyPkg. Override the base compiler only?
-- [ ] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
-- [ ] Handle enable-ocaml-beta-repository.
+- [x] Would depending on the content of the opam files (as opposed to the opam file in the repo) improve cache reusability?
+- [x] Handle enable-ocaml-beta-repository.
   - In theory this is now working with multirepos.
-- [ ] Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.
+- [ ] ~~Should we include the opam field in the lock pkg? The opam file path can be reconstructed from the repo path and pkg nv.~~
 - [x] Hanlde "sys-ocaml-version" var.
 - [ ] Group dep flags.
 - [ ] Setup the opamverse test.
@@ -103,8 +103,9 @@
 - [ ] Filter out invalid nixpkgs names: "pkgs.devel/librdkafka"
 - [ ] Slacko base-no-ppx for lwt?
 - [ ] Support a vendoring/forking workflow (override src?).
-- [ ] Opam-installer requires ocaml 4.13 by default. Use the same version as the rest of the build.
-- [ ] Consider adding opam-installer to lock file to avoid pulling pkgs.opam-installer.
+- [ ] ~~Opam-installer requires ocaml 4.13 by default. Use the same version as the rest of the build.~~
+  - opam installer is now vendored in onix itself.
+- [ ] ~~Consider adding opam-installer to lock file to avoid pulling pkgs.opam-installer.~~
 - [ ] Document diffs:
   - Support compiler option packages.
   - Support dev tools, test, doc.
@@ -115,7 +116,7 @@
   - Support offline mode.
   - Prefetch packages to compute sha256 when md5 is used.
   - Support multiple opam repositories.
-- [ ] Help debug nix paths (eg show opam repo path)
+- [x] Help debug nix paths (eg show opam repo path)
 - [x] When the scope is built but there was a pkg override do we still build the pkg? Must not.
 - [x] Replace hardcoded ocaml nix versions with a call to get currently available version from ocaml-ng.
 - [ ] Make sure that unsupported compiler combinations error out.
@@ -135,8 +136,9 @@
 - [ ] Consider using attrsets (name => x) for representing deps to avoid duplicates when (++).
 - [ ] Add support for local repos.
 - [ ] Host's OPAMPATH is used when -i is not passed to develop for shell target.
-- [ ] Formatting dune files is slow with vscode.
+- [x] Formatting dune files is slow with vscode.
     - Which uses `nix develop -i -c $prog $args`.
+    - Use env file
 - [ ] Can we symlinkJoin an opam root?
 - [ ] How to get compatibility with OCaml Platform? Can we fake opam's CLI?
 - [x] Pass `verbosity` to top-level onix attrset.
@@ -157,6 +159,6 @@
 - [ ] Document that opam vars can be added to drv.
 - [ ] Install repo's opam file.
 - [ ] When running `nix profile install github:odis-labs/onix` why are so manny deps fetched (like clang).
-- [ ] Lookup all opam files by default on onix lock.
+- [x] Lookup all opam files by default on onix lock.
 - [ ] Improve verbosity of onix lock.
 - [ ] Add a shell hook to shell to check if there are any opam variables.
