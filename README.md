@@ -353,9 +353,6 @@ This file is regenerated everytime you open your nix shell, so make sure to open
 Set up the OCaml Platform extension to source this file before executing any
 commands:
 
-> **Note**
-> Remember to replace `YOUR_PROJECT_FOLDER` by your project folder name.
-
 ```json
 {
   "ocaml.sandbox": {
