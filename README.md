@@ -360,7 +360,7 @@ commands:
 {
   "ocaml.sandbox": {
     "kind": "custom",
-    "template": "source ${workspaceFolder:YOUR_PROJECT_FOLDER}/.onix.env; $prog $args"
+    "template": ". ${firstWorkspaceFolder}/.onix.env; $prog $args"
   }
 }
 ```
