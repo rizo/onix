@@ -7,5 +7,22 @@ ocamlPackages.overrideScope (self: super: {
   yojson = super.yojson.overrideAttrs (_: { doCheck = false; });
   uri = super.uri.overrideAttrs (_: { doCheck = false; });
   angstrom = super.angstrom.overrideAttrs (_: { doCheck = false; });
+  opam-repository = super.opam-repository.overrideAttrs (_: {
+    configureFlags = [
+      "--disable-checks"
+    ];
+    doCheck = false;
+  });
   logs = super.logs.override { jsooSupport = false; };
+  opam-core = super.opam-core.overrideAttrs (attrs: {
+    propagatedBuildInputs = attrs.propagatedBuildInputs ++ [
+      ocamlPackages.uutf
+      ocamlPackages.jsonm
+      ocamlPackages.sha
+      self.swhid_core
+      self.spdx_licenses
+    ];
+  });
+  swhid_core = self.callPackage ./swhid_core.nix {};
+  spdx_licenses = self.callPackage ./spdx_licenses.nix {};
 })

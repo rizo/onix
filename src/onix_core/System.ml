@@ -13,8 +13,8 @@ let os_list = ["linux"; "macos"]
 let arch_list = ["x86_64"; "arm64"]
 
 let host =
-  let arch = OpamSysPoll.arch () in
-  let os = OpamSysPoll.os () in
+  let arch = OpamSysPoll.arch OpamVariable.Map.empty in
+  let os = OpamSysPoll.os OpamVariable.Map.empty in
   match (arch, os) with
   | Some arch, Some os -> { arch; os }
   | Some _, None -> failwith "could not get host's 'os'"
