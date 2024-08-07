@@ -14,15 +14,4 @@ ocamlPackages.overrideScope (self: super: {
     doCheck = false;
   });
   logs = super.logs.override { jsooSupport = false; };
-  opam-core = super.opam-core.overrideAttrs (attrs: {
-    propagatedBuildInputs = attrs.propagatedBuildInputs ++ [
-      ocamlPackages.uutf
-      ocamlPackages.jsonm
-      ocamlPackages.sha
-      self.swhid_core
-      self.spdx_licenses
-    ];
-  });
-  swhid_core = self.callPackage ./swhid_core.nix {};
-  spdx_licenses = self.callPackage ./spdx_licenses.nix {};
 })
