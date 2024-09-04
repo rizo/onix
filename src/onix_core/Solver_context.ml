@@ -8,7 +8,7 @@ module Resolvers = struct
       [
         Scope.resolve_opam_pkg opam_pkg;
         Scope.resolve_global_host;
-        Scope.resolve_dep ~test ~doc ~dev_setup;
+        Scope.resolve_dep ~post:true ~test ~doc ~dev_setup;
       ]
 end
 
