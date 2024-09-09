@@ -30,7 +30,7 @@ let
   # Obtain the latest onix package.
   onix = import (builtins.fetchGit {
     url = "https://github.com/rizo/onix.git";
-    rev = "00720d8a87daef3bbf66eb89e2b7d8efcaf577aa";
+    rev = "43bfeb61ac0d35ebe8e140d3aca8222aee5dc85a";
   }) { verbosity = "info"; };
 
 # Create your project environment.
