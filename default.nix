@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_latest
+{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_5_1
 , verbosity ? "warning" }:
 
 let
