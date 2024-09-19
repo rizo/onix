@@ -30,7 +30,7 @@ let
   # Obtain the latest onix package.
   onix = import (builtins.fetchGit {
     url = "https://github.com/rizo/onix.git";
-    rev = "43bfeb61ac0d35ebe8e140d3aca8222aee5dc85a";
+    rev = "a5e44375d88bcbf429ff8dc002ce613627a8f869";
   }) { verbosity = "info"; };
 
 # Create your project environment.
@@ -46,7 +46,7 @@ in onix.env {
   };
 
   # Optional: specify the compiler version for the build environment.
-  deps = { "ocaml-system" = "5.1.1"; };
+  deps = { "ocaml-system" = "5.2.0"; };
 }
 ```
 
