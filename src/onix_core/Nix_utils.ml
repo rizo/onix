@@ -256,6 +256,7 @@ let make_ocaml_packages_path version =
   | "4.14.1" -> "ocaml-ng.ocamlPackages_4_14.ocaml"
   | "5.0.0" -> "ocaml-ng.ocamlPackages_5_0.ocaml"
   | "5.1.1" -> "ocaml-ng.ocamlPackages_5_1.ocaml"
+  | "5.2.0" -> "ocaml-ng.ocamlPackages_5_2.ocaml"
   | unsupported ->
     Fmt.failwith "Unsupported nixpkgs ocaml version: %s" unsupported
 
