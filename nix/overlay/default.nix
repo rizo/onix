@@ -4,6 +4,14 @@ let
   inherit (nixpkgs) lib;
 
   common = {
+    ocaml-version = super.ocaml-version.overrideAttrs (oldAttrs:
+      if (oldAttrs.version == "3.7.1") then {
+        unpackCmd = ''
+          tar xf "$curSrc"
+        '';
+      } else {}
+    );
+
     ocamlfind = super.ocamlfind.overrideAttrs (oldAttrs: {
       patches = oldAttrs.patches or [ ]
         ++ lib.optional (lib.versionOlder oldAttrs.version "1.9.3")
