@@ -17,7 +17,8 @@ let
         ++ lib.optional (oldAttrs.version == "1.9.2") ./ocamlfind/onix_install_topfind_192.patch
         ++ lib.optional (oldAttrs.version == "1.9.3") ./ocamlfind/onix_install_topfind_193.patch
         ++ lib.optional (oldAttrs.version == "1.9.4") ./ocamlfind/onix_install_topfind_194.patch
-        ++ lib.optional (oldAttrs.version == "1.9.5") ./ocamlfind/onix_install_topfind_195.patch;
+        ++ lib.optional (oldAttrs.version == "1.9.5") ./ocamlfind/onix_install_topfind_195.patch
+        ++ lib.optional (oldAttrs.version == "1.9.8") ./ocamlfind/onix_install_topfind_198.patch;
       setupHook = nixpkgs.writeText "ocamlfind-setup-hook.sh" ''
         [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
         export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${super.ocaml.version}/site-lib/toplevel"
