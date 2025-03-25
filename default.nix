@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }, internalPkgs = pkgs, ocamlPackages ? internalPkgs.ocaml-ng.ocamlPackages_5_2
+{ pkgs ? import <nixpkgs> { }, internalPkgs ? pkgs, ocamlPackages ? internalPkgs.ocaml-ng.ocamlPackages_5_2
 , verbosity ? "warning" }:
 
 let
