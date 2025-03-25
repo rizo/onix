@@ -1,8 +1,8 @@
-{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_5_2
+{ pkgs ? import <nixpkgs> { }, internalPkgs = pkgs, ocamlPackages ? internalPkgs.ocaml-ng.ocamlPackages_5_2
 , verbosity ? "warning" }:
 
 let
-  onixPackages = import ./nix/onixPackages { inherit pkgs ocamlPackages; };
+  onixPackages = import ./nix/onixPackages { inherit ocamlPackages; pkgs = internalPkgs; };
   api = import ./nix/api.nix { inherit pkgs onix verbosity; };
   onix = ocamlPackages.buildDunePackage {
     pname = "onix";
@@ -13,7 +13,7 @@ let
 
     src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 
-    nativeBuildInputs = [ pkgs.git onixPackages.crunch ];
+    nativeBuildInputs = [ internalPkgs.git onixPackages.crunch ];
     propagatedBuildInputs = with onixPackages; [
       bos
       cmdliner
