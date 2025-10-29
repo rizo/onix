@@ -22,115 +22,6 @@ let resolve_actions =
       ]
 
 module Patch = struct
-  (* https://github.com/ocaml/opam/blob/e36650b3007e013cfb5b6bb7ed769a349af3ee97/src/client/opamAction.ml#L343 *)
-  let prepare_package_build env opam nv dir =
-    let open OpamFilename.Op in
-    let open OpamProcess.Job.Op in
-    let patches = OpamFile.OPAM.patches opam in
-
-    let print_apply basename =
-      Logs.debug (fun log ->
-          log "%s: applying %s."
-            (OpamPackage.name_to_string nv)
-            (OpamFilename.Base.to_string basename));
-      if OpamConsole.verbose () then
-        OpamConsole.msg "[%s: patch] applying %s@."
-          (OpamConsole.colorise `green (OpamPackage.name_to_string nv))
-          (OpamFilename.Base.to_string basename)
-    in
-    let print_subst basename =
-      let file = OpamFilename.Base.to_string basename in
-      let file_in = file ^ ".in" in
-      Logs.debug (fun log ->
-          log "%s: expanding opam variables in %s, generating %s."
-            (OpamPackage.name_to_string nv)
-            file_in file)
-    in
-
-    let apply_patches () =
-      Logs.debug (fun log ->
-          log "Applying patches total=%d..." (List.length patches));
-      let patch base =
-        OpamFilename.patch (dir // OpamFilename.Base.to_string base) dir
-      in
-      let rec aux = function
-        | [] -> Done []
-        | (patchname, filter) :: rest ->
-          if OpamFilter.opt_eval_to_bool env filter then (
-            print_apply patchname;
-            patch patchname @@+ function
-            | None -> aux rest
-            | Some err -> aux rest @@| fun e -> (patchname, err) :: e)
-          else aux rest
-      in
-      aux patches
-    in
-    let substs = OpamFile.OPAM.substs opam in
-    let subst_patches, subst_others =
-      List.partition (fun f -> List.mem_assoc f patches) substs
-    in
-    Logs.debug (fun log ->
-        log "Found %d substs; patches=%d others=%d..." (List.length substs)
-          (List.length subst_patches)
-          (List.length subst_others));
-    let subst_errs =
-      OpamFilename.in_dir dir @@ fun () ->
-      List.fold_left
-        (fun errs f ->
-          try
-            print_subst f;
-            OpamFilter.expand_interpolations_in_file env f;
-            errs
-          with e -> (f, e) :: errs)
-        [] subst_patches
-    in
-
-    (* Apply the patches *)
-    let text =
-      OpamProcess.make_command_text (OpamPackage.Name.to_string nv.name) "patch"
-    in
-    OpamProcess.Job.with_text text (apply_patches ()) @@+ fun patching_errors ->
-    (* Substitute the configuration files. We should be in the right
-       directory to get the correct absolute path for the
-       substitution files (see [OpamFilter.expand_interpolations_in_file] and
-       [OpamFilename.of_basename]. *)
-    let subst_errs =
-      OpamFilename.in_dir dir @@ fun () ->
-      List.fold_left
-        (fun errs f ->
-          try
-            print_subst f;
-            OpamFilter.expand_interpolations_in_file env f;
-            errs
-          with e -> (f, e) :: errs)
-        subst_errs subst_others
-    in
-    if patching_errors <> [] || subst_errs <> [] then
-      let msg =
-        (if patching_errors <> [] then
-         Printf.sprintf "These patches didn't apply at %s:@.%s"
-           (OpamFilename.Dir.to_string dir)
-           (OpamStd.Format.itemize
-              (fun (f, err) ->
-                Printf.sprintf "%s: %s"
-                  (OpamFilename.Base.to_string f)
-                  (Printexc.to_string err))
-              patching_errors)
-        else "")
-        ^
-        if subst_errs <> [] then
-          Printf.sprintf "String expansion failed for these files:@.%s"
-            (OpamStd.Format.itemize
-               (fun (b, err) ->
-                 Printf.sprintf "%s.in: %s"
-                   (OpamFilename.Base.to_string b)
-                   (Printexc.to_string err))
-               subst_errs)
-        else ""
-      in
-      Done (Some (Failure msg))
-    else Done None
-
   let copy_extra_files ~opamfile ~build_dir extra_files =
     let bad_hash =
       OpamStd.List.filter_map
@@ -180,8 +71,7 @@ module Patch = struct
     let resolve = resolve_actions pkg_scope in
     let cwd = OpamFilename.Dir.of_string (Sys.getcwd ()) in
     let pkg = OpamPackage.create pkg_scope.self.name pkg_scope.self.version in
-    prepare_package_build resolve opam pkg cwd
-    |> OpamProcess.Job.run
+    OpamAction.prepare_package_build resolve opam pkg cwd
     |> Option.if_some raise
 end
 
@@ -204,8 +94,8 @@ let build ~with_test ~with_doc ~with_dev_setup (pkg_scope : Scope.t) =
   let commands =
     (OpamFilter.commands resolve_with_dep_vars (OpamFile.OPAM.build opam)
     @ (if with_test then
-       OpamFilter.commands resolve (OpamFile.OPAM.run_test opam)
-      else [])
+         OpamFilter.commands resolve (OpamFile.OPAM.run_test opam)
+       else [])
     @
     if with_doc then
       OpamFilter.commands resolve (OpamFile.OPAM.deprecated_build_doc opam)

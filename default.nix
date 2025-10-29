@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_5_2
+{ pkgs ? import <nixpkgs> { }, ocamlPackages ? pkgs.ocaml-ng.ocamlPackages_5_3
 , verbosity ? "warning" }:
 
 let
@@ -19,9 +19,11 @@ let
       cmdliner
       fpath
       yojson
-      opam-core
-      opam-state
+      _0install-solver
       opam-0install
+      opam-core
+      opam-client
+      opam-state
     ];
 
     meta = {

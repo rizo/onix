@@ -1,5 +1,5 @@
 { lib, fetchurl, buildDunePackage, fmt, cmdliner, opam-state, opam-file-format
-, zero-install-solver }:
+, _0install-solver }:
 
 buildDunePackage rec {
   pname = "opam-0install";
@@ -13,7 +13,7 @@ buildDunePackage rec {
   };
 
   propagatedBuildInputs =
-    [ fmt cmdliner opam-state opam-file-format zero-install-solver ];
+    [ fmt cmdliner opam-state opam-file-format _0install-solver ];
 
   meta = with lib; {
     description = "Opam solver using 0install backend";

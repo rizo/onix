@@ -6,8 +6,10 @@
   logs
   yojson
   re
+  unix
   opam-0install
   opam-format
   opam-file-format
   opam-state
-  opam-core))
+  opam-core
+  opam-client))
