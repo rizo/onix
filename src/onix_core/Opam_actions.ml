@@ -24,7 +24,7 @@ let resolve_actions =
 module Patch = struct
   let copy_extra_files ~opamfile ~build_dir extra_files =
     let bad_hash =
-      OpamStd.List.filter_map
+      Stdlib.List.filter_map
         (fun (basename, hash) ->
           let src = Opam_utils.make_opam_files_path ~opamfile basename in
           if OpamHash.check_file (OpamFilename.to_string src) hash then (
