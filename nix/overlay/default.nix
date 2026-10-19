@@ -24,6 +24,11 @@ let
         [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
         export OCAMLTOP_INCLUDE_PATH="$1/lib/ocaml/${super.ocaml.version}/site-lib/toplevel"
       '';
+
+      postInstall = (oldAttrs.postInstall or "")
+        + lib.optionalString (oldAttrs.version == "1.9.9+preview") ''
+          echo 'ldconf="ignore"' >> "$OCAMLFIND_DESTDIR/findlib.conf"
+        '';
       # setupHook = nixpkgs.writeText "ocamlfind-setup-hook.sh" ''
       #   [[ -z ''${strictDeps-} ]] || (( "$hostOffset" < 0 )) || return 0
 
