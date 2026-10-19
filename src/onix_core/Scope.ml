@@ -154,15 +154,26 @@ let resolve_pkg ~build_dir { self; pkgs; ocaml_version; _ } full_var =
   | `G, "stublibs" -> string' (stublibs ~ocaml_version self.prefix)
   | `I pkg, "stublibs" ->
     string' (stublibs ~pkg_name:pkg.name ~ocaml_version pkg.prefix)
+  (* NOTE: `_:bin`/`_:sbin`/`_:share`/`_:doc`/`_:etc` are resolved as global paths. *)
   | `G, "bin" -> string' (bin self.prefix)
+  | `I pkg, "bin" when Name.equal pkg.name self.name ->
+    string' (bin self.prefix)
   | `I pkg, "bin" -> string' (bin ~pkg_name:pkg.name pkg.prefix)
   | `G, "sbin" -> string' (sbin self.prefix)
+  | `I pkg, "sbin" when Name.equal pkg.name self.name ->
+    string' (sbin self.prefix)
   | `I pkg, "sbin" -> string' (sbin ~pkg_name:pkg.name pkg.prefix)
   | `G, "share" -> string' (share self.prefix)
+  | `I pkg, "share" when Name.equal pkg.name self.name ->
+    string' (share self.prefix)
   | `I pkg, "share" -> string' (share ~pkg_name:pkg.name pkg.prefix)
   | `G, "doc" -> string' (doc self.prefix)
+  | `I pkg, "doc" when Name.equal pkg.name self.name ->
+    string' (doc self.prefix)
   | `I pkg, "doc" -> string' (doc ~pkg_name:pkg.name pkg.prefix)
   | `G, "etc" -> string' (etc self.prefix)
+  | `I pkg, "etc" when Name.equal pkg.name self.name ->
+    string' (etc self.prefix)
   | `I pkg, "etc" -> string' (etc ~pkg_name:pkg.name pkg.prefix)
   | `G, "man" -> string' (man self.prefix)
   | `I pkg, "man" -> string' (man pkg.prefix)
